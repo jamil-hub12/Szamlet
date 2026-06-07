@@ -1,4 +1,10 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
 import { supabase } from "../../lib/supabase";
 import type { Database } from "../../lib/supabase";
 import {
@@ -14,7 +20,10 @@ import {
   actualizarStockPedidoCreado,
   type PedidoItemData,
 } from "../utils/stockManager";
-import { obtenerFechaPeruHoy, obtenerFechaHoraPeruISO } from "../../utils/fechas";
+import {
+  obtenerFechaPeruHoy,
+  obtenerFechaHoraPeruISO,
+} from "../../utils/fechas";
 
 type PedidoDB = Database["public"]["Tables"]["pedidos"]["Row"];
 type PedidoInsert = Database["public"]["Tables"]["pedidos"]["Insert"];
@@ -72,7 +81,10 @@ type PedidosContextType = {
     notas?: string;
     items?: PedidoItemData[]; // Items detallados de productos
   }) => Promise<Pedido | null>;
-  actualizarPedido: (codigo: string, datos: Partial<Pedido>) => Promise<boolean>;
+  actualizarPedido: (
+    codigo: string,
+    datos: Partial<Pedido>,
+  ) => Promise<boolean>;
   cancelarPedido: (codigo: string, motivo: string) => Promise<boolean>;
   reactivarPedido: (codigo: string) => Promise<boolean>;
   refetch: () => Promise<void>;
@@ -93,7 +105,8 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
       // Obtener pedidos con información del cliente
       const { data: pedidosData, error: pedidosError } = await supabase
         .from("pedidos")
-        .select(`
+        .select(
+          `
           *,
           clientes:cliente_id (
             codigo,
@@ -101,7 +114,8 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
             celular,
             email
           )
-        `)
+        `,
+        )
         .order("codigo", { ascending: false });
 
       if (pedidosError) throw pedidosError;
@@ -112,52 +126,64 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
         .select("*");
 
       if (itemsError) {
-        console.warn("⚠️ No se pudieron cargar los items de pedidos:", itemsError);
+        console.warn(
+          "⚠️ No se pudieron cargar los items de pedidos:",
+          itemsError,
+        );
       }
 
-      const pedidosConvertidos: Pedido[] = (pedidosData || []).map((pedido: any) => {
-        // Filtrar items de este pedido
-        const itemsPedido = (itemsData || [])
-          .filter((item: any) => item.pedido_codigo === pedido.codigo)
-          .map((item: any) => ({
-            id: item.id,
-            productoId: item.producto_codigo,
-            productoNombre: `${item.modelo} - ${item.tela} - ${item.disenio}`,
-            modelo: item.modelo,
-            tela: item.tela,
-            disenio: item.disenio,
-            talla: item.talla,
-            color: item.color,
-            cantidad: item.cantidad,
-            precioUnitario: item.precio_unitario ? parseFloat(item.precio_unitario) : undefined,
-            subtotal: item.subtotal ? parseFloat(item.subtotal) : undefined,
-          }));
+      const pedidosConvertidos: Pedido[] = (pedidosData || []).map(
+        (pedido: any) => {
+          // Filtrar items de este pedido
+          const itemsPedido = (itemsData || [])
+            .filter((item: any) => item.pedido_codigo === pedido.codigo)
+            .map((item: any) => ({
+              id: item.id,
+              productoId: item.producto_codigo,
+              productoNombre: `${item.modelo} - ${item.tela} - ${item.disenio}`,
+              modelo: item.modelo,
+              tela: item.tela,
+              disenio: item.disenio,
+              talla: item.talla,
+              color: item.color,
+              cantidad: item.cantidad,
+              precioUnitario: item.precio_unitario
+                ? parseFloat(item.precio_unitario)
+                : undefined,
+              subtotal: item.subtotal ? parseFloat(item.subtotal) : undefined,
+            }));
 
-        return {
-          id: pedido.codigo,
-          codigo: pedido.codigo,
-          clienteId: pedido.cliente_id,
-          cliente: pedido.clientes?.nombre || "Cliente desconocido",
-          articulo: pedido.articulo,
-          estado: pedido.estado as EstadoPedido,
-          fecha: pedido.fecha,
-          urgente: pedido.urgente,
-          telefono: pedido.clientes?.celular || "",
-          email: pedido.clientes?.email || "",
-          notas: pedido.notas || undefined,
-          motivoCancelacion: pedido.motivo_cancelacion || undefined,
-          estadoAnteriorCancelacion: pedido.estado_anterior_cancelacion || undefined,
-          estadoPago: pedido.estado_pago || "Pendiente",
-          montoTotal: pedido.monto_total ? parseFloat(pedido.monto_total) : undefined,
-          montoPagado: pedido.monto_pagado ? parseFloat(pedido.monto_pagado) : 0,
-          fechaEntrega: pedido.fecha_entrega || undefined,
-          metodoPago: pedido.metodo_pago || undefined,
-          referenciaPago: pedido.referencia_pago || undefined,
-          fechaPago: pedido.fecha_pago || undefined,
-          notasPago: pedido.notas_pago || undefined,
-          items: itemsPedido.length > 0 ? itemsPedido : undefined,
-        };
-      });
+          return {
+            id: pedido.codigo,
+            codigo: pedido.codigo,
+            clienteId: pedido.cliente_id,
+            cliente: pedido.clientes?.nombre || "Cliente desconocido",
+            articulo: pedido.articulo,
+            estado: pedido.estado as EstadoPedido,
+            fecha: pedido.fecha,
+            urgente: pedido.urgente,
+            telefono: pedido.clientes?.celular || "",
+            email: pedido.clientes?.email || "",
+            notas: pedido.notas || undefined,
+            motivoCancelacion: pedido.motivo_cancelacion || undefined,
+            estadoAnteriorCancelacion:
+              pedido.estado_anterior_cancelacion || undefined,
+            estadoPago: pedido.estado_pago || "Pendiente",
+            montoTotal: pedido.monto_total
+              ? parseFloat(pedido.monto_total)
+              : undefined,
+            montoPagado: pedido.monto_pagado
+              ? parseFloat(pedido.monto_pagado)
+              : 0,
+            fechaEntrega: pedido.fecha_entrega || undefined,
+            metodoPago: pedido.metodo_pago || undefined,
+            referenciaPago: pedido.referencia_pago || undefined,
+            fechaPago: pedido.fecha_pago || undefined,
+            notasPago: pedido.notas_pago || undefined,
+            items: itemsPedido.length > 0 ? itemsPedido : undefined,
+          };
+        },
+      );
 
       setPedidos(pedidosConvertidos);
     } catch (err) {
@@ -179,7 +205,7 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
         { event: "*", schema: "public", table: "pedidos" },
         () => {
           fetchPedidos();
-        }
+        },
       )
       .subscribe();
 
@@ -208,7 +234,8 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
       const { data: nuevoPedido, error: insertError } = await supabase
         .from("pedidos")
         .insert(insertData)
-        .select(`
+        .select(
+          `
           *,
           clientes:cliente_id (
             codigo,
@@ -216,7 +243,8 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
             celular,
             email
           )
-        `)
+        `,
+        )
         .single();
 
       if (insertError) throw insertError;
@@ -247,12 +275,15 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
           pedidoConvertido.codigo,
           data.items,
           usuarioFinal.codigo,
-          usuarioFinal.nombre
+          usuarioFinal.nombre,
         );
 
         if (!resultadoStock.exito) {
           // Si falla el stock, eliminar el pedido creado
-          await supabase.from("pedidos").delete().eq("codigo", pedidoConvertido.codigo);
+          await supabase
+            .from("pedidos")
+            .delete()
+            .eq("codigo", pedidoConvertido.codigo);
           setError(`Error al actualizar stock: ${resultadoStock.mensaje}`);
           return null;
         }
@@ -283,7 +314,10 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const actualizarPedido = async (codigo: string, datos: Partial<Pedido>): Promise<boolean> => {
+  const actualizarPedido = async (
+    codigo: string,
+    datos: Partial<Pedido>,
+  ): Promise<boolean> => {
     try {
       // Obtener el pedido actual
       const pedidoActual = pedidos.find((p) => p.codigo === codigo);
@@ -293,7 +327,11 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
       }
 
       // Validar si se puede editar el pedido
-      if (datos.articulo !== undefined || datos.urgente !== undefined || datos.notas !== undefined) {
+      if (
+        datos.articulo !== undefined ||
+        datos.urgente !== undefined ||
+        datos.notas !== undefined
+      ) {
         const validacionEdicion = puedeEditarPedido(pedidoActual.estado);
         if (!validacionEdicion.puede) {
           setError(validacionEdicion.mensaje);
@@ -339,13 +377,21 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
           detalles: {
             estadoAnterior: pedidoActual.estado,
             estadoNuevo: datos.estado,
-            mensaje: generarMensajeCambioEstado(pedidoActual.estado, datos.estado, codigo),
+            mensaje: generarMensajeCambioEstado(
+              pedidoActual.estado,
+              datos.estado,
+              codigo,
+            ),
           },
         });
       }
 
       // Registrar en auditoría si se editaron otros campos
-      if (datos.articulo !== undefined || datos.urgente !== undefined || datos.notas !== undefined) {
+      if (
+        datos.articulo !== undefined ||
+        datos.urgente !== undefined ||
+        datos.notas !== undefined
+      ) {
         await registrarAuditoria({
           usuarioCodigo: usuarioFinal.codigo,
           usuarioNombre: usuarioFinal.nombre,
@@ -355,25 +401,33 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
           entidadNombre: `${pedidoActual.cliente} - ${pedidoActual.articulo}`,
           detalles: {
             cambios: updateData,
-            articuloAnterior: datos.articulo !== undefined ? pedidoActual.articulo : undefined,
-            urgenteAnterior: datos.urgente !== undefined ? pedidoActual.urgente : undefined,
-            notasAnteriores: datos.notas !== undefined ? pedidoActual.notas : undefined,
+            articuloAnterior:
+              datos.articulo !== undefined ? pedidoActual.articulo : undefined,
+            urgenteAnterior:
+              datos.urgente !== undefined ? pedidoActual.urgente : undefined,
+            notasAnteriores:
+              datos.notas !== undefined ? pedidoActual.notas : undefined,
           },
         });
       }
 
       setPedidos((prev) =>
-        prev.map((p) => (p.codigo === codigo ? { ...p, ...datos } : p))
+        prev.map((p) => (p.codigo === codigo ? { ...p, ...datos } : p)),
       );
       return true;
     } catch (err) {
       console.error("Error al actualizar pedido:", err);
-      setError(err instanceof Error ? err.message : "Error al actualizar pedido");
+      setError(
+        err instanceof Error ? err.message : "Error al actualizar pedido",
+      );
       return false;
     }
   };
 
-  const cancelarPedido = async (codigo: string, motivo: string): Promise<boolean> => {
+  const cancelarPedido = async (
+    codigo: string,
+    motivo: string,
+  ): Promise<boolean> => {
     try {
       // Obtener el pedido actual
       const pedidoActual = pedidos.find((p) => p.codigo === codigo);
@@ -397,7 +451,7 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
       const resultadoStock = await restaurarStockPedidoCancelado(
         codigo,
         usuarioFinal.codigo,
-        usuarioFinal.nombre
+        usuarioFinal.nombre,
       );
 
       if (!resultadoStock.exito) {
@@ -434,9 +488,13 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
       setPedidos((prev) =>
         prev.map((p) =>
           p.codigo === codigo
-            ? { ...p, estado: "Cancelado" as EstadoPedido, motivoCancelacion: motivo }
-            : p
-        )
+            ? {
+                ...p,
+                estado: "Cancelado" as EstadoPedido,
+                motivoCancelacion: motivo,
+              }
+            : p,
+        ),
       );
       return true;
     } catch (err) {
@@ -463,7 +521,9 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
 
       // Verificar que tenga un estado anterior guardado
       if (!pedidoActual.estadoAnteriorCancelacion) {
-        setError("No se puede reactivar este pedido (no tiene estado anterior guardado)");
+        setError(
+          "No se puede reactivar este pedido (no tiene estado anterior guardado)",
+        );
         return false;
       }
 
@@ -474,8 +534,17 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
       // Descontar el stock nuevamente (revertir la restauración)
       const resultadoStock = await actualizarStockPedidoCreado(
         codigo,
+        pedidoActual.items?.map((item) => ({
+          productoCodigo: item.productoId,
+          modelo: item.modelo,
+          tela: item.tela,
+          disenio: item.disenio,
+          talla: item.talla,
+          color: item.color,
+          cantidad: item.cantidad,
+        })) || [],
         usuarioFinal.codigo,
-        usuarioFinal.nombre
+        usuarioFinal.nombre,
       );
 
       if (!resultadoStock.exito) {
@@ -519,14 +588,16 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
                 motivoCancelacion: undefined,
                 estadoAnteriorCancelacion: undefined,
               }
-            : p
-        )
+            : p,
+        ),
       );
 
       return true;
     } catch (err) {
       console.error("Error al reactivar pedido:", err);
-      setError(err instanceof Error ? err.message : "Error al reactivar pedido");
+      setError(
+        err instanceof Error ? err.message : "Error al reactivar pedido",
+      );
       return false;
     }
   };

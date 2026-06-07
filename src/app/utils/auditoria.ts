@@ -3,14 +3,25 @@ import { supabase } from "../../lib/supabase";
 type RegistrarAuditoriaParams = {
   usuarioCodigo: string;
   usuarioNombre: string;
-  accion: "crear" | "editar" | "eliminar" | "cambiar_estado" | "cancelar" | "login" | "logout" | "establecer_password";
+  accion:
+    | "crear"
+    | "editar"
+    | "eliminar"
+    | "cambiar_estado"
+    | "cancelar"
+    | "reactivar"
+    | "login"
+    | "logout"
+    | "establecer_password";
   modulo: "empleados" | "clientes" | "productos" | "pedidos" | "autenticacion";
   entidadId?: string | null;
   entidadNombre?: string | null;
   detalles?: any | null;
 };
 
-export async function registrarAuditoria(params: RegistrarAuditoriaParams): Promise<void> {
+export async function registrarAuditoria(
+  params: RegistrarAuditoriaParams,
+): Promise<void> {
   try {
     const { data, error } = await supabase.from("auditoria").insert({
       usuario_codigo: params.usuarioCodigo,
@@ -26,7 +37,12 @@ export async function registrarAuditoria(params: RegistrarAuditoriaParams): Prom
       console.error("❌ Error al registrar auditoría:", error);
       console.error("Parámetros:", params);
     } else {
-      console.log("✅ Auditoría registrada:", params.accion, params.modulo, params.usuarioCodigo);
+      console.log(
+        "✅ Auditoría registrada:",
+        params.accion,
+        params.modulo,
+        params.usuarioCodigo,
+      );
     }
   } catch (err) {
     console.error("❌ Excepción al registrar auditoría:", err);
@@ -36,7 +52,10 @@ export async function registrarAuditoria(params: RegistrarAuditoriaParams): Prom
 }
 
 // Hook para obtener el usuario actual desde el contexto de auditoría
-export async function obtenerUsuarioActual(): Promise<{ codigo: string; nombre: string } | null> {
+export async function obtenerUsuarioActual(): Promise<{
+  codigo: string;
+  nombre: string;
+} | null> {
   try {
     const { data: authData } = await supabase.auth.getUser();
     if (!authData.user) return null;
@@ -47,7 +66,9 @@ export async function obtenerUsuarioActual(): Promise<{ codigo: string; nombre: 
       .eq("email", authData.user.email)
       .single();
 
-    return empleado ? { codigo: empleado.codigo, nombre: empleado.nombre } : null;
+    return empleado
+      ? { codigo: empleado.codigo, nombre: empleado.nombre }
+      : null;
   } catch (err) {
     console.error("Error al obtener usuario actual:", err);
     return null;
