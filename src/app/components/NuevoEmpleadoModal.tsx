@@ -26,7 +26,7 @@ type FormData = {
   nombre: string;
   email: string;
   telefono: string;
-  rol: string;
+  rol: "Atención al cliente" | "Administrador" | "";
   password: string;
   confirmPassword: string;
 };
@@ -108,7 +108,7 @@ export function NuevoEmpleadoModal({
         nombre: form.nombre.trim(),
         email: form.email.trim(),
         telefono: form.telefono.trim(),
-        rol: form.rol,
+        rol: form.rol as "Atención al cliente" | "Administrador",
         fechaIngreso: new Date().toISOString().split("T")[0],
         estado: "Activo",
       };

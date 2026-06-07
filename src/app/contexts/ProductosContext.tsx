@@ -121,6 +121,8 @@ export function ProductosProvider({ children }: { children: ReactNode }) {
             tela: producto.tela,
             disenio: producto.disenio,
             tallas,
+            fechaRegistro:
+              producto.fecha_registro || new Date().toISOString().split("T")[0],
           };
         },
       );

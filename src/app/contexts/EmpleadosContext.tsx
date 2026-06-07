@@ -70,7 +70,7 @@ function convertirEmpleado(emp: EmpleadoDB): Empleado {
     rol: emp.rol as "Atención al cliente" | "Administrador",
     fechaIngreso: emp.fecha_ingreso,
     estado: emp.estado as "Activo" | "Licencia" | "Inactivo",
-    permisos: (emp.permisos as Permiso[]) || [],
+    permisos: [],
   };
 }
 
