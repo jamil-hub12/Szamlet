@@ -1,4 +1,10 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
 import { supabase } from "../../lib/supabase";
 import type { Database } from "../../lib/supabase";
 
@@ -10,7 +16,16 @@ export type RegistroAuditoria = {
   fechaHora: string;
   usuarioCodigo: string;
   usuarioNombre: string;
-  accion: "crear" | "editar" | "eliminar" | "cambiar_estado" | "cancelar" | "login" | "logout" | "establecer_password";
+  accion:
+    | "crear"
+    | "editar"
+    | "eliminar"
+    | "cambiar_estado"
+    | "cancelar"
+    | "reactivar"
+    | "login"
+    | "logout"
+    | "establecer_password";
   modulo: "empleados" | "clientes" | "productos" | "pedidos" | "autenticacion";
   entidadId: string | null;
   entidadNombre: string | null;
@@ -21,11 +36,15 @@ type AuditoriaContextType = {
   registros: RegistroAuditoria[];
   loading: boolean;
   error: string | null;
-  registrarAccion: (data: Omit<RegistroAuditoria, "id" | "fechaHora">) => Promise<void>;
+  registrarAccion: (
+    data: Omit<RegistroAuditoria, "id" | "fechaHora">,
+  ) => Promise<void>;
   refetch: () => Promise<void>;
 };
 
-const AuditoriaContext = createContext<AuditoriaContextType | undefined>(undefined);
+const AuditoriaContext = createContext<AuditoriaContextType | undefined>(
+  undefined,
+);
 
 function convertirRegistro(reg: AuditoriaDB): RegistroAuditoria {
   return {
@@ -85,18 +104,29 @@ export function AuditoriaProvider({ children }: { children: ReactNode }) {
         "postgres_changes",
         { event: "*", schema: "public", table: "auditoria" },
         (payload) => {
-          console.log("🔔 Cambio detectado en auditoría:", payload.eventType, payload);
+          console.log(
+            "🔔 Cambio detectado en auditoría:",
+            payload.eventType,
+            payload,
+          );
           // Refetch inmediatamente cuando hay cambios
           fetchRegistros();
-        }
+        },
       )
       .subscribe((status, err) => {
         if (status === "SUBSCRIBED") {
           console.log("✅ Suscripción a auditoría activa");
         } else if (status === "CHANNEL_ERROR") {
-          console.warn("⚠️ Error en canal de auditoría (real-time deshabilitado):", err);
-          console.warn("💡 Para habilitar tiempo real, activa la replicación en Supabase:");
-          console.warn("Database → Replication → Enable replication for 'auditoria' table");
+          console.warn(
+            "⚠️ Error en canal de auditoría (real-time deshabilitado):",
+            err,
+          );
+          console.warn(
+            "💡 Para habilitar tiempo real, activa la replicación en Supabase:",
+          );
+          console.warn(
+            "Database → Replication → Enable replication for 'auditoria' table",
+          );
         } else if (status === "TIMED_OUT") {
           console.warn("⏱️ Timeout en suscripción de auditoría");
         } else if (status === "CLOSED") {
@@ -110,7 +140,9 @@ export function AuditoriaProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const registrarAccion = async (data: Omit<RegistroAuditoria, "id" | "fechaHora">) => {
+  const registrarAccion = async (
+    data: Omit<RegistroAuditoria, "id" | "fechaHora">,
+  ) => {
     try {
       const insertData: AuditoriaInsert = {
         usuario_codigo: data.usuarioCodigo,

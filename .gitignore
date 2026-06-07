@@ -2,7 +2,6 @@
 node_modules/
 
 # Variables de entorno (CRÍTICO - nunca subir)
-.env
 .env.local
 .env.production
 .env.staging

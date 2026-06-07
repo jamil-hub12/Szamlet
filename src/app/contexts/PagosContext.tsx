@@ -1,7 +1,16 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
 import { supabase } from "../../lib/supabase";
 import { useAuditoria } from "./AuditoriaContext";
-import { obtenerFechaPeruHoy, obtenerFechaHoraPeruISO } from "../../utils/fechas";
+import {
+  obtenerFechaPeruHoy,
+  obtenerFechaHoraPeruISO,
+} from "../../utils/fechas";
 
 type Pago = {
   id: string;
@@ -31,9 +40,14 @@ type PagosContextType = {
   pagos: Pago[];
   cargando: boolean;
   obtenerPagosPorPedido: (pedidoCodigo: string) => Pago[];
-  obtenerInfoPagoPedido: (pedidoCodigo: string) => Promise<InfoPagoPedido | null>;
+  obtenerInfoPagoPedido: (
+    pedidoCodigo: string,
+  ) => Promise<InfoPagoPedido | null>;
   registrarPago: (pago: Omit<Pago, "id" | "createdAt">) => Promise<boolean>;
-  obtenerEstadisticasPagos: (fechaDesde?: string, fechaHasta?: string) => {
+  obtenerEstadisticasPagos: (
+    fechaDesde?: string,
+    fechaHasta?: string,
+  ) => {
     totalIngresos: number;
     pagosPendientes: number;
     pagosParciales: number;
@@ -53,7 +67,8 @@ export function PagosProvider({ children }: { children: ReactNode }) {
     try {
       const { data, error } = await supabase
         .from("pagos")
-        .select(`
+        .select(
+          `
           *,
           pedidos!inner(
             cliente_id,
@@ -61,7 +76,8 @@ export function PagosProvider({ children }: { children: ReactNode }) {
               nombre
             )
           )
-        `)
+        `,
+        )
         .order("fecha_pago", { ascending: false });
 
       if (error) throw error;
@@ -101,7 +117,7 @@ export function PagosProvider({ children }: { children: ReactNode }) {
         () => {
           console.log("🔔 Cambio en pagos detectado");
           fetchPagos();
-        }
+        },
       )
       .subscribe();
 
@@ -114,11 +130,15 @@ export function PagosProvider({ children }: { children: ReactNode }) {
     return pagos.filter((p) => p.pedidoCodigo === pedidoCodigo);
   };
 
-  const obtenerInfoPagoPedido = async (pedidoCodigo: string): Promise<InfoPagoPedido | null> => {
+  const obtenerInfoPagoPedido = async (
+    pedidoCodigo: string,
+  ): Promise<InfoPagoPedido | null> => {
     try {
       const { data, error } = await supabase
         .from("pedidos")
-        .select("monto_total, estado_pago, metodo_pago, monto_pagado, fecha_pago, referencia_pago, notas_pago")
+        .select(
+          "monto_total, estado_pago, metodo_pago, monto_pagado, fecha_pago, referencia_pago, notas_pago",
+        )
         .eq("codigo", pedidoCodigo)
         .single();
 
@@ -143,7 +163,9 @@ export function PagosProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const registrarPago = async (pago: Omit<Pago, "id" | "createdAt">): Promise<boolean> => {
+  const registrarPago = async (
+    pago: Omit<Pago, "id" | "createdAt">,
+  ): Promise<boolean> => {
     try {
       // 1. Insertar registro en tabla pagos
       const { error: errorPago } = await supabase.from("pagos").insert({
@@ -175,7 +197,7 @@ export function PagosProvider({ children }: { children: ReactNode }) {
           montoPagadoAnterior,
           pagoNuevo: pago.monto,
           nuevoMontoPagado,
-          montoTotal: pedidoActual.monto_total
+          montoTotal: pedidoActual.monto_total,
         });
 
         const { error: errorUpdate } = await supabase
@@ -222,7 +244,10 @@ export function PagosProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const obtenerEstadisticasPagos = (fechaDesde?: string, fechaHasta?: string) => {
+  const obtenerEstadisticasPagos = (
+    fechaDesde?: string,
+    fechaHasta?: string,
+  ) => {
     let pagosFiltrados = pagos;
 
     if (fechaDesde) {
@@ -235,20 +260,17 @@ export function PagosProvider({ children }: { children: ReactNode }) {
 
     const totalIngresos = pagosFiltrados.reduce((sum, p) => sum + p.monto, 0);
 
-    const porMetodo = pagosFiltrados.reduce((acc, p) => {
-      acc[p.metodoPago] = (acc[p.metodoPago] || 0) + p.monto;
-      return acc;
-    }, {} as Record<string, number>);
-
-    // Contar estados desde pedidos (no pagos individuales)
-    const { data: pedidos } = supabase
-      .from("pedidos")
-      .select("estado_pago")
-      .then((res) => res);
+    const porMetodo = pagosFiltrados.reduce(
+      (acc, p) => {
+        acc[p.metodoPago] = (acc[p.metodoPago] || 0) + p.monto;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
     return {
       totalIngresos,
-      pagosPendientes: 0, // Se actualizará desde pedidos
+      pagosPendientes: 0,
       pagosParciales: 0,
       pagosCompletos: 0,
       porMetodo,

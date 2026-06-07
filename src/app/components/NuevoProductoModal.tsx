@@ -776,8 +776,10 @@ export function NuevoProductoModal({
       let acum = [...productosExistentes];
       const nuevos: ProductoCatalogo[] = form.variantes.map((v) => {
         const codigo = nextProductoCode(acum);
+        const hoy = new Date().toISOString().split("T")[0];
         const nuevo: ProductoCatalogo = {
           id: codigo,
+          codigo,
           modelo: form.modelo,
           tela: v.tela,
           disenio: v.disenio,
