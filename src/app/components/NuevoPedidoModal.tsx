@@ -102,6 +102,7 @@ export type NuevoPedidoOutput = {
   articulo: string;
   estado: string;
   fecha: string;
+  fechaEntrega?: string;
   urgente: boolean;
   telefono: string;
   email: string;
@@ -786,6 +787,7 @@ export function NuevoPedidoModal({
           articulo: form.productos.map((p) => p.modelo).join(", "),
           estado: "Recibido",
           fecha: new Date().toISOString().split("T")[0],
+          fechaEntrega: form.fechaEntrega,
           urgente: form.prioridad === "Urgente",
           telefono: clienteSel!.celular,
           email: clienteSel!.email,

@@ -69,6 +69,7 @@ import { formatearSoles } from "../utils/formatoMoneda";
 import {
   obtenerFechaPeruHoy,
   formatearFechaHoraPeru,
+  formatearFechaCorta,
 } from "../../utils/fechas";
 import { esPedidoVencido, diasHastaVencimiento } from "../utils/validaciones";
 
@@ -675,6 +676,7 @@ export function EmpleadoDashboard() {
       articulo: output.articulo,
       urgente: output.urgente,
       notas: output.notas,
+      fechaEntrega: output.fechaEntrega,
       items: output.items.map((item) => ({
         productoCodigo: item.productoCodigo,
         modelo: item.modelo,
@@ -1408,7 +1410,7 @@ export function EmpleadoDashboard() {
                         "Artículo",
                         "Estado",
                         "Estado de Pago",
-                        "Fecha",
+                        "Fecha de Entrega",
                         "",
                       ].map((h) => (
                         <th
@@ -1499,7 +1501,9 @@ export function EmpleadoDashboard() {
                           })()}
                         </td>
                         <td className="px-4 py-3 text-muted-foreground">
-                          {p.fecha}
+                          {p.fechaEntrega
+                            ? formatearFechaCorta(p.fechaEntrega)
+                            : "-"}
                         </td>
                         <td className="px-4 py-3">
                           <ChevronRight className="w-4 h-4 text-muted-foreground ml-auto" />
@@ -2580,6 +2584,8 @@ export function EmpleadoDashboard() {
             pedidoCodigo={pedidoSeleccionado.codigo}
             montoTotal={infoPagoPedido.montoTotal}
             montoPagado={infoPagoPedido.montoPagado}
+            fechaEntrega={pedidoSeleccionado.fechaEntrega}
+            estado={pedidoSeleccionado.estado}
             onClose={() => {
               setModalPagoAbierto(false);
               setInfoPagoPedido(null);
@@ -2701,6 +2707,8 @@ export function EmpleadoDashboard() {
                   prev ? { ...prev, ...datos } : null,
                 );
               }
+              // Pequeño delay para permitir que la suscripción actualice
+              await new Promise((resolve) => setTimeout(resolve, 500));
               setPedidoEditando(null);
             }
             return exito;

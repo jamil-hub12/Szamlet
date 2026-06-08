@@ -60,6 +60,7 @@ import { PanelNotificaciones } from "./PanelNotificaciones";
 import { formatearSoles } from "../utils/formatoMoneda";
 import { esPedidoVencido, diasHastaVencimiento } from "../utils/validaciones";
 import { HistorialClienteModal } from "./HistorialClienteModal";
+import { EditarPedidoModal } from "./EditarPedidoModal";
 import { useClientes } from "../contexts/ClientesContext";
 import {
   obtenerFechaPeruHoy,
@@ -291,7 +292,7 @@ function BarChartCustom({
 export function AdminDashboard() {
   const navigate = useNavigate();
   const currentUser = useCurrentUser();
-  const { pedidos, loading: loadingPedidos } = usePedidos();
+  const { pedidos, loading: loadingPedidos, actualizarPedido } = usePedidos();
   const {
     empleados,
     agregarEmpleado,
@@ -337,6 +338,8 @@ export function AdminDashboard() {
   const [filtroEstadoPedidos, setFiltroEstadoPedidos] = useState("Todos");
   const [filtroPrioridadPedidos, setFiltroPrioridadPedidos] = useState("Todas");
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState<any>(null);
+  const [modalEditarPedidoAbierto, setModalEditarPedidoAbierto] =
+    useState(false);
   const [clienteHistorial, setClienteHistorial] = useState<any>(null);
   const [busquedaCliente, setBusquedaCliente] = useState("");
   const [filtroEstadoCliente, setFiltroEstadoCliente] = useState("Todos");
@@ -360,6 +363,10 @@ export function AdminDashboard() {
   const [fechaHastaPagos, setFechaHastaPagos] = useState("");
   const [filtroMetodoPago, setFiltroMetodoPago] = useState("Todos");
   const [filtroPresetPagos, setFiltroPresetPagos] = useState("Todos");
+  const [reportTypeModalOpen, setReportTypeModalOpen] = useState(false);
+  const [selectedReportType, setSelectedReportType] = useState<
+    "historial" | "pendientes"
+  >("historial");
 
   const toggleExpanded = (id: string) =>
     setExpandedProductos((prev) => {
@@ -643,113 +650,258 @@ export function AdminDashboard() {
   };
 
   // Función para exportar pagos a PDF
-  const handleExportarPagosPDF = async () => {
+  const handleExportarPagosPDF = async (
+    reportType: "historial" | "pendientes",
+  ) => {
     try {
       const { default: jsPDF } = await import("jspdf");
       const { default: autoTable } = await import("jspdf-autotable");
 
       const doc = new jsPDF();
 
-      // Título principal
-      doc.setFontSize(18);
-      doc.setFont("", "bold");
-      doc.text("Reporte de Pagos", 14, 20);
+      if (reportType === "historial") {
+        // Título principal
+        doc.setFontSize(18);
+        doc.setFont("", "bold");
+        doc.text("Reporte de Pagos Realizados", 14, 20);
 
-      // Información del período
-      doc.setFontSize(10);
-      doc.setFont("", "normal");
-      let periodoTexto = "Período: ";
-      if (filtroPresetPagos !== "Todos") {
-        periodoTexto += filtroPresetPagos;
-      } else if (fechaDesdePagos || fechaHastaPagos) {
-        periodoTexto += `${fechaDesdePagos || "Inicio"} - ${fechaHastaPagos || "Hoy"}`;
-      } else {
-        periodoTexto += "Todos los registros";
+        // Información del período
+        doc.setFontSize(10);
+        doc.setFont("", "normal");
+        let periodoTexto = "Período: ";
+        if (filtroPresetPagos !== "Todos") {
+          periodoTexto += filtroPresetPagos;
+        } else if (fechaDesdePagos || fechaHastaPagos) {
+          periodoTexto += `${fechaDesdePagos || "Inicio"} - ${fechaHastaPagos || "Hoy"}`;
+        } else {
+          periodoTexto += "Todos los registros";
+        }
+        doc.text(periodoTexto, 14, 28);
+
+        // Fecha de generación en zona horaria de Perú
+        const fechaGeneracion = formatearFechaHoraPeru(new Date());
+        doc.text(`Generado: ${fechaGeneracion}`, 14, 34);
+
+        // Estadísticas resumen
+        const totalIngresos = pagosFiltrados.reduce(
+          (sum, p) => sum + p.monto,
+          0,
+        );
+        const efectivo = pagosFiltrados
+          .filter((p) => p.metodoPago === "Efectivo")
+          .reduce((sum, p) => sum + p.monto, 0);
+        const transferencia = pagosFiltrados
+          .filter((p) => p.metodoPago === "QR/Transferencia")
+          .reduce((sum, p) => sum + p.monto, 0);
+
+        doc.setFontSize(11);
+        doc.setFont("", "bold");
+        doc.text("Resumen", 14, 44);
+
+        doc.setFontSize(9);
+        doc.setFont("", "normal");
+        doc.text(`Total de pagos: ${pagosFiltrados.length}`, 14, 50);
+        doc.text(`Ingresos totales: ${formatearSoles(totalIngresos)}`, 14, 56);
+        doc.text(`Efectivo: ${formatearSoles(efectivo)}`, 14, 62);
+        doc.text(`QR/Transferencia: ${formatearSoles(transferencia)}`, 14, 68);
+
+        // Tabla de pagos
+        const columnas = [
+          { header: "Fecha", dataKey: "fecha" },
+          { header: "Pedido", dataKey: "pedido" },
+          { header: "Cliente", dataKey: "cliente" },
+          { header: "Método", dataKey: "metodo" },
+          { header: "Monto", dataKey: "monto" },
+          { header: "Empleado", dataKey: "empleado" },
+        ];
+
+        const filas = pagosFiltrados.map((p) => ({
+          fecha: new Date(p.fechaPago).toLocaleDateString("es-PE"),
+          pedido: p.pedidoCodigo,
+          cliente: p.clienteNombre,
+          metodo: p.metodoPago,
+          monto: formatearSoles(p.monto),
+          empleado: p.usuarioNombre,
+        }));
+
+        autoTable(doc, {
+          head: [columnas.map((c) => c.header)],
+          body: filas.map((f) =>
+            columnas.map((c) => (f[c.dataKey as keyof typeof f] ?? "") as any),
+          ),
+          startY: 76,
+          theme: "striped",
+          headStyles: {
+            fillColor: [37, 99, 235], // blue-600
+            textColor: 255,
+            fontStyle: "bold",
+            fontSize: 9,
+          },
+          bodyStyles: {
+            fontSize: 8,
+            textColor: 50,
+          },
+          alternateRowStyles: {
+            fillColor: [249, 250, 251], // gray-50
+          },
+          margin: { top: 76, left: 14, right: 14 },
+          styles: {
+            cellPadding: 3,
+            lineColor: [229, 231, 235], // gray-200
+            lineWidth: 0.1,
+          },
+        });
+
+        // Pie de página con total
+        const finalY = (doc as any).lastAutoTable?.finalY || 76;
+        doc.setFontSize(11);
+        doc.setFont("", "bold");
+        const totalIngresos2 = pagosFiltrados.reduce(
+          (sum, p) => sum + p.monto,
+          0,
+        );
+        doc.text(`TOTAL: ${formatearSoles(totalIngresos2)}`, 14, finalY + 10);
+
+        // Guardar PDF
+        const nombreArchivo = `pagos_realizados_${filtroPresetPagos !== "Todos" ? filtroPresetPagos.replace(/\s/g, "_") : "todos"}_${obtenerFechaPeruHoy()}.pdf`;
+        doc.save(nombreArchivo);
+      } else if (reportType === "pendientes") {
+        // Reporte de pagos pendientes
+        doc.setFontSize(18);
+        doc.setFont("", "bold");
+        doc.text("Reporte de Pagos Pendientes", 14, 20);
+
+        // Información del período
+        doc.setFontSize(10);
+        doc.setFont("", "normal");
+        let periodoTexto = "Período: ";
+        if (filtroPresetPagos !== "Todos") {
+          periodoTexto += filtroPresetPagos;
+        } else if (fechaDesdePagos || fechaHastaPagos) {
+          periodoTexto += `${fechaDesdePagos || "Inicio"} - ${fechaHastaPagos || "Hoy"}`;
+        } else {
+          periodoTexto += "Todos los registros";
+        }
+        doc.text(periodoTexto, 14, 28);
+
+        // Fecha de generación
+        const fechaGeneracion = formatearFechaHoraPeru(new Date());
+        doc.text(`Generado: ${fechaGeneracion}`, 14, 34);
+
+        // Filtrar pedidos con pagos pendientes
+        const pedidosPendientes = pedidos.filter((p) => {
+          if (p.estado === "Cancelado") return false;
+          const montoTotal = p.montoTotal || 0;
+          const montoPagado = p.montoPagado || 0;
+          const pendiente = montoTotal - montoPagado;
+          return pendiente > 0 && montoTotal > 0;
+        });
+
+        // Estadísticas resumen
+        const totalPendiente = pedidosPendientes.reduce(
+          (sum, p) => sum + ((p.montoTotal || 0) - (p.montoPagado || 0)),
+          0,
+        );
+        const pedidosVencidos = pedidosPendientes.filter((p) =>
+          esPedidoVencido(p.fechaEntrega, p.estado),
+        ).length;
+
+        doc.setFontSize(11);
+        doc.setFont("", "bold");
+        doc.text("Resumen", 14, 44);
+
+        doc.setFontSize(9);
+        doc.setFont("", "normal");
+        doc.text(
+          `Total de pedidos pendientes: ${pedidosPendientes.length}`,
+          14,
+          50,
+        );
+        doc.text(
+          `Monto total pendiente: ${formatearSoles(totalPendiente)}`,
+          14,
+          56,
+        );
+        doc.text(`Pedidos vencidos: ${pedidosVencidos}`, 14, 62);
+
+        // Tabla de pagos pendientes
+        const columnas = [
+          { header: "Pedido", dataKey: "codigo" },
+          { header: "Cliente", dataKey: "cliente" },
+          { header: "Total", dataKey: "total" },
+          { header: "Pagado", dataKey: "pagado" },
+          { header: "Pendiente", dataKey: "pendiente" },
+          { header: "Fecha Venc.", dataKey: "fecha" },
+          { header: "Estado", dataKey: "estado" },
+        ];
+
+        const filas = pedidosPendientes.map((p) => {
+          const montoTotal = p.montoTotal || 0;
+          const montoPagado = p.montoPagado || 0;
+          const pendiente = montoTotal - montoPagado;
+          const vencido = esPedidoVencido(p.fechaEntrega, p.estado);
+          const diasRestantes = diasHastaVencimiento(p.fechaEntrega);
+
+          return {
+            codigo: p.codigo,
+            cliente: p.cliente,
+            total: formatearSoles(montoTotal),
+            pagado: formatearSoles(montoPagado),
+            pendiente: formatearSoles(pendiente),
+            fecha: p.fechaEntrega ? formatearFechaCorta(p.fechaEntrega) : "—",
+            estado: vencido ? "Vencido" : `${diasRestantes} días`,
+          };
+        });
+
+        autoTable(doc, {
+          head: [columnas.map((c) => c.header)],
+          body: filas.map((f) =>
+            columnas.map((c) => (f[c.dataKey as keyof typeof f] ?? "") as any),
+          ),
+          startY: 76,
+          theme: "striped",
+          headStyles: {
+            fillColor: [234, 88, 12], // orange-600
+            textColor: 255,
+            fontStyle: "bold",
+            fontSize: 9,
+          },
+          bodyStyles: {
+            fontSize: 8,
+            textColor: 50,
+          },
+          alternateRowStyles: {
+            fillColor: [249, 250, 251], // gray-50
+          },
+          margin: { top: 76, left: 14, right: 14 },
+          styles: {
+            cellPadding: 3,
+            lineColor: [229, 231, 235], // gray-200
+            lineWidth: 0.1,
+          },
+        });
+
+        // Pie de página con total
+        const finalY = (doc as any).lastAutoTable?.finalY || 76;
+        doc.setFontSize(11);
+        doc.setFont("", "bold");
+        const totalPendiente2 = pedidosPendientes.reduce(
+          (sum, p) => sum + ((p.montoTotal || 0) - (p.montoPagado || 0)),
+          0,
+        );
+        doc.text(
+          `TOTAL PENDIENTE: ${formatearSoles(totalPendiente2)}`,
+          14,
+          finalY + 10,
+        );
+
+        // Guardar PDF
+        const nombreArchivo = `pagos_pendientes_${filtroPresetPagos !== "Todos" ? filtroPresetPagos.replace(/\s/g, "_") : "todos"}_${obtenerFechaPeruHoy()}.pdf`;
+        doc.save(nombreArchivo);
       }
-      doc.text(periodoTexto, 14, 28);
 
-      // Fecha de generación en zona horaria de Perú
-      const fechaGeneracion = formatearFechaHoraPeru(new Date());
-      doc.text(`Generado: ${fechaGeneracion}`, 14, 34);
-
-      // Estadísticas resumen
-      const totalIngresos = pagosFiltrados.reduce((sum, p) => sum + p.monto, 0);
-      const efectivo = pagosFiltrados
-        .filter((p) => p.metodoPago === "Efectivo")
-        .reduce((sum, p) => sum + p.monto, 0);
-      const transferencia = pagosFiltrados
-        .filter((p) => p.metodoPago === "QR/Transferencia")
-        .reduce((sum, p) => sum + p.monto, 0);
-
-      doc.setFontSize(11);
-      doc.setFont("", "bold");
-      doc.text("Resumen", 14, 44);
-
-      doc.setFontSize(9);
-      doc.setFont("", "normal");
-      doc.text(`Total de pagos: ${pagosFiltrados.length}`, 14, 50);
-      doc.text(`Ingresos totales: ${formatearSoles(totalIngresos)}`, 14, 56);
-      doc.text(`Efectivo: ${formatearSoles(efectivo)}`, 14, 62);
-      doc.text(`QR/Transferencia: ${formatearSoles(transferencia)}`, 14, 68);
-
-      // Tabla de pagos
-      const columnas = [
-        { header: "Fecha", dataKey: "fecha" },
-        { header: "Pedido", dataKey: "pedido" },
-        { header: "Cliente", dataKey: "cliente" },
-        { header: "Método", dataKey: "metodo" },
-        { header: "Monto", dataKey: "monto" },
-        { header: "Empleado", dataKey: "empleado" },
-      ];
-
-      const filas = pagosFiltrados.map((p) => ({
-        fecha: new Date(p.fechaPago).toLocaleDateString("es-PE"),
-        pedido: p.pedidoCodigo,
-        cliente: p.clienteNombre,
-        metodo: p.metodoPago,
-        monto: formatearSoles(p.monto),
-        empleado: p.usuarioNombre,
-      }));
-
-      autoTable(doc, {
-        head: [columnas.map((c) => c.header)],
-        body: filas.map((f) =>
-          columnas.map((c) => (f[c.dataKey as keyof typeof f] ?? "") as any),
-        ),
-        startY: 76,
-        theme: "striped",
-        headStyles: {
-          fillColor: [37, 99, 235], // blue-600
-          textColor: 255,
-          fontStyle: "bold",
-          fontSize: 9,
-        },
-        bodyStyles: {
-          fontSize: 8,
-          textColor: 50,
-        },
-        alternateRowStyles: {
-          fillColor: [249, 250, 251], // gray-50
-        },
-        margin: { top: 76, left: 14, right: 14 },
-        styles: {
-          cellPadding: 3,
-          lineColor: [229, 231, 235], // gray-200
-          lineWidth: 0.1,
-        },
-      });
-
-      // Pie de página con total
-      const finalY = (doc as any).lastAutoTable?.finalY || 76;
-      doc.setFontSize(11);
-      doc.setFont("", "bold");
-      doc.text(`TOTAL: ${formatearSoles(totalIngresos)}`, 14, finalY + 10);
-
-      // Guardar PDF
-      const nombreArchivo = `pagos_${filtroPresetPagos !== "Todos" ? filtroPresetPagos.replace(/\s/g, "_") : "todos"}_${obtenerFechaPeruHoy()}.pdf`;
-      doc.save(nombreArchivo);
-
-      console.log("✅ PDF generado correctamente:", nombreArchivo);
+      console.log("✅ PDF generado correctamente");
+      setReportTypeModalOpen(false);
     } catch (error) {
       console.error("❌ Error al generar PDF:", error);
       alert("Error al generar el PDF. Por favor, intenta de nuevo.");
@@ -1148,7 +1300,7 @@ export function AdminDashboard() {
                           "N° Pedido",
                           "Cliente",
                           "Artículo",
-                          "Fecha",
+                          "Fecha de Entrega",
                           "Estado",
                         ].map((h) => (
                           <th
@@ -1182,7 +1334,9 @@ export function AdminDashboard() {
                               {p.articulo}
                             </td>
                             <td className="px-4 py-3 text-muted-foreground">
-                              {p.fecha}
+                              {p.fechaEntrega
+                                ? formatearFechaCorta(p.fechaEntrega)
+                                : "-"}
                             </td>
                             <td className="px-4 py-3">
                               <span
@@ -1666,7 +1820,7 @@ export function AdminDashboard() {
                           "N° Pedido",
                           "Cliente",
                           "Artículo",
-                          "Fecha",
+                          "Fecha de Entrega",
                           "Estado",
                           "Pago",
                           "Acciones",
@@ -1718,7 +1872,9 @@ export function AdminDashboard() {
                                 {p.articulo}
                               </td>
                               <td className="px-4 py-3 text-muted-foreground">
-                                {p.fecha}
+                                {p.fechaEntrega
+                                  ? formatearFechaCorta(p.fechaEntrega)
+                                  : "-"}
                               </td>
                               <td className="px-4 py-3">
                                 <span
@@ -1744,6 +1900,15 @@ export function AdminDashboard() {
                               </td>
                               <td className="px-4 py-3">
                                 {(() => {
+                                  // Si el pedido está cancelado, no mostrar estado de pago
+                                  if (p.estado === "Cancelado") {
+                                    return (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-600 border border-gray-200">
+                                        —
+                                      </span>
+                                    );
+                                  }
+
                                   const montoTotal = p.montoTotal || 0;
                                   const montoPagado = p.montoPagado || 0;
                                   const pendiente = montoTotal - montoPagado;
@@ -2403,7 +2568,7 @@ export function AdminDashboard() {
                   </p>
                 </div>
                 <button
-                  onClick={handleExportarPagosPDF}
+                  onClick={() => setReportTypeModalOpen(true)}
                   className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition text-sm"
                 >
                   <Download className="w-4 h-4" />
@@ -2549,8 +2714,7 @@ export function AdminDashboard() {
                     {
                       pedidos.filter(
                         (p) =>
-                          p.estado !== "Cancelado" &&
-                          p.estadoPago === "Pendiente",
+                          p.estado !== "Cancelado" && p.estadoPago !== "Pagado",
                       ).length
                     }
                   </p>
@@ -2755,6 +2919,201 @@ export function AdminDashboard() {
                       )}
                     </tbody>
                   </table>
+                </div>
+              </div>
+
+              {/* Tabla de Pagos Pendientes */}
+              <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="px-5 py-4 border-b border-border bg-muted/20">
+                  <h4 className="text-foreground font-semibold">
+                    Pagos Pendientes
+                  </h4>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Pedidos con saldos pendientes de pago
+                  </p>
+                </div>
+                <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 z-10 bg-card shadow-sm">
+                      <tr className="border-b-2 border-border">
+                        <th className="text-left px-4 py-3 text-muted-foreground font-normal">
+                          Pedido
+                        </th>
+                        <th className="text-left px-4 py-3 text-muted-foreground font-normal">
+                          Cliente
+                        </th>
+                        <th className="text-left px-4 py-3 text-muted-foreground font-normal">
+                          Monto Total
+                        </th>
+                        <th className="text-left px-4 py-3 text-muted-foreground font-normal">
+                          Pagado
+                        </th>
+                        <th className="text-left px-4 py-3 text-muted-foreground font-normal">
+                          Pendiente
+                        </th>
+                        <th className="text-left px-4 py-3 text-muted-foreground font-normal">
+                          Estado
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(() => {
+                        const pedidosPendientes = pedidos.filter((p) => {
+                          if (p.estado === "Cancelado") return false;
+                          const montoTotal = p.montoTotal || 0;
+                          const montoPagado = p.montoPagado || 0;
+                          const pendiente = montoTotal - montoPagado;
+                          return pendiente > 0 && montoTotal > 0;
+                        });
+
+                        if (pedidosPendientes.length === 0) {
+                          return (
+                            <tr>
+                              <td
+                                colSpan={6}
+                                className="px-4 py-10 text-center text-muted-foreground text-sm"
+                              >
+                                Todos los pagos están al día ✓
+                              </td>
+                            </tr>
+                          );
+                        }
+
+                        return pedidosPendientes.map((p) => {
+                          const montoTotal = p.montoTotal || 0;
+                          const montoPagado = p.montoPagado || 0;
+                          const pendiente = montoTotal - montoPagado;
+                          const vencido = esPedidoVencido(
+                            p.fechaEntrega,
+                            p.estado,
+                          );
+                          const diasRestantes = diasHastaVencimiento(
+                            p.fechaEntrega,
+                          );
+
+                          return (
+                            <tr
+                              key={p.codigo}
+                              className={`border-b border-border hover:bg-accent/40 transition ${
+                                vencido ? "bg-red-50/30" : ""
+                              }`}
+                            >
+                              <td className="px-4 py-3">
+                                <span className="font-mono font-semibold text-foreground">
+                                  {p.codigo}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-foreground">
+                                {p.cliente}
+                              </td>
+                              <td className="px-4 py-3">
+                                <span className="font-semibold text-foreground">
+                                  {formatearSoles(montoTotal)}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3">
+                                <span className="text-green-600 font-medium">
+                                  {formatearSoles(montoPagado)}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3">
+                                <span
+                                  className={`font-semibold ${
+                                    vencido ? "text-red-600" : "text-orange-600"
+                                  }`}
+                                >
+                                  {formatearSoles(pendiente)}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3">
+                                <span
+                                  className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${
+                                    vencido
+                                      ? "bg-red-50 text-red-700 border-red-200"
+                                      : "bg-orange-50 text-orange-700 border-orange-200"
+                                  }`}
+                                >
+                                  {vencido ? "🔴 Vencido" : "⏳ Pendiente"}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        });
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Modal de selección de tipo de reporte */}
+          {reportTypeModalOpen && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-md">
+                <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-foreground">
+                    Seleccionar Tipo de Reporte
+                  </h3>
+                  <button
+                    onClick={() => setReportTypeModalOpen(false)}
+                    className="p-2 hover:bg-accent rounded-lg transition"
+                  >
+                    <X className="w-5 h-5 text-muted-foreground" />
+                  </button>
+                </div>
+
+                <div className="p-6 space-y-4">
+                  <div
+                    onClick={() => {
+                      setSelectedReportType("historial");
+                      handleExportarPagosPDF("historial");
+                    }}
+                    className="p-4 border border-border rounded-lg cursor-pointer hover:bg-accent/50 transition"
+                  >
+                    <div className="flex items-start gap-3">
+                      <FileText className="w-5 h-5 text-blue-500 mt-0.5" />
+                      <div>
+                        <h4 className="font-semibold text-foreground">
+                          Historial de Pagos
+                        </h4>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Reporte detallado de todos los pagos realizados
+                          durante el período seleccionado
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    onClick={() => {
+                      setSelectedReportType("pendientes");
+                      handleExportarPagosPDF("pendientes");
+                    }}
+                    className="p-4 border border-border rounded-lg cursor-pointer hover:bg-accent/50 transition"
+                  >
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 text-orange-500 mt-0.5" />
+                      <div>
+                        <h4 className="font-semibold text-foreground">
+                          Pagos Pendientes
+                        </h4>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Lista de pedidos con saldos pendientes de pago,
+                          incluyendo estado de vencimiento
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="px-6 py-4 border-t border-border flex gap-3 justify-end">
+                  <button
+                    onClick={() => setReportTypeModalOpen(false)}
+                    className="px-4 py-2 rounded-lg border border-border text-foreground hover:bg-accent transition text-sm"
+                  >
+                    Cancelar
+                  </button>
                 </div>
               </div>
             </div>
@@ -3253,6 +3612,16 @@ export function AdminDashboard() {
                     </span>
                   </div>
                   <div className="flex justify-between">
+                    <span className="text-muted-foreground">
+                      Fecha de Entrega:
+                    </span>
+                    <span className="text-foreground">
+                      {pedidoSeleccionado.fechaEntrega
+                        ? formatearFechaCorta(pedidoSeleccionado.fechaEntrega)
+                        : "Sin asignar"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
                     <span className="text-muted-foreground">Estado:</span>
                     <span
                       className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs border ${estadoColor[pedidoSeleccionado.estado]}`}
@@ -3308,6 +3677,14 @@ export function AdminDashboard() {
                 </div>
               </div>
 
+              {/* Botón para editar el pedido */}
+              <button
+                onClick={() => setModalEditarPedidoAbierto(true)}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
+              >
+                Editar Pedido
+              </button>
+
               {/* Botón para ver historial del cliente */}
               {(() => {
                 const cliente = clientes.find(
@@ -3329,6 +3706,30 @@ export function AdminDashboard() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal para editar pedido */}
+      {modalEditarPedidoAbierto && pedidoSeleccionado && (
+        <EditarPedidoModal
+          pedido={pedidoSeleccionado}
+          onClose={() => setModalEditarPedidoAbierto(false)}
+          onGuardar={async (datos) => {
+            const exito = await actualizarPedido(
+              pedidoSeleccionado.codigo,
+              datos,
+            );
+            if (exito) {
+              // Actualizar el pedido en el panel lateral
+              setPedidoSeleccionado((prev) =>
+                prev ? { ...prev, ...datos } : null,
+              );
+              // Pequeño delay para permitir que la suscripción actualice
+              await new Promise((resolve) => setTimeout(resolve, 500));
+              setModalEditarPedidoAbierto(false);
+            }
+            return exito;
+          }}
+        />
       )}
     </div>
   );

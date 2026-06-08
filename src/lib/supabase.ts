@@ -112,9 +112,18 @@ export type Database = {
             | "Entregado"
             | "Cancelado";
           fecha: string;
+          fecha_entrega: string | null;
           urgente: boolean;
           notas: string | null;
           motivo_cancelacion: string | null;
+          estado_anterior_cancelacion: string | null;
+          estado_pago: "Pendiente" | "Pagado" | "Parcial" | null;
+          monto_total: number | null;
+          monto_pagado: number | null;
+          metodo_pago: string | null;
+          referencia_pago: string | null;
+          fecha_pago: string | null;
+          notas_pago: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -130,9 +139,18 @@ export type Database = {
             | "Entregado"
             | "Cancelado";
           fecha?: string;
+          fecha_entrega?: string | null;
           urgente?: boolean;
           notas?: string | null;
           motivo_cancelacion?: string | null;
+          estado_anterior_cancelacion?: string | null;
+          estado_pago?: "Pendiente" | "Pagado" | "Parcial" | null;
+          monto_total?: number | null;
+          monto_pagado?: number | null;
+          metodo_pago?: string | null;
+          referencia_pago?: string | null;
+          fecha_pago?: string | null;
+          notas_pago?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -148,9 +166,18 @@ export type Database = {
             | "Entregado"
             | "Cancelado";
           fecha?: string;
+          fecha_entrega?: string | null;
           urgente?: boolean;
           notas?: string | null;
           motivo_cancelacion?: string | null;
+          estado_anterior_cancelacion?: string | null;
+          estado_pago?: "Pendiente" | "Pagado" | "Parcial" | null;
+          monto_total?: number | null;
+          monto_pagado?: number | null;
+          metodo_pago?: string | null;
+          referencia_pago?: string | null;
+          fecha_pago?: string | null;
+          notas_pago?: string | null;
           created_at?: string;
           updated_at?: string;
         };

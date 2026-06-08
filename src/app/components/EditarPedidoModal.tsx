@@ -1,5 +1,16 @@
 import { useState, useEffect } from "react";
-import { X, AlertCircle, Package, Calendar, Loader2, CheckCircle2, XCircle, Plus, Trash2, ShoppingBag } from "lucide-react";
+import {
+  X,
+  AlertCircle,
+  Package,
+  Calendar,
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  Plus,
+  Trash2,
+  ShoppingBag,
+} from "lucide-react";
 import type { Pedido } from "../contexts/PedidosContext";
 import { puedeEditarPedido } from "../utils/pedidosCicloVida";
 import { obtenerItemsPedido, type PedidoItemData } from "../utils/stockManager";
@@ -23,6 +34,7 @@ type EditarPedidoForm = {
   articulo: string;
   urgente: boolean;
   notas: string;
+  fechaEntrega?: string;
   items: PedidoItem[];
 };
 
@@ -41,6 +53,7 @@ export function EditarPedidoModal({
     articulo: pedido.articulo,
     urgente: pedido.urgente,
     notas: pedido.notas || "",
+    fechaEntrega: pedido.fechaEntrega || "",
     items: [],
   });
   const [loadingItems, setLoadingItems] = useState(true);
@@ -53,9 +66,9 @@ export function EditarPedidoModal({
     async function cargarItems() {
       setLoadingItems(true);
       const items = await obtenerItemsPedido(pedido.codigo);
-      setForm(prev => ({
+      setForm((prev) => ({
         ...prev,
-        items: items.map(item => ({
+        items: items.map((item) => ({
           id: item.id,
           productoCodigo: item.producto_codigo,
           modelo: item.modelo,
@@ -78,12 +91,12 @@ export function EditarPedidoModal({
     if (!form.articulo.trim()) return false;
     if (form.items.length === 0) return false;
     // Validar que todos los items tengan cantidad > 0
-    if (form.items.some(item => item.cantidad <= 0)) return false;
+    if (form.items.some((item) => item.cantidad <= 0)) return false;
     return true;
   };
 
   const handleAgregarItem = (item: PedidoItem) => {
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
       items: [...prev.items, item],
     }));
@@ -91,7 +104,7 @@ export function EditarPedidoModal({
   };
 
   const handleEliminarItem = (index: number) => {
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
       items: prev.items.filter((_, i) => i !== index),
     }));
@@ -99,10 +112,10 @@ export function EditarPedidoModal({
 
   const handleActualizarCantidad = (index: number, cantidad: number) => {
     if (cantidad <= 0) return;
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
       items: prev.items.map((item, i) =>
-        i === index ? { ...item, cantidad } : item
+        i === index ? { ...item, cantidad } : item,
       ),
     }));
   };
@@ -119,6 +132,7 @@ export function EditarPedidoModal({
         articulo: form.articulo.trim(),
         urgente: form.urgente,
         notas: form.notas.trim() || undefined,
+        fechaEntrega: form.fechaEntrega || undefined,
       });
 
       if (!exito) {
@@ -140,7 +154,7 @@ export function EditarPedidoModal({
       }
 
       // Luego insertar los nuevos items
-      const itemsInsert = form.items.map(item => ({
+      const itemsInsert = form.items.map((item) => ({
         pedido_codigo: pedido.codigo,
         producto_codigo: item.productoCodigo,
         modelo: item.modelo,
@@ -150,7 +164,9 @@ export function EditarPedidoModal({
         color: item.color,
         cantidad: item.cantidad,
         precio_unitario: item.precioUnitario || null,
-        subtotal: item.precioUnitario ? item.precioUnitario * item.cantidad : null,
+        subtotal: item.precioUnitario
+          ? item.precioUnitario * item.cantidad
+          : null,
       }));
 
       const { error: insertError } = await supabase
@@ -177,7 +193,7 @@ export function EditarPedidoModal({
         detalles: {
           cambioItems: true,
           itemsCount: form.items.length,
-          items: form.items.map(item => ({
+          items: form.items.map((item) => ({
             modelo: item.modelo,
             talla: item.talla,
             color: item.color,
@@ -202,7 +218,10 @@ export function EditarPedidoModal({
   if (!validacionEdicion.puede) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+        <div
+          className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+          onClick={onClose}
+        />
         <div className="relative z-10 bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md">
           <div className="flex items-center justify-between px-6 py-5 border-b border-border">
             <div className="flex items-center gap-3">
@@ -211,10 +230,15 @@ export function EditarPedidoModal({
               </div>
               <div>
                 <h3 className="text-foreground">No se puede editar</h3>
-                <p className="text-sm text-muted-foreground mt-0.5">Estado final</p>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Estado final
+                </p>
               </div>
             </div>
-            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-accent transition">
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg hover:bg-accent transition"
+            >
               <X className="w-4 h-4 text-muted-foreground" />
             </button>
           </div>
@@ -223,16 +247,23 @@ export function EditarPedidoModal({
             <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-red-50 border border-red-200">
               <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm text-red-700 font-medium">{validacionEdicion.mensaje}</p>
+                <p className="text-sm text-red-700 font-medium">
+                  {validacionEdicion.mensaje}
+                </p>
                 <p className="text-xs text-red-600 mt-1">
-                  Los pedidos en estado "{pedido.estado}" no pueden ser modificados porque son estados finales del sistema.
+                  Los pedidos en estado "{pedido.estado}" no pueden ser
+                  modificados porque son estados finales del sistema.
                 </p>
               </div>
             </div>
 
             <div className="space-y-2">
-              <p className="text-xs text-muted-foreground font-mono">{pedido.codigo}</p>
-              <p className="text-sm text-foreground">{pedido.cliente} · {pedido.articulo}</p>
+              <p className="text-xs text-muted-foreground font-mono">
+                {pedido.codigo}
+              </p>
+              <p className="text-sm text-foreground">
+                {pedido.cliente} · {pedido.articulo}
+              </p>
             </div>
           </div>
 
@@ -251,7 +282,10 @@ export function EditarPedidoModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={step === "form" ? onClose : undefined} />
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        onClick={step === "form" ? onClose : undefined}
+      />
 
       <div className="relative z-10 bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg">
         {/* Form */}
@@ -261,10 +295,14 @@ export function EditarPedidoModal({
               <div>
                 <h3 className="text-foreground">Editar pedido</h3>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  <span className="font-mono">{pedido.codigo}</span> · {pedido.cliente}
+                  <span className="font-mono">{pedido.codigo}</span> ·{" "}
+                  {pedido.cliente}
                 </p>
               </div>
-              <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-accent transition">
+              <button
+                onClick={onClose}
+                className="p-1.5 rounded-lg hover:bg-accent transition"
+              >
                 <X className="w-4 h-4 text-muted-foreground" />
               </button>
             </div>
@@ -272,7 +310,9 @@ export function EditarPedidoModal({
             <div className="px-6 py-5 space-y-4">
               {/* Información del cliente (no editable) */}
               <div className="space-y-2">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">Cliente (no editable)</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">
+                  Cliente (no editable)
+                </p>
                 <div className="px-3 py-2.5 rounded-lg bg-muted border border-border">
                   <p className="text-sm text-foreground">{pedido.cliente}</p>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -283,7 +323,10 @@ export function EditarPedidoModal({
 
               {/* Artículo - Resumen */}
               <div className="space-y-1.5">
-                <label htmlFor="articulo" className="text-sm text-foreground flex items-center gap-1">
+                <label
+                  htmlFor="articulo"
+                  className="text-sm text-foreground flex items-center gap-1"
+                >
                   <Package className="w-4 h-4" />
                   Descripción del pedido <span className="text-red-500">*</span>
                 </label>
@@ -291,9 +334,13 @@ export function EditarPedidoModal({
                   type="text"
                   id="articulo"
                   value={form.articulo}
-                  onChange={(e) => setForm({ ...form, articulo: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, articulo: e.target.value })
+                  }
                   className={`w-full px-3 py-2.5 rounded-lg bg-input-background border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20 ${
-                    showErrors && !form.articulo.trim() ? "border-red-400" : "border-border"
+                    showErrors && !form.articulo.trim()
+                      ? "border-red-400"
+                      : "border-border"
                   }`}
                   placeholder="Ej. 3 Polos, 2 Pantalones"
                 />
@@ -324,16 +371,23 @@ export function EditarPedidoModal({
                 {loadingItems ? (
                   <div className="px-4 py-8 text-center border border-border rounded-lg bg-muted/20">
                     <Loader2 className="w-5 h-5 animate-spin text-muted-foreground mx-auto mb-2" />
-                    <p className="text-xs text-muted-foreground">Cargando productos...</p>
+                    <p className="text-xs text-muted-foreground">
+                      Cargando productos...
+                    </p>
                   </div>
                 ) : form.items.length === 0 ? (
                   <div className="px-4 py-8 text-center border border-dashed border-border rounded-lg bg-muted/20">
                     <ShoppingBag className="w-8 h-8 text-muted-foreground mx-auto mb-2 opacity-40" />
-                    <p className="text-sm text-muted-foreground">No hay productos en este pedido</p>
-                    <p className="text-xs text-muted-foreground mt-1">Agrega al menos un producto</p>
+                    <p className="text-sm text-muted-foreground">
+                      No hay productos en este pedido
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Agrega al menos un producto
+                    </p>
                     {showErrors && (
                       <p className="text-xs text-red-500 flex items-center justify-center gap-1 mt-2">
-                        <AlertCircle className="w-3 h-3" /> Debe haber al menos un producto
+                        <AlertCircle className="w-3 h-3" /> Debe haber al menos
+                        un producto
                       </p>
                     )}
                   </div>
@@ -350,14 +404,20 @@ export function EditarPedidoModal({
                               {item.modelo}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              {item.tela} · {item.disenio} · Talla {item.talla} · {item.color}
+                              {item.tela} · {item.disenio} · Talla {item.talla}{" "}
+                              · {item.color}
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
                             <div className="flex items-center gap-1 bg-muted px-2 py-1 rounded">
                               <button
                                 type="button"
-                                onClick={() => handleActualizarCantidad(index, item.cantidad - 1)}
+                                onClick={() =>
+                                  handleActualizarCantidad(
+                                    index,
+                                    item.cantidad - 1,
+                                  )
+                                }
                                 disabled={item.cantidad <= 1}
                                 className="w-5 h-5 flex items-center justify-center text-foreground hover:bg-background rounded disabled:opacity-40 disabled:cursor-not-allowed transition"
                               >
@@ -368,7 +428,12 @@ export function EditarPedidoModal({
                               </span>
                               <button
                                 type="button"
-                                onClick={() => handleActualizarCantidad(index, item.cantidad + 1)}
+                                onClick={() =>
+                                  handleActualizarCantidad(
+                                    index,
+                                    item.cantidad + 1,
+                                  )
+                                }
                                 className="w-5 h-5 flex items-center justify-center text-foreground hover:bg-background rounded transition"
                               >
                                 +
@@ -387,6 +452,26 @@ export function EditarPedidoModal({
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* Fecha de entrega */}
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="fechaEntrega"
+                  className="text-sm text-foreground flex items-center gap-1"
+                >
+                  <Calendar className="w-4 h-4" />
+                  Fecha de entrega
+                </label>
+                <input
+                  type="date"
+                  id="fechaEntrega"
+                  value={form.fechaEntrega || ""}
+                  onChange={(e) =>
+                    setForm({ ...form, fechaEntrega: e.target.value })
+                  }
+                  className="w-full px-3 py-2.5 rounded-lg bg-input-background border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                />
               </div>
 
               {/* Urgente */}
@@ -437,7 +522,8 @@ export function EditarPedidoModal({
               <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-200">
                 <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <p className="text-xs text-amber-700">
-                  Los cambios quedarán registrados en el historial de auditoría del sistema.
+                  Los cambios quedarán registrados en el historial de auditoría
+                  del sistema.
                 </p>
               </div>
             </div>
@@ -463,7 +549,9 @@ export function EditarPedidoModal({
         {step === "guardando" && (
           <div className="px-6 py-20 flex flex-col items-center justify-center gap-4">
             <Loader2 className="w-10 h-10 text-muted-foreground animate-spin" />
-            <p className="text-sm text-muted-foreground">Guardando cambios...</p>
+            <p className="text-sm text-muted-foreground">
+              Guardando cambios...
+            </p>
           </div>
         )}
 
@@ -475,7 +563,9 @@ export function EditarPedidoModal({
             </div>
             <div className="text-center">
               <h3 className="text-foreground">Cambios guardados</h3>
-              <p className="text-sm text-muted-foreground mt-1">El pedido ha sido actualizado correctamente</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                El pedido ha sido actualizado correctamente
+              </p>
             </div>
           </div>
         )}
@@ -509,12 +599,17 @@ function AgregarItemModal({
   const [cantidad, setCantidad] = useState(1);
   const [showErrors, setShowErrors] = useState(false);
 
-  const producto = productos?.find(p => p.codigo === productoSeleccionado);
+  const producto = productos?.find((p) => p.codigo === productoSeleccionado);
   const talla = producto?.tallas?.find((t: any) => t.id === tallaSeleccionada);
   const color = talla?.colores?.find((c: any) => c.id === colorSeleccionado);
 
   const handleAgregar = () => {
-    if (!productoSeleccionado || !tallaSeleccionada || !colorSeleccionado || cantidad <= 0) {
+    if (
+      !productoSeleccionado ||
+      !tallaSeleccionada ||
+      !colorSeleccionado ||
+      cantidad <= 0
+    ) {
       setShowErrors(true);
       return;
     }
@@ -538,11 +633,17 @@ function AgregarItemModal({
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
       <div className="relative z-10 bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <h3 className="text-foreground">Agregar producto</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-accent transition">
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-accent transition"
+          >
             <X className="w-4 h-4 text-muted-foreground" />
           </button>
         </div>
@@ -561,12 +662,14 @@ function AgregarItemModal({
                 setColorSeleccionado("");
               }}
               className={`w-full px-3 py-2.5 rounded-lg bg-input-background border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20 ${
-                showErrors && !productoSeleccionado ? "border-red-400" : "border-border"
+                showErrors && !productoSeleccionado
+                  ? "border-red-400"
+                  : "border-border"
               }`}
             >
               <option value="">Seleccionar producto...</option>
               {productos && productos.length > 0 ? (
-                productos.map(p => (
+                productos.map((p) => (
                   <option key={p.codigo} value={p.codigo}>
                     {p.modelo} - {p.tela} - {p.disenio}
                   </option>
@@ -595,7 +698,9 @@ function AgregarItemModal({
                   setColorSeleccionado("");
                 }}
                 className={`w-full px-3 py-2.5 rounded-lg bg-input-background border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20 ${
-                  showErrors && !tallaSeleccionada ? "border-red-400" : "border-border"
+                  showErrors && !tallaSeleccionada
+                    ? "border-red-400"
+                    : "border-border"
                 }`}
               >
                 <option value="">Seleccionar talla...</option>
@@ -627,7 +732,9 @@ function AgregarItemModal({
                 value={colorSeleccionado}
                 onChange={(e) => setColorSeleccionado(e.target.value)}
                 className={`w-full px-3 py-2.5 rounded-lg bg-input-background border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20 ${
-                  showErrors && !colorSeleccionado ? "border-red-400" : "border-border"
+                  showErrors && !colorSeleccionado
+                    ? "border-red-400"
+                    : "border-border"
                 }`}
               >
                 <option value="">Seleccionar color...</option>
@@ -667,7 +774,9 @@ function AgregarItemModal({
                   type="number"
                   min="1"
                   value={cantidad}
-                  onChange={(e) => setCantidad(Math.max(1, parseInt(e.target.value) || 1))}
+                  onChange={(e) =>
+                    setCantidad(Math.max(1, parseInt(e.target.value) || 1))
+                  }
                   className="flex-1 px-3 py-2.5 rounded-lg bg-input-background border border-border text-foreground text-sm text-center focus:outline-none focus:ring-2 focus:ring-foreground/20"
                 />
                 <button
@@ -680,7 +789,8 @@ function AgregarItemModal({
               </div>
               {color && cantidad > color.stock && (
                 <p className="text-xs text-amber-600 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" /> Stock disponible: {color.stock}
+                  <AlertCircle className="w-3 h-3" /> Stock disponible:{" "}
+                  {color.stock}
                 </p>
               )}
             </div>
