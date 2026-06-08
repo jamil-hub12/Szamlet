@@ -1,5 +1,13 @@
 import { useState } from "react";
-import { X, Lock, Eye, EyeOff, Loader2, CheckCircle, AlertTriangle } from "lucide-react";
+import {
+  X,
+  Lock,
+  Eye,
+  EyeOff,
+  Loader2,
+  CheckCircle,
+  AlertTriangle,
+} from "lucide-react";
 
 type Empleado = {
   id: string;
@@ -34,8 +42,18 @@ export function EstablecerPasswordModal({
       return;
     }
 
-    if (password.length < 6) {
-      setError("La contraseña debe tener al menos 6 caracteres.");
+    if (password.length < 8) {
+      setError("La contraseña debe tener al menos 8 caracteres.");
+      return;
+    }
+
+    if (!/[A-Z]/.test(password)) {
+      setError("La contraseña debe contener al menos 1 mayúscula.");
+      return;
+    }
+
+    if (!/[0-9]/.test(password)) {
+      setError("La contraseña debe contener al menos 1 número.");
       return;
     }
 
@@ -66,12 +84,17 @@ export function EstablecerPasswordModal({
   if (exito) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+        <div
+          className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+          onClick={onClose}
+        />
         <div className="relative z-10 bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md p-8 text-center">
           <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-7 h-7 text-emerald-600" />
           </div>
-          <h3 className="text-foreground text-lg mb-2">Contraseña establecida</h3>
+          <h3 className="text-foreground text-lg mb-2">
+            Contraseña establecida
+          </h3>
           <p className="text-muted-foreground text-sm">
             {empleado.nombre} ya puede iniciar sesión con su nueva contraseña.
           </p>
@@ -82,15 +105,23 @@ export function EstablecerPasswordModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
 
       <div className="relative z-10 bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
         <div className="flex items-center justify-between px-6 py-5 border-b border-border">
           <div>
             <h3 className="text-foreground">Establecer contraseña</h3>
-            <p className="text-muted-foreground text-sm mt-0.5">{empleado.nombre}</p>
+            <p className="text-muted-foreground text-sm mt-0.5">
+              {empleado.nombre}
+            </p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-accent transition">
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-accent transition"
+          >
             <X className="w-4 h-4 text-muted-foreground" />
           </button>
         </div>
@@ -100,13 +131,17 @@ export function EstablecerPasswordModal({
             <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
             <div>
               <p className="text-sm text-amber-800">
-                Este empleado no tiene cuenta de acceso. Establece una contraseña para que pueda iniciar sesión.
+                Este empleado no tiene cuenta de acceso. Establece una
+                contraseña para que pueda iniciar sesión.
               </p>
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="password" className="text-sm text-foreground flex items-center gap-1">
+            <label
+              htmlFor="password"
+              className="text-sm text-foreground flex items-center gap-1"
+            >
               Nueva contraseña <span className="text-red-500">*</span>
             </label>
             <div className="relative">
@@ -125,13 +160,20 @@ export function EstablecerPasswordModal({
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition"
               >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {showPassword ? (
+                  <EyeOff className="w-4 h-4" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
               </button>
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="confirmPassword" className="text-sm text-foreground flex items-center gap-1">
+            <label
+              htmlFor="confirmPassword"
+              className="text-sm text-foreground flex items-center gap-1"
+            >
               Confirmar contraseña <span className="text-red-500">*</span>
             </label>
             <div className="relative">
@@ -150,7 +192,11 @@ export function EstablecerPasswordModal({
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition"
               >
-                {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {showConfirmPassword ? (
+                  <EyeOff className="w-4 h-4" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
               </button>
             </div>
           </div>

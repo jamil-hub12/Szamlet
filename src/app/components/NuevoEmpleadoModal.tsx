@@ -35,18 +35,31 @@ type FormErrors = Partial<Record<keyof FormData, string>>;
 
 const rolesDisponibles = ["Atención al cliente", "Administrador"];
 
-function validateForm(data: FormData): FormErrors {
+function validateForm(
+  data: FormData,
+  empleadosExistentes: Empleado[] = [],
+): FormErrors {
   const errors: FormErrors = {};
   if (!data.nombre.trim()) errors.nombre = "El nombre es obligatorio.";
   if (!data.email.trim()) errors.email = "El correo es obligatorio.";
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email))
     errors.email = "Ingresa un correo válido.";
+  else if (
+    empleadosExistentes.some(
+      (e) => e.email.toLowerCase() === data.email.toLowerCase(),
+    )
+  )
+    errors.email = "Este correo ya está registrado para otro empleado.";
   if (!data.telefono.trim()) errors.telefono = "El teléfono es obligatorio.";
   else if (!/^9\d{8}$/.test(data.telefono.replace(/\s/g, "")))
     errors.telefono = "Número inválido (9 dígitos, empieza en 9).";
   if (!data.rol) errors.rol = "Selecciona un rol.";
   if (!data.password.trim()) errors.password = "La contraseña es obligatoria.";
-  else if (data.password.length < 6) errors.password = "Mínimo 6 caracteres.";
+  else if (data.password.length < 8) errors.password = "Mínimo 8 caracteres.";
+  else if (!/[A-Z]/.test(data.password))
+    errors.password = "Debe contener al menos 1 mayúscula.";
+  else if (!/[0-9]/.test(data.password))
+    errors.password = "Debe contener al menos 1 número.";
   if (data.password !== data.confirmPassword)
     errors.confirmPassword = "Las contraseñas no coinciden.";
   return errors;
@@ -92,7 +105,7 @@ export function NuevoEmpleadoModal({
   };
 
   const handleGuardar = () => {
-    const errs = validateForm(form);
+    const errs = validateForm(form, empleadosExistentes);
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
       return;

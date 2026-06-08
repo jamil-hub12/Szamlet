@@ -1,4 +1,11 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+  useRef,
+} from "react";
 import { supabase } from "../../lib/supabase";
 import type { Database } from "../../lib/supabase";
 import { registrarAuditoria, obtenerUsuarioActual } from "../utils/auditoria";
@@ -23,13 +30,20 @@ type ClientesContextType = {
   clientes: Cliente[];
   loading: boolean;
   error: string | null;
-  agregarCliente: (data: Omit<Cliente, "id" | "codigo" | "fechaRegistro">) => Promise<Cliente | null>;
-  actualizarCliente: (codigo: string, data: Partial<Cliente>) => Promise<boolean>;
+  agregarCliente: (
+    data: Omit<Cliente, "id" | "codigo" | "fechaRegistro">,
+  ) => Promise<Cliente | null>;
+  actualizarCliente: (
+    codigo: string,
+    data: Partial<Cliente>,
+  ) => Promise<boolean>;
   eliminarCliente: (codigo: string) => Promise<boolean>;
   refetch: () => Promise<void>;
 };
 
-const ClientesContext = createContext<ClientesContextType | undefined>(undefined);
+const ClientesContext = createContext<ClientesContextType | undefined>(
+  undefined,
+);
 
 function convertirCliente(cliente: ClienteDB): Cliente {
   return {
@@ -48,6 +62,7 @@ function convertirCliente(cliente: ClienteDB): Cliente {
 export function ClientesProvider({ children }: { children: ReactNode }) {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
+  const skipNextSubscriptionUpdate = useRef(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchClientes = async () => {
@@ -81,8 +96,12 @@ export function ClientesProvider({ children }: { children: ReactNode }) {
         "postgres_changes",
         { event: "*", schema: "public", table: "clientes" },
         () => {
-          fetchClientes();
-        }
+          if (!skipNextSubscriptionUpdate.current) {
+            fetchClientes();
+          } else {
+            skipNextSubscriptionUpdate.current = false;
+          }
+        },
       )
       .subscribe();
 
@@ -91,7 +110,9 @@ export function ClientesProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const agregarCliente = async (data: Omit<Cliente, "id" | "codigo" | "fechaRegistro">): Promise<Cliente | null> => {
+  const agregarCliente = async (
+    data: Omit<Cliente, "id" | "codigo" | "fechaRegistro">,
+  ): Promise<Cliente | null> => {
     try {
       const insertData: ClienteInsert = {
         nombre: data.nombre,
@@ -130,6 +151,12 @@ export function ClientesProvider({ children }: { children: ReactNode }) {
         },
       });
 
+      // Evitar que la suscripción haga un fetch completo
+      skipNextSubscriptionUpdate.current = true;
+      setTimeout(() => {
+        skipNextSubscriptionUpdate.current = false;
+      }, 1000);
+
       setClientes((prev) => [...prev, clienteConvertido]);
       return clienteConvertido;
     } catch (err) {
@@ -139,7 +166,10 @@ export function ClientesProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const actualizarCliente = async (codigo: string, data: Partial<Cliente>): Promise<boolean> => {
+  const actualizarCliente = async (
+    codigo: string,
+    data: Partial<Cliente>,
+  ): Promise<boolean> => {
     try {
       const clienteActual = clientes.find((c) => c.codigo === codigo);
 
@@ -177,13 +207,21 @@ export function ClientesProvider({ children }: { children: ReactNode }) {
         });
       }
 
+      // Evitar que la suscripción haga un fetch completo
+      skipNextSubscriptionUpdate.current = true;
+      setTimeout(() => {
+        skipNextSubscriptionUpdate.current = false;
+      }, 1000);
+
       setClientes((prev) =>
-        prev.map((cli) => (cli.codigo === codigo ? { ...cli, ...data } : cli))
+        prev.map((cli) => (cli.codigo === codigo ? { ...cli, ...data } : cli)),
       );
       return true;
     } catch (err) {
       console.error("Error al actualizar cliente:", err);
-      setError(err instanceof Error ? err.message : "Error al actualizar cliente");
+      setError(
+        err instanceof Error ? err.message : "Error al actualizar cliente",
+      );
       return false;
     }
   };
@@ -218,11 +256,19 @@ export function ClientesProvider({ children }: { children: ReactNode }) {
         });
       }
 
+      // Evitar que la suscripción haga un fetch completo
+      skipNextSubscriptionUpdate.current = true;
+      setTimeout(() => {
+        skipNextSubscriptionUpdate.current = false;
+      }, 1000);
+
       setClientes((prev) => prev.filter((cli) => cli.codigo !== codigo));
       return true;
     } catch (err) {
       console.error("Error al eliminar cliente:", err);
-      setError(err instanceof Error ? err.message : "Error al eliminar cliente");
+      setError(
+        err instanceof Error ? err.message : "Error al eliminar cliente",
+      );
       return false;
     }
   };

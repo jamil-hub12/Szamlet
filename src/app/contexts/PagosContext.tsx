@@ -4,6 +4,7 @@ import {
   useState,
   useEffect,
   ReactNode,
+  useRef,
 } from "react";
 import { supabase } from "../../lib/supabase";
 import { useAuditoria } from "./AuditoriaContext";
@@ -62,6 +63,7 @@ export function PagosProvider({ children }: { children: ReactNode }) {
   const [pagos, setPagos] = useState<Pago[]>([]);
   const [cargando, setCargando] = useState(true);
   const { registrarAccion } = useAuditoria();
+  const skipNextSubscriptionUpdate = useRef(false);
 
   const fetchPagos = async () => {
     try {
@@ -116,7 +118,11 @@ export function PagosProvider({ children }: { children: ReactNode }) {
         { event: "*", schema: "public", table: "pagos" },
         () => {
           console.log("🔔 Cambio en pagos detectado");
-          fetchPagos();
+          if (!skipNextSubscriptionUpdate.current) {
+            fetchPagos();
+          } else {
+            skipNextSubscriptionUpdate.current = false;
+          }
         },
       )
       .subscribe();
@@ -236,6 +242,13 @@ export function PagosProvider({ children }: { children: ReactNode }) {
       });
 
       console.log("✅ Pago registrado correctamente");
+
+      // Evitar que la suscripción haga un fetch completo
+      skipNextSubscriptionUpdate.current = true;
+      setTimeout(() => {
+        skipNextSubscriptionUpdate.current = false;
+      }, 1000);
+
       await fetchPagos();
       return true;
     } catch (error) {

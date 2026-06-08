@@ -58,6 +58,7 @@ import { useAuditoria } from "../contexts/AuditoriaContext";
 import { usePagos } from "../contexts/PagosContext";
 import { PanelNotificaciones } from "./PanelNotificaciones";
 import { formatearSoles } from "../utils/formatoMoneda";
+import { esPedidoVencido, diasHastaVencimiento } from "../utils/validaciones";
 import { HistorialClienteModal } from "./HistorialClienteModal";
 import { useClientes } from "../contexts/ClientesContext";
 import {
@@ -1688,12 +1689,24 @@ export function AdminDashboard() {
                           return (
                             <tr
                               key={p.id}
-                              className={`border-b border-border last:border-0 hover:bg-accent/40 transition ${i % 2 === 0 ? "" : "bg-muted/20"}`}
+                              className={`border-b border-border last:border-0 hover:bg-accent/40 transition ${esPedidoVencido(p.fechaEntrega, p.estado) ? "bg-red-50/50" : i % 2 === 0 ? "" : "bg-muted/20"}`}
                             >
                               <td className="px-4 py-3 font-mono text-foreground">
                                 <span className="flex items-center gap-1.5">
                                   {p.urgente && (
-                                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                                    <span
+                                      className="w-1.5 h-1.5 rounded-full bg-red-500"
+                                      title="Urgente"
+                                    />
+                                  )}
+                                  {esPedidoVencido(
+                                    p.fechaEntrega,
+                                    p.estado,
+                                  ) && (
+                                    <span
+                                      className="w-1.5 h-1.5 rounded-full bg-orange-500"
+                                      title="Vencido"
+                                    />
                                   )}
                                   {p.id}
                                 </span>
@@ -3270,17 +3283,21 @@ export function AdminDashboard() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Estado:</span>
-                    <span
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs ${
-                        pedidoSeleccionado.estadoPago === "Pagado"
-                          ? "bg-green-100 text-green-700"
-                          : pedidoSeleccionado.estadoPago === "Parcial"
-                            ? "bg-blue-100 text-blue-700"
-                            : "bg-orange-100 text-orange-700"
-                      }`}
-                    >
-                      {pedidoSeleccionado.estadoPago}
-                    </span>
+                    {pedidoSeleccionado.estado === "Cancelado" ? (
+                      <span className="text-xs text-muted-foreground">-</span>
+                    ) : (
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs ${
+                          pedidoSeleccionado.estadoPago === "Pagado"
+                            ? "bg-green-100 text-green-700"
+                            : pedidoSeleccionado.estadoPago === "Parcial"
+                              ? "bg-blue-100 text-blue-700"
+                              : "bg-orange-100 text-orange-700"
+                        }`}
+                      >
+                        {pedidoSeleccionado.estadoPago}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

@@ -4,6 +4,7 @@ import {
   useState,
   useEffect,
   ReactNode,
+  useRef,
 } from "react";
 import { supabase } from "../../lib/supabase";
 import type { Database } from "../../lib/supabase";
@@ -96,6 +97,7 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const skipNextSubscriptionUpdate = useRef(false);
 
   const fetchPedidos = async () => {
     try {
@@ -204,7 +206,11 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
         "postgres_changes",
         { event: "*", schema: "public", table: "pedidos" },
         () => {
-          fetchPedidos();
+          if (!skipNextSubscriptionUpdate.current) {
+            fetchPedidos();
+          } else {
+            skipNextSubscriptionUpdate.current = false;
+          }
         },
       )
       .subscribe();
@@ -249,6 +255,16 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
 
       if (insertError) throw insertError;
 
+      // Calcular montoTotal basado en los items
+      let montoTotal = 0;
+      if (data.items && data.items.length > 0) {
+        montoTotal = data.items.reduce((sum, item) => {
+          const precioUnitario = item.precioUnitario || 0;
+          const cantidad = item.cantidad || 0;
+          return sum + precioUnitario * cantidad;
+        }, 0);
+      }
+
       const pedidoConvertido: Pedido = {
         id: nuevoPedido.codigo,
         codigo: nuevoPedido.codigo,
@@ -262,9 +278,21 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
         email: (nuevoPedido as any).clientes?.email || "",
         notas: nuevoPedido.notas || undefined,
         estadoPago: "Pendiente",
-        montoTotal: undefined,
+        montoTotal: montoTotal > 0 ? montoTotal : undefined,
         montoPagado: 0,
       };
+
+      // Actualizar el pedido en BD con el montoTotal calculado
+      if (montoTotal > 0) {
+        const { error: updateError } = await supabase
+          .from("pedidos")
+          .update({ monto_total: montoTotal })
+          .eq("codigo", nuevoPedido.codigo);
+
+        if (updateError) {
+          console.warn("⚠️ No se pudo actualizar el montoTotal:", updateError);
+        }
+      }
 
       // Actualizar stock si se enviaron items detallados
       const usuario = await obtenerUsuarioActual();
@@ -305,11 +333,20 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
         },
       });
 
+      // Evitar que la suscripción haga un fetch completo
+      skipNextSubscriptionUpdate.current = true;
+      setTimeout(() => {
+        skipNextSubscriptionUpdate.current = false;
+      }, 1000);
+
       setPedidos((prev) => [pedidoConvertido, ...prev]);
       return pedidoConvertido;
     } catch (err) {
-      console.error("Error al agregar pedido:", err);
-      setError(err instanceof Error ? err.message : "Error al agregar pedido");
+      const errorMsg =
+        err instanceof Error ? err.message : "Error al agregar pedido";
+      console.error("❌ Error al agregar pedido:", err);
+      console.error("Detalles del error:", errorMsg);
+      setError(errorMsg);
       return null;
     }
   };

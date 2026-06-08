@@ -1,7 +1,23 @@
-import { X, Package, Calendar, User, Phone, Mail, FileText, Download, DollarSign, CheckCircle, Clock, XCircle } from "lucide-react";
+import {
+  X,
+  Package,
+  Calendar,
+  User,
+  Phone,
+  Mail,
+  FileText,
+  Download,
+  DollarSign,
+  CheckCircle,
+  Clock,
+  XCircle,
+} from "lucide-react";
 import type { Pedido } from "../contexts/PedidosContext";
 import { formatearSoles } from "../utils/formatoMoneda";
-import { formatearFechaHoraPeru, formatearFechaCorta } from "../../utils/fechas";
+import {
+  formatearFechaHoraPeru,
+  formatearFechaCorta,
+} from "../../utils/fechas";
 
 type Cliente = {
   id: string;
@@ -46,14 +62,19 @@ export function DetallePedidoModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
 
       <div className="relative z-10 bg-card border border-border rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-border shrink-0">
           <div>
             <h3 className="text-foreground text-lg">Detalle del Pedido</h3>
-            <p className="text-sm text-muted-foreground font-mono">{pedido.codigo}</p>
+            <p className="text-sm text-muted-foreground font-mono">
+              {pedido.codigo}
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -63,7 +84,10 @@ export function DetallePedidoModal({
               <Download className="w-4 h-4" />
               Exportar PDF
             </button>
-            <button onClick={onClose} className="p-2 rounded-lg hover:bg-accent transition">
+            <button
+              onClick={onClose}
+              className="p-2 rounded-lg hover:bg-accent transition"
+            >
               <X className="w-4 h-4 text-muted-foreground" />
             </button>
           </div>
@@ -82,11 +106,15 @@ export function DetallePedidoModal({
               <div className="bg-muted/30 border border-border rounded-xl p-4 space-y-2.5">
                 <div>
                   <p className="text-xs text-muted-foreground">Nombre</p>
-                  <p className="text-sm text-foreground font-medium">{cliente.nombre}</p>
+                  <p className="text-sm text-foreground font-medium">
+                    {cliente.nombre}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Código</p>
-                  <p className="text-sm text-foreground font-mono">{cliente.codigo}</p>
+                  <p className="text-sm text-foreground font-mono">
+                    {cliente.codigo}
+                  </p>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -113,7 +141,9 @@ export function DetallePedidoModal({
                 {cliente.direccion && (
                   <div>
                     <p className="text-xs text-muted-foreground">Dirección</p>
-                    <p className="text-sm text-foreground">{cliente.direccion}</p>
+                    <p className="text-sm text-foreground">
+                      {cliente.direccion}
+                    </p>
                   </div>
                 )}
               </div>
@@ -128,7 +158,9 @@ export function DetallePedidoModal({
               <div className="bg-muted/30 border border-border rounded-xl p-4 space-y-2.5">
                 <div>
                   <p className="text-xs text-muted-foreground">Artículo</p>
-                  <p className="text-sm text-foreground font-medium">{pedido.articulo}</p>
+                  <p className="text-sm text-foreground font-medium">
+                    {pedido.articulo}
+                  </p>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -140,18 +172,26 @@ export function DetallePedidoModal({
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Estado</p>
-                    <p className="text-sm text-foreground font-medium">{pedido.estado}</p>
+                    <p className="text-sm text-foreground font-medium">
+                      {pedido.estado}
+                    </p>
                   </div>
                 </div>
                 {pedido.urgente && (
                   <div className="px-3 py-2 rounded-lg bg-red-50 border border-red-200">
-                    <p className="text-xs text-red-700 font-medium">⚠️ PEDIDO URGENTE</p>
+                    <p className="text-xs text-red-700 font-medium">
+                      ⚠️ PEDIDO URGENTE
+                    </p>
                   </div>
                 )}
                 {pedido.fechaEntrega && (
                   <div>
-                    <p className="text-xs text-muted-foreground">Fecha de Entrega</p>
-                    <p className="text-sm text-foreground">{formatearFechaCorta(pedido.fechaEntrega)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Fecha de Entrega
+                    </p>
+                    <p className="text-sm text-foreground">
+                      {formatearFechaCorta(pedido.fechaEntrega)}
+                    </p>
                   </div>
                 )}
                 {pedido.notas && (
@@ -162,8 +202,12 @@ export function DetallePedidoModal({
                 )}
                 {pedido.motivoCancelacion && (
                   <div className="px-3 py-2 rounded-lg bg-red-50 border border-red-200">
-                    <p className="text-xs text-muted-foreground mb-1">Motivo de Cancelación</p>
-                    <p className="text-sm text-red-700">{pedido.motivoCancelacion}</p>
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Motivo de Cancelación
+                    </p>
+                    <p className="text-sm text-red-700">
+                      {pedido.motivoCancelacion}
+                    </p>
                   </div>
                 )}
               </div>
@@ -181,41 +225,71 @@ export function DetallePedidoModal({
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                   <div>
                     <p className="text-xs text-muted-foreground">Monto Total</p>
-                    <p className="text-lg text-foreground font-semibold">{formatearSoles(montoTotal)}</p>
+                    <p className="text-lg text-foreground font-semibold">
+                      {formatearSoles(montoTotal)}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Monto Pagado</p>
-                    <p className="text-lg text-emerald-600 font-semibold">{formatearSoles(montoPagado)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Monto Pagado
+                    </p>
+                    <p className="text-lg text-emerald-600 font-semibold">
+                      {formatearSoles(montoPagado)}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Monto Pendiente</p>
-                    <p className="text-lg text-red-600 font-semibold">{formatearSoles(montoPendiente)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Monto Pendiente
+                    </p>
+                    <p className="text-lg text-red-600 font-semibold">
+                      {formatearSoles(montoPendiente)}
+                    </p>
                   </div>
                 </div>
                 <div className="pt-3 border-t border-border">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs text-muted-foreground">Estado de Pago</p>
-                    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border ${estadoPagoColor}`}>
-                      {estadoPagoIcon}
-                      {estadoPago}
-                    </span>
+                    <p className="text-xs text-muted-foreground">
+                      Estado de Pago
+                    </p>
+                    {pedido.estado === "Cancelado" ? (
+                      <span className="text-xs text-muted-foreground">-</span>
+                    ) : (
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border ${estadoPagoColor}`}
+                      >
+                        {estadoPagoIcon}
+                        {estadoPago}
+                      </span>
+                    )}
                   </div>
                   {pedido.metodoPago && (
                     <div className="mt-2">
-                      <p className="text-xs text-muted-foreground">Método de Pago</p>
-                      <p className="text-sm text-foreground">{pedido.metodoPago}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Método de Pago
+                      </p>
+                      <p className="text-sm text-foreground">
+                        {pedido.metodoPago}
+                      </p>
                     </div>
                   )}
                   {pedido.referenciaPago && (
                     <div className="mt-2">
-                      <p className="text-xs text-muted-foreground">Referencia</p>
-                      <p className="text-sm text-foreground font-mono">{pedido.referenciaPago}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Referencia
+                      </p>
+                      <p className="text-sm text-foreground font-mono">
+                        {pedido.referenciaPago}
+                      </p>
                     </div>
                   )}
                   {pedido.fechaPago && (
                     <div className="mt-2">
-                      <p className="text-xs text-muted-foreground">Fecha de Pago</p>
-                      <p className="text-sm text-foreground">{formatearFechaCorta(pedido.fechaPago)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Fecha de Pago
+                      </p>
+                      <p className="text-sm text-foreground">
+                        {formatearFechaCorta(pedido.fechaPago)}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -234,19 +308,38 @@ export function DetallePedidoModal({
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border bg-muted/50">
-                      <th className="text-left px-4 py-3 text-xs text-muted-foreground font-medium">Producto</th>
-                      <th className="text-left px-4 py-3 text-xs text-muted-foreground font-medium">Talla</th>
-                      <th className="text-left px-4 py-3 text-xs text-muted-foreground font-medium">Color</th>
-                      <th className="text-right px-4 py-3 text-xs text-muted-foreground font-medium">Cantidad</th>
+                      <th className="text-left px-4 py-3 text-xs text-muted-foreground font-medium">
+                        Producto
+                      </th>
+                      <th className="text-left px-4 py-3 text-xs text-muted-foreground font-medium">
+                        Talla
+                      </th>
+                      <th className="text-left px-4 py-3 text-xs text-muted-foreground font-medium">
+                        Color
+                      </th>
+                      <th className="text-right px-4 py-3 text-xs text-muted-foreground font-medium">
+                        Cantidad
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {pedido.items.map((item, index) => (
-                      <tr key={index} className="border-b border-border last:border-0">
-                        <td className="px-4 py-3 text-foreground">{item.productoNombre || item.productoId}</td>
-                        <td className="px-4 py-3 text-foreground">{item.talla}</td>
-                        <td className="px-4 py-3 text-foreground">{item.color}</td>
-                        <td className="px-4 py-3 text-foreground text-right font-mono">{item.cantidad}</td>
+                      <tr
+                        key={index}
+                        className="border-b border-border last:border-0"
+                      >
+                        <td className="px-4 py-3 text-foreground">
+                          {item.productoNombre || item.productoId}
+                        </td>
+                        <td className="px-4 py-3 text-foreground">
+                          {item.talla}
+                        </td>
+                        <td className="px-4 py-3 text-foreground">
+                          {item.color}
+                        </td>
+                        <td className="px-4 py-3 text-foreground text-right font-mono">
+                          {item.cantidad}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
