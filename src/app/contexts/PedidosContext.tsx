@@ -80,6 +80,7 @@ type PedidosContextType = {
     articulo: string;
     urgente: boolean;
     notas?: string;
+    fechaEntrega?: string;
     items?: PedidoItemData[]; // Items detallados de productos
   }) => Promise<Pedido | null>;
   actualizarPedido: (
@@ -225,6 +226,7 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
     articulo: string;
     urgente: boolean;
     notas?: string;
+    fechaEntrega?: string;
     items?: PedidoItemData[];
   }): Promise<Pedido | null> => {
     try {
@@ -234,6 +236,7 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
         urgente: data.urgente,
         notas: data.notas || null,
         fecha: obtenerFechaPeruHoy(),
+        fecha_entrega: data.fechaEntrega || null,
         estado: "Recibido", // Estado inicial del ciclo de vida
       };
 
@@ -280,6 +283,7 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
         estadoPago: "Pendiente",
         montoTotal: montoTotal > 0 ? montoTotal : undefined,
         montoPagado: 0,
+        fechaEntrega: data.fechaEntrega || undefined,
       };
 
       // Actualizar el pedido en BD con el montoTotal calculado
@@ -367,7 +371,8 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
       if (
         datos.articulo !== undefined ||
         datos.urgente !== undefined ||
-        datos.notas !== undefined
+        datos.notas !== undefined ||
+        datos.fechaEntrega !== undefined
       ) {
         const validacionEdicion = puedeEditarPedido(pedidoActual.estado);
         if (!validacionEdicion.puede) {
@@ -391,6 +396,8 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
       if (datos.articulo !== undefined) updateData.articulo = datos.articulo;
       if (datos.urgente !== undefined) updateData.urgente = datos.urgente;
       if (datos.notas !== undefined) updateData.notas = datos.notas;
+      if (datos.fechaEntrega !== undefined)
+        updateData.fecha_entrega = datos.fechaEntrega || null;
 
       const { error: updateError } = await supabase
         .from("pedidos")
@@ -398,6 +405,12 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
         .eq("codigo", codigo);
 
       if (updateError) throw updateError;
+
+      // Evitar que la suscripción haga un fetch completo
+      skipNextSubscriptionUpdate.current = true;
+      setTimeout(() => {
+        skipNextSubscriptionUpdate.current = false;
+      }, 1000);
 
       const usuario = await obtenerUsuarioActual();
       const usuarioFinal = usuario || { codigo: "SISTEMA", nombre: "Sistema" };
@@ -427,7 +440,8 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
       if (
         datos.articulo !== undefined ||
         datos.urgente !== undefined ||
-        datos.notas !== undefined
+        datos.notas !== undefined ||
+        datos.fechaEntrega !== undefined
       ) {
         await registrarAuditoria({
           usuarioCodigo: usuarioFinal.codigo,
@@ -444,6 +458,10 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
               datos.urgente !== undefined ? pedidoActual.urgente : undefined,
             notasAnteriores:
               datos.notas !== undefined ? pedidoActual.notas : undefined,
+            fechaEntregaAnterior:
+              datos.fechaEntrega !== undefined
+                ? pedidoActual.fechaEntrega
+                : undefined,
           },
         });
       }

@@ -3,9 +3,9 @@ import {
   X,
   DollarSign,
   CreditCard,
-  FileText,
   Calendar,
   AlertCircle,
+  Clock,
 } from "lucide-react";
 import { usePagos } from "../contexts/PagosContext";
 import { formatearSoles } from "../utils/formatoMoneda";
@@ -16,8 +16,11 @@ import {
 import {
   esValidaFechaMaximaHoy,
   obtenerMensajeErrorFecha,
+  esPedidoVencido,
+  diasHastaVencimiento,
 } from "../utils/validaciones";
 import { obtenerFechaPeruHoy } from "../../utils/fechas";
+import type { EstadoPedido } from "../contexts/PedidosContext";
 
 type Props = {
   pedidoCodigo: string;
@@ -27,6 +30,8 @@ type Props = {
   onSuccess: () => void;
   usuarioCodigo: string;
   usuarioNombre: string;
+  fechaEntrega?: string;
+  estado?: EstadoPedido;
 };
 
 export function RegistrarPagoModal({
@@ -37,8 +42,14 @@ export function RegistrarPagoModal({
   onSuccess,
   usuarioCodigo,
   usuarioNombre,
+  fechaEntrega,
+  estado,
 }: Props) {
   const { registrarPago } = usePagos();
+
+  // Verificar si el pedido está vencido
+  const pedidoVencido = esPedidoVencido(fechaEntrega, estado);
+  const diasRestantes = diasHastaVencimiento(fechaEntrega);
 
   // Detectar si el pedido no tiene monto total (pedido antiguo)
   const esPedidoSinPrecio = montoTotal === 0;
@@ -55,10 +66,7 @@ export function RegistrarPagoModal({
   const [metodoPago, setMetodoPago] = useState<"Efectivo" | "QR/Transferencia">(
     "Efectivo",
   );
-  const [referencia, setReferencia] = useState("");
   const [notas, setNotas] = useState("");
-  const [fechaPago, setFechaPago] = useState<string>(obtenerFechaPeruHoy());
-  const [errorFecha, setErrorFecha] = useState<string>("");
   const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
@@ -101,18 +109,13 @@ export function RegistrarPagoModal({
       return;
     }
 
-    // Validar fecha de pago
-    if (!fechaPago) {
-      setErrorFecha("La fecha de pago es obligatoria");
+    // Validar si el pedido está vencido
+    if (pedidoVencido) {
+      alert(
+        "❌ No se puede registrar pago\n\nEste pedido está vencido (fecha de entrega pasada) y no se pueden registrar pagos sobre pedidos vencidos.",
+      );
       return;
     }
-
-    if (!esValidaFechaMaximaHoy(fechaPago)) {
-      setErrorFecha("La fecha del pago no puede ser futura");
-      return;
-    }
-
-    setErrorFecha("");
 
     // Validar solo si no es un pedido sin precio
     if (!esPedidoSinPrecio) {
@@ -132,8 +135,6 @@ export function RegistrarPagoModal({
       pedidoCodigo,
       monto: montoNumerico,
       metodoPago,
-      referencia: referencia.trim() || undefined,
-      fechaPago: `${fechaPago}T${new Date().getHours().toString().padStart(2, "0")}:${new Date().getMinutes().toString().padStart(2, "0")}:00`,
       usuarioCodigo,
       usuarioNombre,
       notas: notas.trim() || undefined,
@@ -177,6 +178,48 @@ export function RegistrarPagoModal({
 
         {/* Body */}
         <div className="p-6 space-y-5">
+          {/* Alerta para pedidos vencidos */}
+          {pedidoVencido && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex gap-3">
+                <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="text-sm font-semibold text-red-900 mb-1">
+                    Pedido Vencido
+                  </h4>
+                  <p className="text-xs text-red-700">
+                    Este pedido ya pasó su fecha de entrega y no se pueden
+                    registrar pagos. Contacta con administración si necesitas
+                    realizar un pago.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Alerta para pedidos próximos a vencer */}
+          {!pedidoVencido &&
+            fechaEntrega &&
+            diasRestantes !== null &&
+            diasRestantes > 0 &&
+            diasRestantes <= 3 && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex gap-3">
+                  <Clock className="w-5 h-5 text-yellow-600 shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="text-sm font-semibold text-yellow-900 mb-1">
+                      Pedido próximo a vencer
+                    </h4>
+                    <p className="text-xs text-yellow-700">
+                      Vencimiento en {diasRestantes}{" "}
+                      {diasRestantes === 1 ? "día" : "días"}. Registra el pago
+                      antes de esa fecha.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
           {/* Alerta para pedidos sin precio */}
           {mostrarConfiguracionPrecio && (
             <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
@@ -316,25 +359,6 @@ export function RegistrarPagoModal({
                 </div>
               </div>
 
-              {/* Referencia */}
-              {metodoPago === "QR/Transferencia" && (
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Número de Operación (Opcional)
-                  </label>
-                  <div className="relative">
-                    <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <input
-                      type="text"
-                      value={referencia}
-                      onChange={(e) => setReferencia(e.target.value)}
-                      className="w-full pl-10 pr-3 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                      placeholder="Ej: 123456789"
-                    />
-                  </div>
-                </div>
-              )}
-
               {/* Notas */}
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">
@@ -347,37 +371,6 @@ export function RegistrarPagoModal({
                   className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                   placeholder="Información adicional sobre el pago..."
                 />
-              </div>
-
-              {/* Fecha de Pago */}
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Fecha del Pago *
-                </label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                  <input
-                    type="date"
-                    value={fechaPago}
-                    max={obtenerFechaPeruHoy()}
-                    onChange={(e) => {
-                      setFechaPago(e.target.value);
-                      setErrorFecha("");
-                    }}
-                    className={`w-full pl-10 pr-3 py-2 bg-background border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary ${
-                      errorFecha ? "border-red-400" : "border-input"
-                    }`}
-                  />
-                </div>
-                {errorFecha && (
-                  <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" /> {errorFecha}
-                  </p>
-                )}
-                <p className="text-xs text-muted-foreground mt-1">
-                  No puede ser una fecha futura (máximo hoy:{" "}
-                  {obtenerFechaPeruHoy()})
-                </p>
               </div>
 
               {/* Fecha y Hora */}

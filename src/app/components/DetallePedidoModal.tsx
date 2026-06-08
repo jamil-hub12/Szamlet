@@ -11,6 +11,7 @@ import {
   CheckCircle,
   Clock,
   XCircle,
+  AlertTriangle,
 } from "lucide-react";
 import type { Pedido } from "../contexts/PedidosContext";
 import { formatearSoles } from "../utils/formatoMoneda";
@@ -18,6 +19,7 @@ import {
   formatearFechaHoraPeru,
   formatearFechaCorta,
 } from "../../utils/fechas";
+import { esPedidoVencido, diasHastaVencimiento } from "../utils/validaciones";
 
 type Cliente = {
   id: string;
@@ -95,6 +97,50 @@ export function DetallePedidoModal({
 
         {/* Contenido */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {/* Alerta de vencimiento */}
+          {esPedidoVencido(pedido.fechaEntrega, pedido.estado) && (
+            <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4">
+              <div className="flex gap-3">
+                <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="text-sm font-semibold text-red-900 mb-1">
+                    ⚠️ Pedido Vencido
+                  </h4>
+                  <p className="text-xs text-red-700">
+                    Este pedido pasó su fecha de entrega ({pedido.fechaEntrega})
+                    y no puede recibir pagos. Si necesitas registrar un pago,
+                    contacta con administración.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Alerta de próximo vencimiento */}
+          {!esPedidoVencido(pedido.fechaEntrega, pedido.estado) &&
+            pedido.fechaEntrega &&
+            diasHastaVencimiento(pedido.fechaEntrega) !== null &&
+            diasHastaVencimiento(pedido.fechaEntrega)! > 0 &&
+            diasHastaVencimiento(pedido.fechaEntrega)! <= 3 && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex gap-3">
+                  <Clock className="w-5 h-5 text-yellow-600 shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="text-sm font-semibold text-yellow-900 mb-1">
+                      Pedido próximo a vencer
+                    </h4>
+                    <p className="text-xs text-yellow-700">
+                      Vencimiento en {diasHastaVencimiento(pedido.fechaEntrega)}
+                      {diasHastaVencimiento(pedido.fechaEntrega) === 1
+                        ? " día"
+                        : " días"}
+                      . Asegúrate de completar el pago antes de esa fecha.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
           {/* Grid de información */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Información del cliente */}
