@@ -2546,7 +2546,13 @@ export function AdminDashboard() {
                     </span>
                   </div>
                   <p className="text-2xl font-bold text-orange-900">
-                    {pedidos.filter((p) => p.estadoPago === "Pendiente").length}
+                    {
+                      pedidos.filter(
+                        (p) =>
+                          p.estado !== "Cancelado" &&
+                          p.estadoPago === "Pendiente",
+                      ).length
+                    }
                   </p>
                   <p className="text-xs text-orange-700 mt-1">
                     Pagos pendientes

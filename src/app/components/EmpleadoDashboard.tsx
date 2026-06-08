@@ -952,7 +952,9 @@ export function EmpleadoDashboard() {
                 ? "Pedidos"
                 : seccion === "clientes"
                   ? "Clientes"
-                  : "Pagos"}
+                  : seccion === "catalogo"
+                    ? "Catálogo"
+                    : "Pagos"}
             </h3>
             <p className="text-muted-foreground text-sm capitalize">
               {fechaActual}
@@ -991,7 +993,7 @@ export function EmpleadoDashboard() {
 
         {/* ── Sección Catálogo ── */}
         {seccion === "catalogo" && (
-          <div className="space-y-5">
+          <div className="flex-1 p-6 space-y-5">
             {/* Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
