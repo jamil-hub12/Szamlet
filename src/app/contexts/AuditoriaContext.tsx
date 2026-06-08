@@ -4,6 +4,7 @@ import {
   useState,
   useEffect,
   ReactNode,
+  useRef,
 } from "react";
 import { supabase } from "../../lib/supabase";
 import type { Database } from "../../lib/supabase";
@@ -64,6 +65,7 @@ export function AuditoriaProvider({ children }: { children: ReactNode }) {
   const [registros, setRegistros] = useState<RegistroAuditoria[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const skipNextSubscriptionUpdate = useRef(false);
 
   const fetchRegistros = async () => {
     try {
@@ -110,7 +112,11 @@ export function AuditoriaProvider({ children }: { children: ReactNode }) {
             payload,
           );
           // Refetch inmediatamente cuando hay cambios
-          fetchRegistros();
+          if (!skipNextSubscriptionUpdate.current) {
+            fetchRegistros();
+          } else {
+            skipNextSubscriptionUpdate.current = false;
+          }
         },
       )
       .subscribe((status, err) => {

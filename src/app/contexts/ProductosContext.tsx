@@ -4,6 +4,7 @@ import {
   useState,
   useEffect,
   ReactNode,
+  useRef,
 } from "react";
 import { supabase } from "../../lib/supabase";
 import type { Database } from "../../lib/supabase";
@@ -63,6 +64,7 @@ export function ProductosProvider({ children }: { children: ReactNode }) {
   const [productos, setProductos] = useState<ProductoCatalogo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const skipNextSubscriptionUpdate = useRef(false);
 
   const fetchProductos = async () => {
     try {
@@ -148,7 +150,11 @@ export function ProductosProvider({ children }: { children: ReactNode }) {
         { event: "*", schema: "public", table: "productos" },
         (payload) => {
           console.log("🔔 Cambio en productos:", payload.eventType);
-          fetchProductos();
+          if (!skipNextSubscriptionUpdate.current) {
+            fetchProductos();
+          } else {
+            skipNextSubscriptionUpdate.current = false;
+          }
         },
       )
       .on(
@@ -156,7 +162,11 @@ export function ProductosProvider({ children }: { children: ReactNode }) {
         { event: "*", schema: "public", table: "producto_variantes" },
         (payload) => {
           console.log("🔔 Cambio en variantes:", payload.eventType);
-          fetchProductos();
+          if (!skipNextSubscriptionUpdate.current) {
+            fetchProductos();
+          } else {
+            skipNextSubscriptionUpdate.current = false;
+          }
         },
       )
       .on(
@@ -168,7 +178,11 @@ export function ProductosProvider({ children }: { children: ReactNode }) {
             payload.eventType,
             payload,
           );
-          fetchProductos();
+          if (!skipNextSubscriptionUpdate.current) {
+            fetchProductos();
+          } else {
+            skipNextSubscriptionUpdate.current = false;
+          }
         },
       )
       .subscribe((status, err) => {
@@ -239,6 +253,12 @@ export function ProductosProvider({ children }: { children: ReactNode }) {
 
         if (coloresError) throw coloresError;
       }
+
+      // Evitar que la suscripción haga múltiples fetches
+      skipNextSubscriptionUpdate.current = true;
+      setTimeout(() => {
+        skipNextSubscriptionUpdate.current = false;
+      }, 1000);
 
       await fetchProductos();
 

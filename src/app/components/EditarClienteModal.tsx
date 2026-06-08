@@ -1,5 +1,13 @@
 import { useState } from "react";
-import { X, User, Mail, Phone, MapPin, CreditCard, AlertCircle } from "lucide-react";
+import {
+  X,
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  CreditCard,
+  AlertCircle,
+} from "lucide-react";
 
 type Cliente = {
   id: string;
@@ -24,10 +32,12 @@ export function EditarClienteModal({
   cliente,
   onClose,
   onGuardar,
+  clientesExistentes = [],
 }: {
   cliente: Cliente;
   onClose: () => void;
   onGuardar: (actualizado: ClienteActualizado) => Promise<void>;
+  clientesExistentes?: Cliente[];
 }) {
   const [form, setForm] = useState({
     nombre: cliente.nombre,
@@ -38,10 +48,27 @@ export function EditarClienteModal({
 
   const [showErrors, setShowErrors] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  const [errorEmail, setErrorEmail] = useState<string>("");
+
+  // Verificar duplicado de email (excluyendo el cliente actual)
+  const emailTrim = form.email.trim().toLowerCase();
+  const emailDuplicado =
+    emailTrim.length > 0
+      ? clientesExistentes.find(
+          (c) =>
+            c.id !== cliente.id &&
+            c.email &&
+            c.email.toLowerCase() === emailTrim,
+        )
+      : undefined;
 
   const validate = () => {
     if (!form.nombre.trim()) return false;
     if (!form.celular.trim()) return false;
+    if (emailDuplicado) {
+      setErrorEmail("Este email ya está registrado para otro cliente");
+      return false;
+    }
     return true;
   };
 
@@ -65,7 +92,10 @@ export function EditarClienteModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={guardando ? undefined : onClose} />
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        onClick={guardando ? undefined : onClose}
+      />
 
       <div className="relative z-10 bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md">
         {/* Header */}
@@ -74,7 +104,11 @@ export function EditarClienteModal({
             <h3 className="text-foreground">Editar cliente</h3>
             <p className="text-sm text-muted-foreground">{cliente.codigo}</p>
           </div>
-          <button onClick={onClose} disabled={guardando} className="p-1.5 rounded-lg hover:bg-accent transition disabled:opacity-50">
+          <button
+            onClick={onClose}
+            disabled={guardando}
+            className="p-1.5 rounded-lg hover:bg-accent transition disabled:opacity-50"
+          >
             <X className="w-4 h-4 text-muted-foreground" />
           </button>
         </div>
@@ -83,7 +117,10 @@ export function EditarClienteModal({
         <div className="px-6 py-5 space-y-4">
           {/* Nombre */}
           <div className="space-y-1.5">
-            <label htmlFor="nombre" className="text-sm text-foreground flex items-center gap-1">
+            <label
+              htmlFor="nombre"
+              className="text-sm text-foreground flex items-center gap-1"
+            >
               <User className="w-4 h-4" />
               Nombre completo <span className="text-red-500">*</span>
             </label>
@@ -93,7 +130,9 @@ export function EditarClienteModal({
               value={form.nombre}
               onChange={(e) => setForm({ ...form, nombre: e.target.value })}
               className={`w-full px-3 py-2.5 rounded-lg bg-input-background border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20 ${
-                showErrors && !form.nombre.trim() ? "border-red-400" : "border-border"
+                showErrors && !form.nombre.trim()
+                  ? "border-red-400"
+                  : "border-border"
               }`}
               placeholder="Juan Pérez"
               disabled={guardando}
@@ -107,7 +146,10 @@ export function EditarClienteModal({
 
           {/* Email */}
           <div className="space-y-1.5">
-            <label htmlFor="email" className="text-sm text-foreground flex items-center gap-1">
+            <label
+              htmlFor="email"
+              className="text-sm text-foreground flex items-center gap-1"
+            >
               <Mail className="w-4 h-4" />
               Correo electrónico
             </label>
@@ -115,16 +157,33 @@ export function EditarClienteModal({
               type="email"
               id="email"
               value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="w-full px-3 py-2.5 rounded-lg bg-input-background border border-border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20"
+              onChange={(e) => {
+                setForm({ ...form, email: e.target.value });
+                setErrorEmail("");
+              }}
+              className={`w-full px-3 py-2.5 rounded-lg bg-input-background border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20 ${
+                showErrors && (errorEmail || emailDuplicado)
+                  ? "border-red-400"
+                  : "border-border"
+              }`}
               placeholder="correo@ejemplo.com"
               disabled={guardando}
             />
+            {showErrors && (errorEmail || emailDuplicado) && (
+              <p className="text-xs text-red-500 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                {errorEmail ||
+                  "Este email ya está registrado para otro cliente"}
+              </p>
+            )}
           </div>
 
           {/* Celular */}
           <div className="space-y-1.5">
-            <label htmlFor="celular" className="text-sm text-foreground flex items-center gap-1">
+            <label
+              htmlFor="celular"
+              className="text-sm text-foreground flex items-center gap-1"
+            >
               <Phone className="w-4 h-4" />
               Celular <span className="text-red-500">*</span>
             </label>
@@ -134,7 +193,9 @@ export function EditarClienteModal({
               value={form.celular}
               onChange={(e) => setForm({ ...form, celular: e.target.value })}
               className={`w-full px-3 py-2.5 rounded-lg bg-input-background border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20 ${
-                showErrors && !form.celular.trim() ? "border-red-400" : "border-border"
+                showErrors && !form.celular.trim()
+                  ? "border-red-400"
+                  : "border-border"
               }`}
               placeholder="987654321"
               disabled={guardando}
@@ -148,7 +209,10 @@ export function EditarClienteModal({
 
           {/* Dirección */}
           <div className="space-y-1.5">
-            <label htmlFor="direccion" className="text-sm text-foreground flex items-center gap-1">
+            <label
+              htmlFor="direccion"
+              className="text-sm text-foreground flex items-center gap-1"
+            >
               <MapPin className="w-4 h-4" />
               Dirección
             </label>
@@ -165,15 +229,21 @@ export function EditarClienteModal({
 
           {/* Campos no editables */}
           <div className="space-y-2 pt-2 border-t border-border">
-            <p className="text-xs text-muted-foreground uppercase tracking-wider">Información no editable</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">
+              Información no editable
+            </p>
             <div className="grid grid-cols-2 gap-3">
               <div className="px-3 py-2 rounded-lg bg-muted/50">
                 <p className="text-xs text-muted-foreground">DNI</p>
-                <p className="text-sm text-foreground font-mono">{cliente.dni}</p>
+                <p className="text-sm text-foreground font-mono">
+                  {cliente.dni}
+                </p>
               </div>
               <div className="px-3 py-2 rounded-lg bg-muted/50">
                 <p className="text-xs text-muted-foreground">RUC</p>
-                <p className="text-sm text-foreground font-mono">{cliente.ruc || "—"}</p>
+                <p className="text-sm text-foreground font-mono">
+                  {cliente.ruc || "—"}
+                </p>
               </div>
             </div>
           </div>

@@ -1,8 +1,23 @@
 import { useState, useEffect } from "react";
-import { X, DollarSign, CreditCard, FileText, Calendar } from "lucide-react";
+import {
+  X,
+  DollarSign,
+  CreditCard,
+  FileText,
+  Calendar,
+  AlertCircle,
+} from "lucide-react";
 import { usePagos } from "../contexts/PagosContext";
 import { formatearSoles } from "../utils/formatoMoneda";
-import { obtenerFechaHoraPeruISO, formatearFechaHoraPeru } from "../../utils/fechas";
+import {
+  obtenerFechaHoraPeruISO,
+  formatearFechaHoraPeru,
+} from "../../utils/fechas";
+import {
+  esValidaFechaMaximaHoy,
+  obtenerMensajeErrorFecha,
+} from "../utils/validaciones";
+import { obtenerFechaPeruHoy } from "../../utils/fechas";
 
 type Props = {
   pedidoCodigo: string;
@@ -29,12 +44,21 @@ export function RegistrarPagoModal({
   const esPedidoSinPrecio = montoTotal === 0;
   const montoRestante = montoTotal - montoPagado;
 
-  const [monto, setMonto] = useState<string>(esPedidoSinPrecio ? "" : montoRestante.toFixed(2));
-  const [montoTotalPedido, setMontoTotalPedido] = useState<string>(esPedidoSinPrecio ? "" : montoTotal.toFixed(2));
-  const [mostrarConfiguracionPrecio, setMostrarConfiguracionPrecio] = useState(esPedidoSinPrecio);
-  const [metodoPago, setMetodoPago] = useState<"Efectivo" | "QR/Transferencia">("Efectivo");
+  const [monto, setMonto] = useState<string>(
+    esPedidoSinPrecio ? "" : montoRestante.toFixed(2),
+  );
+  const [montoTotalPedido, setMontoTotalPedido] = useState<string>(
+    esPedidoSinPrecio ? "" : montoTotal.toFixed(2),
+  );
+  const [mostrarConfiguracionPrecio, setMostrarConfiguracionPrecio] =
+    useState(esPedidoSinPrecio);
+  const [metodoPago, setMetodoPago] = useState<"Efectivo" | "QR/Transferencia">(
+    "Efectivo",
+  );
   const [referencia, setReferencia] = useState("");
   const [notas, setNotas] = useState("");
+  const [fechaPago, setFechaPago] = useState<string>(obtenerFechaPeruHoy());
+  const [errorFecha, setErrorFecha] = useState<string>("");
   const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
@@ -77,11 +101,27 @@ export function RegistrarPagoModal({
       return;
     }
 
+    // Validar fecha de pago
+    if (!fechaPago) {
+      setErrorFecha("La fecha de pago es obligatoria");
+      return;
+    }
+
+    if (!esValidaFechaMaximaHoy(fechaPago)) {
+      setErrorFecha("La fecha del pago no puede ser futura");
+      return;
+    }
+
+    setErrorFecha("");
+
     // Validar solo si no es un pedido sin precio
     if (!esPedidoSinPrecio) {
-      const montoRestanteActual = parseFloat(montoTotalPedido || montoTotal.toString()) - montoPagado;
+      const montoRestanteActual =
+        parseFloat(montoTotalPedido || montoTotal.toString()) - montoPagado;
       if (montoNumerico > montoRestanteActual) {
-        alert(`❌ El monto no puede ser mayor al saldo pendiente (${formatearSoles(montoRestanteActual)})`);
+        alert(
+          `❌ El monto no puede ser mayor al saldo pendiente (${formatearSoles(montoRestanteActual)})`,
+        );
         return;
       }
     }
@@ -93,7 +133,7 @@ export function RegistrarPagoModal({
       monto: montoNumerico,
       metodoPago,
       referencia: referencia.trim() || undefined,
-      fechaPago: obtenerFechaHoraPeruISO(),
+      fechaPago: `${fechaPago}T${new Date().getHours().toString().padStart(2, "0")}:${new Date().getMinutes().toString().padStart(2, "0")}:00`,
       usuarioCodigo,
       usuarioNombre,
       notas: notas.trim() || undefined,
@@ -119,8 +159,12 @@ export function RegistrarPagoModal({
               <DollarSign className="w-5 h-5 text-green-500" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-foreground">Registrar Pago</h2>
-              <p className="text-sm text-muted-foreground">Pedido {pedidoCodigo}</p>
+              <h2 className="text-lg font-semibold text-foreground">
+                Registrar Pago
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Pedido {pedidoCodigo}
+              </p>
             </div>
           </div>
           <button
@@ -141,9 +185,13 @@ export function RegistrarPagoModal({
                   <span className="text-xs">!</span>
                 </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-orange-900 mb-1">Pedido sin precio configurado</h4>
+                  <h4 className="text-sm font-semibold text-orange-900 mb-1">
+                    Pedido sin precio configurado
+                  </h4>
                   <p className="text-xs text-orange-700">
-                    Este pedido fue creado antes del sistema de pagos. Por favor, establece el monto total del pedido para poder registrar pagos.
+                    Este pedido fue creado antes del sistema de pagos. Por
+                    favor, establece el monto total del pedido para poder
+                    registrar pagos.
                   </p>
                 </div>
               </div>
@@ -186,109 +234,151 @@ export function RegistrarPagoModal({
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Monto Total:</span>
                   <span className="font-semibold text-foreground">
-                    {formatearSoles(parseFloat(montoTotalPedido || montoTotal.toString()))}
+                    {formatearSoles(
+                      parseFloat(montoTotalPedido || montoTotal.toString()),
+                    )}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Pagado:</span>
-                  <span className="font-semibold text-green-600">{formatearSoles(montoPagado)}</span>
+                  <span className="font-semibold text-green-600">
+                    {formatearSoles(montoPagado)}
+                  </span>
                 </div>
                 <div className="flex justify-between text-sm border-t border-border pt-2">
-                  <span className="text-muted-foreground font-medium">Saldo Pendiente:</span>
+                  <span className="text-muted-foreground font-medium">
+                    Saldo Pendiente:
+                  </span>
                   <span className="font-bold text-orange-600">
-                    {formatearSoles(parseFloat(montoTotalPedido || montoTotal.toString()) - montoPagado)}
+                    {formatearSoles(
+                      parseFloat(montoTotalPedido || montoTotal.toString()) -
+                        montoPagado,
+                    )}
                   </span>
                 </div>
               </div>
 
               {/* Monto */}
               <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Monto a Pagar *
-            </label>
-            <div className="relative">
-              <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                max={montoRestante}
-                value={monto}
-                onChange={(e) => setMonto(e.target.value)}
-                className="w-full pl-10 pr-3 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                placeholder="0.00"
-              />
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Máximo: {formatearSoles(montoRestante)}
-            </p>
-          </div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Monto a Pagar *
+                </label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max={montoRestante}
+                    value={monto}
+                    onChange={(e) => setMonto(e.target.value)}
+                    className="w-full pl-10 pr-3 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="0.00"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Máximo: {formatearSoles(montoRestante)}
+                </p>
+              </div>
 
-          {/* Método de Pago */}
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Forma de Pago *
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setMetodoPago("Efectivo")}
-                className={`p-4 rounded-lg border-2 transition ${
-                  metodoPago === "Efectivo"
-                    ? "border-primary bg-primary/5 text-foreground"
-                    : "border-input bg-background text-muted-foreground hover:border-primary/50"
-                }`}
-              >
-                <DollarSign className="w-6 h-6 mx-auto mb-1" />
-                <span className="text-sm font-medium">Efectivo</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setMetodoPago("QR/Transferencia")}
-                className={`p-4 rounded-lg border-2 transition ${
-                  metodoPago === "QR/Transferencia"
-                    ? "border-primary bg-primary/5 text-foreground"
-                    : "border-input bg-background text-muted-foreground hover:border-primary/50"
-                }`}
-              >
-                <CreditCard className="w-6 h-6 mx-auto mb-1" />
-                <span className="text-sm font-medium">QR/Transferencia</span>
-              </button>
-            </div>
-          </div>
+              {/* Método de Pago */}
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Forma de Pago *
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setMetodoPago("Efectivo")}
+                    className={`p-4 rounded-lg border-2 transition ${
+                      metodoPago === "Efectivo"
+                        ? "border-primary bg-primary/5 text-foreground"
+                        : "border-input bg-background text-muted-foreground hover:border-primary/50"
+                    }`}
+                  >
+                    <DollarSign className="w-6 h-6 mx-auto mb-1" />
+                    <span className="text-sm font-medium">Efectivo</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMetodoPago("QR/Transferencia")}
+                    className={`p-4 rounded-lg border-2 transition ${
+                      metodoPago === "QR/Transferencia"
+                        ? "border-primary bg-primary/5 text-foreground"
+                        : "border-input bg-background text-muted-foreground hover:border-primary/50"
+                    }`}
+                  >
+                    <CreditCard className="w-6 h-6 mx-auto mb-1" />
+                    <span className="text-sm font-medium">
+                      QR/Transferencia
+                    </span>
+                  </button>
+                </div>
+              </div>
 
-          {/* Referencia */}
-          {metodoPago === "QR/Transferencia" && (
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Número de Operación (Opcional)
-              </label>
-              <div className="relative">
-                <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  value={referencia}
-                  onChange={(e) => setReferencia(e.target.value)}
-                  className="w-full pl-10 pr-3 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="Ej: 123456789"
+              {/* Referencia */}
+              {metodoPago === "QR/Transferencia" && (
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Número de Operación (Opcional)
+                  </label>
+                  <div className="relative">
+                    <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <input
+                      type="text"
+                      value={referencia}
+                      onChange={(e) => setReferencia(e.target.value)}
+                      className="w-full pl-10 pr-3 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder="Ej: 123456789"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Notas */}
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Notas (Opcional)
+                </label>
+                <textarea
+                  value={notas}
+                  onChange={(e) => setNotas(e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                  placeholder="Información adicional sobre el pago..."
                 />
               </div>
-            </div>
-          )}
 
-          {/* Notas */}
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Notas (Opcional)
-            </label>
-            <textarea
-              value={notas}
-              onChange={(e) => setNotas(e.target.value)}
-              rows={3}
-              className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-              placeholder="Información adicional sobre el pago..."
-            />
-          </div>
+              {/* Fecha de Pago */}
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Fecha del Pago *
+                </label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                  <input
+                    type="date"
+                    value={fechaPago}
+                    max={obtenerFechaPeruHoy()}
+                    onChange={(e) => {
+                      setFechaPago(e.target.value);
+                      setErrorFecha("");
+                    }}
+                    className={`w-full pl-10 pr-3 py-2 bg-background border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary ${
+                      errorFecha ? "border-red-400" : "border-input"
+                    }`}
+                  />
+                </div>
+                {errorFecha && (
+                  <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" /> {errorFecha}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground mt-1">
+                  No puede ser una fecha futura (máximo hoy:{" "}
+                  {obtenerFechaPeruHoy()})
+                </p>
+              </div>
 
               {/* Fecha y Hora */}
               <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 rounded-lg p-3">
@@ -304,20 +394,20 @@ export function RegistrarPagoModal({
         {/* Footer */}
         {!mostrarConfiguracionPrecio && (
           <div className="flex gap-3 p-4 border-t border-border">
-          <button
-            onClick={onClose}
-            className="flex-1 px-4 py-2 border border-input rounded-lg text-foreground hover:bg-accent transition"
-            disabled={guardando}
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleGuardar}
-            disabled={guardando}
-            className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition disabled:opacity-50"
-          >
-            {guardando ? "Guardando..." : "Registrar Pago"}
-          </button>
+            <button
+              onClick={onClose}
+              className="flex-1 px-4 py-2 border border-input rounded-lg text-foreground hover:bg-accent transition"
+              disabled={guardando}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleGuardar}
+              disabled={guardando}
+              className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition disabled:opacity-50"
+            >
+              {guardando ? "Guardando..." : "Registrar Pago"}
+            </button>
           </div>
         )}
       </div>
