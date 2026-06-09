@@ -99,6 +99,37 @@ export function esRUCValido(ruc: string): boolean {
 }
 
 /**
+ * Valida nombre: solo letras y espacios
+ */
+export function esNombreValido(nombre: string): boolean {
+  return /^[a-zA-ZáéíóúñÁÉÍÓÚÑ\s]+$/.test(nombre.trim());
+}
+
+/**
+ * Valida email con proveedores permitidos (Gmail, Outlook, Hotmail)
+ */
+export function esEmailConProveedorPermitido(email: string): boolean {
+  const dominiosPermitidos = ["@gmail.com", "@outlook.com", "@hotmail.com"];
+  return dominiosPermitidos.some((dominio) =>
+    email.toLowerCase().endsWith(dominio),
+  );
+}
+
+/**
+ * Valida dirección: permite letras, números, espacios y caracteres comunes en direcciones
+ */
+export function esDireccionValida(direccion: string): boolean {
+  return /^[a-zA-Z0-9áéíóúñÁÉÍÓÚÑ\s\.,#\-\/]+$/.test(direccion.trim());
+}
+
+/**
+ * Valida que solo contenga números
+ */
+export function soloNumeros(valor: string): boolean {
+  return /^\d*$/.test(valor);
+}
+
+/**
  * Valida que un monto sea válido (positivo, máximo 2 decimales)
  */
 export function esMontoValido(monto: string | number): boolean {

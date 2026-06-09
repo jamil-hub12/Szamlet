@@ -137,6 +137,7 @@ export function RegistrarPagoModal({
       metodoPago,
       usuarioCodigo,
       usuarioNombre,
+      fechaPago: obtenerFechaHoraPeruISO(),
       notas: notas.trim() || undefined,
     });
 

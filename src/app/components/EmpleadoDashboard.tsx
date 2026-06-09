@@ -71,7 +71,14 @@ import {
   formatearFechaHoraPeru,
   formatearFechaCorta,
 } from "../../utils/fechas";
-import { esPedidoVencido, diasHastaVencimiento } from "../utils/validaciones";
+import {
+  esPedidoVencido,
+  diasHastaVencimiento,
+  esNombreValido,
+  esEmailConProveedorPermitido,
+  esDireccionValida,
+  soloNumeros,
+} from "../utils/validaciones";
 
 // ─── Datos de pedidos ────────────────────────────────────────────────────────
 
@@ -149,17 +156,52 @@ function generateClienteId(lista: Cliente[]) {
 
 function validateForm(data: FormData): FormErrors {
   const errors: FormErrors = {};
-  if (!data.nombre.trim()) errors.nombre = "El nombre es obligatorio.";
-  if (!data.celular.trim()) errors.celular = "El celular es obligatorio.";
-  else if (!/^9\d{8}$/.test(data.celular.replace(/\s/g, "")))
+
+  // Validar nombre: solo letras y espacios
+  if (!data.nombre.trim()) {
+    errors.nombre = "El nombre es obligatorio.";
+  } else if (!esNombreValido(data.nombre)) {
+    errors.nombre = "El nombre solo puede contener letras y espacios.";
+  }
+
+  // Validar celular
+  if (!data.celular.trim()) {
+    errors.celular = "El celular es obligatorio.";
+  } else if (!/^9\d{8}$/.test(data.celular.replace(/\s/g, ""))) {
     errors.celular = "Número inválido (9 dígitos, empieza en 9).";
-  if (!data.dni.trim()) errors.dni = "El DNI es obligatorio.";
-  else if (!/^\d{8}$/.test(data.dni.trim()))
+  }
+
+  // Validar DNI: solo números y exactamente 8 dígitos
+  if (!data.dni.trim()) {
+    errors.dni = "El DNI es obligatorio.";
+  } else if (!soloNumeros(data.dni)) {
+    errors.dni = "El DNI solo puede contener números.";
+  } else if (!/^\d{8}$/.test(data.dni.trim())) {
     errors.dni = "El DNI debe tener exactamente 8 dígitos.";
-  if (data.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email))
-    errors.email = "Ingresa un correo válido.";
-  if (data.ruc.trim() && !/^(10|20)\d{9}$/.test(data.ruc.trim()))
-    errors.ruc = "El RUC debe tener 11 dígitos y comenzar con 10 o 20.";
+  }
+
+  // Validar email con proveedores permitidos
+  if (data.email.trim()) {
+    if (!esEmailConProveedorPermitido(data.email)) {
+      errors.email =
+        "El correo debe ser de @gmail.com, @outlook.com o @hotmail.com";
+    }
+  }
+
+  // Validar dirección
+  if (data.direccion.trim() && !esDireccionValida(data.direccion)) {
+    errors.direccion = "La dirección contiene caracteres no válidos.";
+  }
+
+  // Validar RUC: solo números
+  if (data.ruc.trim()) {
+    if (!soloNumeros(data.ruc)) {
+      errors.ruc = "El RUC solo puede contener números.";
+    } else if (!/^(10|20)\d{9}$/.test(data.ruc.trim())) {
+      errors.ruc = "El RUC debe tener 11 dígitos y comenzar con 10 o 20.";
+    }
+  }
+
   return errors;
 }
 
@@ -195,7 +237,30 @@ function NuevoClienteModal({
       : undefined;
 
   const handleChange = (field: keyof FormData, value: string) => {
-    setForm((f) => ({ ...f, [field]: value }));
+    let finalValue = value;
+
+    // Validar en tiempo real y filtrar caracteres no permitidos
+    if (field === "nombre") {
+      // Solo letras y espacios
+      finalValue = value.replace(/[^a-zA-ZáéíóúñÁÉÍÓÚÑ\s]/g, "");
+    } else if (field === "celular") {
+      // Solo números, máximo 9 dígitos para Perú
+      finalValue = value.replace(/\D/g, "").slice(0, 9);
+    } else if (field === "dni") {
+      // Solo números, máximo 8 dígitos
+      finalValue = value.replace(/\D/g, "").slice(0, 8);
+    } else if (field === "ruc") {
+      // Solo números, máximo 11 dígitos
+      finalValue = value.replace(/\D/g, "").slice(0, 11);
+    } else if (field === "direccion") {
+      // Solo caracteres válidos para direcciones
+      finalValue = value.replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ\s\.,#\-\/]/g, "");
+    } else if (field === "email") {
+      // Convertir a minúsculas para validación
+      finalValue = value.toLowerCase();
+    }
+
+    setForm((f) => ({ ...f, [field]: finalValue }));
     if (errors[field]) setErrors((e) => ({ ...e, [field]: undefined }));
   };
 
