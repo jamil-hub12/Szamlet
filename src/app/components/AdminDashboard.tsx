@@ -2175,13 +2175,15 @@ export function AdminDashboard() {
                                   {stockTotal} uds.
                                 </td>
                                 <td className="px-4 py-3 text-right">
-                                  <button
-                                    type="button"
-                                    onClick={() => setProductoEditando(p)}
-                                    className="px-3 py-1.5 rounded-lg text-xs border border-border text-foreground hover:bg-accent transition"
-                                  >
-                                    Editar
-                                  </button>
+                                  <div className="flex items-center justify-end gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => setProductoEditando(p)}
+                                      className="px-3 py-1.5 rounded-lg text-xs border border-border text-foreground hover:bg-accent transition"
+                                    >
+                                      Editar
+                                    </button>
+                                  </div>
                                 </td>
                               </tr>
                               {isExpanded && (
