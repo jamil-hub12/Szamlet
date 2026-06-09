@@ -18,9 +18,15 @@ export function esPedidoVencido(
 
 /**
  * Calcula días hasta vencimiento (negativo si vencido)
+ * No calcula si el pedido está Entregado o Cancelado
  */
-export function diasHastaVencimiento(fechaEntrega?: string): number | null {
+export function diasHastaVencimiento(
+  fechaEntrega?: string,
+  estado?: string,
+): number | null {
   if (!fechaEntrega) return null;
+  // No calcular días si ya fue entregado o cancelado
+  if (estado === "Entregado" || estado === "Cancelado") return null;
 
   const hoy = new Date(obtenerFechaPeruHoy());
   const entrega = new Date(fechaEntrega);
