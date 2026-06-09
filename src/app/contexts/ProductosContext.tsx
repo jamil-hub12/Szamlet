@@ -45,13 +45,16 @@ type ProductosContextType = {
     modelo: string;
     tela: string;
     disenio: string;
-    tallas: { talla: string; colores: { color: string; stock: number }[] }[];
+    tallas: { talla: string; colores: { color: string }[] }[];
   }) => Promise<ProductoCatalogo | null>;
   actualizarProducto: (
     id: string,
     data: Partial<ProductoDB>,
   ) => Promise<boolean>;
   actualizarStock: (colorId: string, stock: number) => Promise<boolean>;
+  agregarStockPorColor: (
+    colorIds: { id: string; stock: number }[],
+  ) => Promise<boolean>;
   eliminarProducto: (id: string) => Promise<boolean>;
   refetch: () => Promise<void>;
 };
@@ -240,11 +243,11 @@ export function ProductosProvider({ children }: { children: ReactNode }) {
 
         if (varianteError) throw varianteError;
 
-        // Insertar colores
+        // Insertar colores sin stock inicial (será agregado por el confeccionador)
         const coloresInsert = talla.colores.map((c) => ({
           variante_id: nuevaVariante.id,
           color: c.color,
-          stock: c.stock,
+          stock: 0, // Stock inicial 0, será actualizado por confeccionador
         }));
 
         const { error: coloresError } = await supabase
@@ -399,6 +402,52 @@ export function ProductosProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const agregarStockPorColor = async (
+    colorIds: { id: string; stock: number }[],
+  ): Promise<boolean> => {
+    try {
+      // Actualizar stock para múltiples colores
+      for (const { id, stock } of colorIds) {
+        const { error: updateError } = await supabase
+          .from("producto_colores")
+          .update({ stock })
+          .eq("id", id);
+
+        if (updateError) throw updateError;
+      }
+
+      // Registrar en auditoría
+      const usuario = await obtenerUsuarioActual();
+      const usuarioFinal = usuario || { codigo: "SISTEMA", nombre: "Sistema" };
+
+      await registrarAuditoria({
+        usuarioCodigo: usuarioFinal.codigo,
+        usuarioNombre: usuarioFinal.nombre,
+        accion: "actualizar_stock",
+        modulo: "productos",
+        entidadId: "BATCH",
+        entidadNombre: `Stock agregado para ${colorIds.length} color(es)`,
+        detalles: {
+          coloresActualizados: colorIds.length,
+          totalStock: colorIds.reduce((sum, c) => sum + c.stock, 0),
+        },
+      });
+
+      // Evitar que la suscripción haga múltiples fetches
+      skipNextSubscriptionUpdate.current = true;
+      setTimeout(() => {
+        skipNextSubscriptionUpdate.current = false;
+      }, 1000);
+
+      await fetchProductos();
+      return true;
+    } catch (err) {
+      console.error("Error al agregar stock:", err);
+      setError(err instanceof Error ? err.message : "Error al agregar stock");
+      return false;
+    }
+  };
+
   return (
     <ProductosContext.Provider
       value={{
@@ -408,6 +457,7 @@ export function ProductosProvider({ children }: { children: ReactNode }) {
         agregarProducto,
         actualizarProducto,
         actualizarStock,
+        agregarStockPorColor,
         eliminarProducto,
         refetch: fetchProductos,
       }}
