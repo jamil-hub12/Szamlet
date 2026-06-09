@@ -17,7 +17,7 @@ type Empleado = {
   nombre: string;
   email: string;
   telefono: string;
-  rol: "Atención al cliente" | "Administrador";
+  rol: "Atención al cliente" | "Administrador" | "Confeccionador";
   fechaIngreso: string;
   estado: "Activo" | "Licencia" | "Inactivo";
 };
@@ -26,14 +26,18 @@ type FormData = {
   nombre: string;
   email: string;
   telefono: string;
-  rol: "Atención al cliente" | "Administrador" | "";
+  rol: "Atención al cliente" | "Administrador" | "Confeccionador" | "";
   password: string;
   confirmPassword: string;
 };
 
 type FormErrors = Partial<Record<keyof FormData, string>>;
 
-const rolesDisponibles = ["Atención al cliente", "Administrador"];
+const rolesDisponibles = [
+  "Atención al cliente",
+  "Administrador",
+  "Confeccionador",
+];
 
 function validateForm(
   data: FormData,
@@ -121,7 +125,10 @@ export function NuevoEmpleadoModal({
         nombre: form.nombre.trim(),
         email: form.email.trim(),
         telefono: form.telefono.trim(),
-        rol: form.rol as "Atención al cliente" | "Administrador",
+        rol: form.rol as
+          | "Atención al cliente"
+          | "Administrador"
+          | "Confeccionador",
         fechaIngreso: new Date().toISOString().split("T")[0],
         estado: "Activo",
       };
