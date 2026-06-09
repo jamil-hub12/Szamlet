@@ -842,7 +842,7 @@ export function AdminDashboard() {
           const montoPagado = p.montoPagado || 0;
           const pendiente = montoTotal - montoPagado;
           const vencido = esPedidoVencido(p.fechaEntrega, p.estado);
-          const diasRestantes = diasHastaVencimiento(p.fechaEntrega);
+          const diasRestantes = diasHastaVencimiento(p.fechaEntrega, p.estado);
 
           return {
             codigo: p.codigo,
@@ -851,7 +851,11 @@ export function AdminDashboard() {
             pagado: formatearSoles(montoPagado),
             pendiente: formatearSoles(pendiente),
             fecha: p.fechaEntrega ? formatearFechaCorta(p.fechaEntrega) : "—",
-            estado: vencido ? "Vencido" : `${diasRestantes} días`,
+            estado: vencido
+              ? "Vencido"
+              : diasRestantes !== null
+                ? `${diasRestantes} días`
+                : "—",
           };
         });
 
@@ -2991,6 +2995,7 @@ export function AdminDashboard() {
                           );
                           const diasRestantes = diasHastaVencimiento(
                             p.fechaEntrega,
+                            p.estado,
                           );
 
                           return (
