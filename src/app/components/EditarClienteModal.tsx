@@ -1,13 +1,10 @@
 import { useState } from "react";
+import { X, User, Mail, Phone, MapPin, AlertCircle } from "lucide-react";
 import {
-  X,
-  User,
-  Mail,
-  Phone,
-  MapPin,
-  CreditCard,
-  AlertCircle,
-} from "lucide-react";
+  esNombreValido,
+  esEmailConProveedorPermitido,
+  esDireccionValida,
+} from "../utils/validaciones";
 
 type Cliente = {
   id: string;
@@ -64,7 +61,25 @@ export function EditarClienteModal({
 
   const validate = () => {
     if (!form.nombre.trim()) return false;
+    if (!esNombreValido(form.nombre)) {
+      setErrorEmail("El nombre solo puede contener letras y espacios.");
+      return false;
+    }
     if (!form.celular.trim()) return false;
+    if (!/^9\d{8}$/.test(form.celular.replace(/\s/g, ""))) {
+      setErrorEmail("Número inválido (9 dígitos, empieza en 9).");
+      return false;
+    }
+    if (form.email.trim() && !esEmailConProveedorPermitido(form.email)) {
+      setErrorEmail(
+        "El correo debe ser de @gmail.com, @outlook.com o @hotmail.com",
+      );
+      return false;
+    }
+    if (form.direccion.trim() && !esDireccionValida(form.direccion)) {
+      setErrorEmail("La dirección contiene caracteres no válidos.");
+      return false;
+    }
     if (emailDuplicado) {
       setErrorEmail("Este email ya está registrado para otro cliente");
       return false;
@@ -128,7 +143,14 @@ export function EditarClienteModal({
               type="text"
               id="nombre"
               value={form.nombre}
-              onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+              onChange={(e) => {
+                // Solo letras y espacios
+                const valor = e.target.value.replace(
+                  /[^a-zA-ZáéíóúñÁÉÍÓÚÑ\s]/g,
+                  "",
+                );
+                setForm({ ...form, nombre: valor });
+              }}
               className={`w-full px-3 py-2.5 rounded-lg bg-input-background border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20 ${
                 showErrors && !form.nombre.trim()
                   ? "border-red-400"
@@ -158,7 +180,9 @@ export function EditarClienteModal({
               id="email"
               value={form.email}
               onChange={(e) => {
-                setForm({ ...form, email: e.target.value });
+                // Convertir a minúsculas
+                const valor = e.target.value.toLowerCase();
+                setForm({ ...form, email: valor });
                 setErrorEmail("");
               }}
               className={`w-full px-3 py-2.5 rounded-lg bg-input-background border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20 ${
@@ -191,7 +215,11 @@ export function EditarClienteModal({
               type="tel"
               id="celular"
               value={form.celular}
-              onChange={(e) => setForm({ ...form, celular: e.target.value })}
+              onChange={(e) => {
+                // Solo números, solo permite formato de teléfono peruano
+                const valor = e.target.value.replace(/\D/g, "").slice(0, 9);
+                setForm({ ...form, celular: valor });
+              }}
               className={`w-full px-3 py-2.5 rounded-lg bg-input-background border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20 ${
                 showErrors && !form.celular.trim()
                   ? "border-red-400"
@@ -219,7 +247,14 @@ export function EditarClienteModal({
             <textarea
               id="direccion"
               value={form.direccion}
-              onChange={(e) => setForm({ ...form, direccion: e.target.value })}
+              onChange={(e) => {
+                // Permitir solo caracteres válidos para direcciones
+                const valor = e.target.value.replace(
+                  /[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ\s\.,#\-\/]/g,
+                  "",
+                );
+                setForm({ ...form, direccion: valor });
+              }}
               rows={2}
               className="w-full px-3 py-2.5 rounded-lg bg-input-background border border-border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20 resize-none"
               placeholder="Av. Principal 123, Lima"

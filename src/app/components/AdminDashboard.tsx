@@ -44,7 +44,7 @@ import {
 } from "lucide-react";
 import { NuevoProductoModal } from "./NuevoProductoModal";
 import { EditarProductoModal } from "./EditarProductoModal";
-import { usePedidos } from "../contexts/PedidosContext";
+import { usePedidos, type Pedido } from "../contexts/PedidosContext";
 import { useEmpleados, type Empleado } from "../contexts/EmpleadosContext";
 import {
   useProductos,
@@ -337,7 +337,9 @@ export function AdminDashboard() {
   );
   const [filtroEstadoPedidos, setFiltroEstadoPedidos] = useState("Todos");
   const [filtroPrioridadPedidos, setFiltroPrioridadPedidos] = useState("Todas");
-  const [pedidoSeleccionado, setPedidoSeleccionado] = useState<any>(null);
+  const [pedidoSeleccionado, setPedidoSeleccionado] = useState<Pedido | null>(
+    null,
+  );
   const [modalEditarPedidoAbierto, setModalEditarPedidoAbierto] =
     useState(false);
   const [clienteHistorial, setClienteHistorial] = useState<any>(null);

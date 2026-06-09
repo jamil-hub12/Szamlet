@@ -71,7 +71,7 @@ function convertirEmpleado(emp: EmpleadoDB): Empleado {
     rol: emp.rol as "Atención al cliente" | "Administrador",
     fechaIngreso: emp.fecha_ingreso,
     estado: emp.estado as "Activo" | "Licencia" | "Inactivo",
-    permisos: (emp.permisos as Permiso[]) || [],
+    permisos: [],
   };
 }
 
@@ -190,14 +190,12 @@ export function EmpleadosProvider({ children }: { children: ReactNode }) {
         throw new Error("No se pudo crear el usuario de autenticación");
 
       // Paso 2: Crear registro en la tabla empleados
-      const permisosDefault = obtenerPermisosDefault(data.rol);
       const insertData: EmpleadoInsert = {
         nombre: data.nombre,
         email: data.email,
         telefono: data.telefono,
         rol: data.rol,
         estado: data.estado,
-        permisos: permisosDefault,
       };
 
       const { data: nuevoEmpleado, error: insertError } = await supabase
@@ -263,7 +261,6 @@ export function EmpleadosProvider({ children }: { children: ReactNode }) {
       if (data.telefono !== undefined) updateData.telefono = data.telefono;
       if (data.rol !== undefined) updateData.rol = data.rol;
       if (data.estado !== undefined) updateData.estado = data.estado;
-      if (data.permisos !== undefined) updateData.permisos = data.permisos;
 
       const { error: updateError } = await supabase
         .from("empleados")
