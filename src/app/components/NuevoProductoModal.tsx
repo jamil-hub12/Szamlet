@@ -41,6 +41,7 @@ export type ProductoCatalogo = {
   tela: string;
   disenio: string;
   tallas: TallaProducto[];
+  preciosPorTalla: Record<string, number>;
   fechaRegistro: string;
 };
 
@@ -205,10 +206,12 @@ function ColoresSelector({
   coloresSeleccionados,
   onChange,
   showErrors,
+  onColorPersonalizadoAgregado,
 }: {
   coloresSeleccionados: string[];
   onChange: (colores: string[]) => void;
   showErrors: boolean;
+  onColorPersonalizadoAgregado?: (color: string) => void;
 }) {
   const [addingColor, setAddingColor] = useState(false);
   const [nuevoColor, setNuevoColor] = useState("");
@@ -233,6 +236,8 @@ function ColoresSelector({
       !coloresSeleccionados.find((c) => c.toLowerCase() === cn.toLowerCase())
     ) {
       onChange([...coloresSeleccionados, cn]);
+      // Notificar al padre que se agregó un color personalizado
+      onColorPersonalizadoAgregado?.(cn);
     }
     setAddingColor(false);
     setNuevoColor("");
@@ -341,6 +346,7 @@ function VarianteCard({
   canRemove,
   showErrors,
   productosExistentes,
+  onColorPersonalizadoAgregado,
 }: {
   variante: VarianteForm;
   index: number;
@@ -350,6 +356,7 @@ function VarianteCard({
   canRemove: boolean;
   showErrors: boolean;
   productosExistentes: ProductoCatalogo[];
+  onColorPersonalizadoAgregado?: (color: string) => void;
 }) {
   const [addingTalla, setAddingTalla] = useState(false);
   const [nuevaTalla, setNuevaTalla] = useState("");
@@ -488,9 +495,15 @@ function VarianteCard({
               options={telasEnCatalogo}
               placeholder="Seleccionar o agregar"
               onChange={setTela}
+              disabled={!modelo}
               hasError={errTela}
               filterNumbers={true}
             />
+            {!modelo && (
+              <p className="text-xs text-amber-600">
+                Primero selecciona un modelo
+              </p>
+            )}
             {errTela && <p className="text-xs text-red-500">Obligatorio</p>}
           </div>
           <div className="space-y-1.5">
@@ -506,6 +519,11 @@ function VarianteCard({
               hasError={errDisenio}
               filterNumbers={true}
             />
+            {!variante.tela && (
+              <p className="text-xs text-amber-600">
+                Primero selecciona una tela
+              </p>
+            )}
             {errDisenio && <p className="text-xs text-red-500">Obligatorio</p>}
           </div>
         </div>
@@ -610,6 +628,7 @@ function VarianteCard({
               onChange({ ...variante, coloresSeleccionados: cols })
             }
             showErrors={showErrors}
+            onColorPersonalizadoAgregado={onColorPersonalizadoAgregado}
           />
         )}
 
@@ -730,6 +749,19 @@ export function NuevoProductoModal({
   const addVariante = () =>
     setForm((f) => ({ ...f, variantes: [...f.variantes, emptyVariante()] }));
 
+  // Sincronizar color personalizado a todas las variantes
+  const handleColorPersonalizadoAgregado = (colorNuevo: string) => {
+    setForm((f) => ({
+      ...f,
+      variantes: f.variantes.map((v) => ({
+        ...v,
+        coloresSeleccionados: !v.coloresSeleccionados.includes(colorNuevo)
+          ? [...v.coloresSeleccionados, colorNuevo]
+          : v.coloresSeleccionados,
+      })),
+    }));
+  };
+
   // Validación
   const validate = (): boolean => {
     if (!form.modelo) return false;
@@ -783,6 +815,7 @@ export function NuevoProductoModal({
           tela: v.tela,
           disenio: v.disenio,
           tallas,
+          preciosPorTalla: v.preciosPorTalla,
           fechaRegistro: hoy,
         };
         acum = [...acum, nuevo];
@@ -881,6 +914,9 @@ export function NuevoProductoModal({
                       canRemove={form.variantes.length > 1}
                       showErrors={showErrors}
                       productosExistentes={productosExistentes}
+                      onColorPersonalizadoAgregado={
+                        handleColorPersonalizadoAgregado
+                      }
                     />
                   ))}
                 </div>

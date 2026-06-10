@@ -34,6 +34,7 @@ export type ProductoCatalogo = {
   tela: string;
   disenio: string;
   tallas: TallaProducto[];
+  preciosPorTalla: Record<string, number>;
   fechaRegistro: string;
 };
 
@@ -103,6 +104,7 @@ export function ProductosProvider({ children }: { children: ReactNode }) {
             (v) => v.producto_id === producto.id,
           );
 
+          const preciosPorTalla: Record<string, number> = {};
           const tallas: TallaProducto[] = variantes.map((variante) => {
             const colores = (coloresData || [])
               .filter((c) => c.variante_id === variante.id)
@@ -111,6 +113,9 @@ export function ProductosProvider({ children }: { children: ReactNode }) {
                 color: c.color,
                 stock: c.stock,
               }));
+
+            // Capturar precio de la variante (puede ser 0, null, o un valor numérico)
+            preciosPorTalla[variante.talla] = Number(variante.precio) || 0;
 
             return {
               id: variante.id,
@@ -126,6 +131,7 @@ export function ProductosProvider({ children }: { children: ReactNode }) {
             tela: producto.tela,
             disenio: producto.disenio,
             tallas,
+            preciosPorTalla,
             fechaRegistro:
               producto.fecha_registro || new Date().toISOString().split("T")[0],
           };
@@ -214,7 +220,11 @@ export function ProductosProvider({ children }: { children: ReactNode }) {
     modelo: string;
     tela: string;
     disenio: string;
-    tallas: { talla: string; colores: { color: string; stock: number }[] }[];
+    tallas: {
+      talla: string;
+      precio?: number;
+      colores: { color: string; stock: number }[];
+    }[];
   }): Promise<ProductoCatalogo | null> => {
     try {
       // Establecer flag ANTES de insertar
@@ -243,11 +253,15 @@ export function ProductosProvider({ children }: { children: ReactNode }) {
           .insert({
             producto_id: nuevoProducto.id,
             talla: talla.talla,
+            precio: talla.precio || 0,
           })
           .select()
           .single();
 
-        if (varianteError) throw varianteError;
+        if (varianteError) {
+          console.error("Error al insertar variante:", varianteError);
+          throw varianteError;
+        }
 
         // Insertar colores sin stock inicial (será agregado por el equipo de Producción)
         const coloresInsert = talla.colores.map((c) => ({
@@ -260,7 +274,10 @@ export function ProductosProvider({ children }: { children: ReactNode }) {
           .from("producto_colores")
           .insert(coloresInsert);
 
-        if (coloresError) throw coloresError;
+        if (coloresError) {
+          console.error("Error al insertar colores:", coloresError);
+          throw coloresError;
+        }
       }
 
       await fetchProductos();

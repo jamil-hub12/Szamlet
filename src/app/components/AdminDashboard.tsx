@@ -3440,6 +3440,7 @@ export function AdminDashboard() {
                 disenio: producto.disenio,
                 tallas: producto.tallas.map((t) => ({
                   talla: t.talla,
+                  precio: producto.preciosPorTalla[t.talla],
                   colores: t.colores.map((c) => ({
                     color: c.color,
                     stock: c.stock,

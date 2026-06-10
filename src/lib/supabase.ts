@@ -217,6 +217,7 @@ export type Database = {
           id: string;
           producto_id: string;
           talla: string;
+          precio: number;
           created_at: string;
           updated_at: string;
         };
@@ -224,6 +225,7 @@ export type Database = {
           id?: string;
           producto_id: string;
           talla: string;
+          precio?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -231,6 +233,7 @@ export type Database = {
           id?: string;
           producto_id?: string;
           talla?: string;
+          precio?: number;
           created_at?: string;
           updated_at?: string;
         };
