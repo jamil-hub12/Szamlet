@@ -121,6 +121,11 @@ export function NuevoEmpleadoModal({
       finalValue = value.replace(/[0-9@]/g, "");
     }
 
+    // Filtro para email: solo letras, números, @, . y -
+    if (field === "email" && typeof value === "string") {
+      finalValue = value.replace(/[^a-zA-Z0-9@.\-]/g, "").toLowerCase();
+    }
+
     // Filtro para teléfono: solo números, máximo 9 dígitos
     if (field === "telefono" && typeof value === "string") {
       finalValue = value.replace(/[^0-9]/g, "").slice(0, 9);

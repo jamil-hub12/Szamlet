@@ -7,7 +7,7 @@ import {
   Mail,
   FileText,
   Download,
-  DollarSign,
+  Coins,
   CheckCircle,
   Clock,
   XCircle,
@@ -268,7 +268,7 @@ export function DetallePedidoModal({
           {montoTotal > 0 && (
             <div className="space-y-3">
               <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider flex items-center gap-2">
-                <DollarSign className="w-4 h-4" />
+                <Coins className="w-4 h-4" />
                 Información de Pago
               </h4>
               <div className="bg-muted/30 border border-border rounded-xl p-4">

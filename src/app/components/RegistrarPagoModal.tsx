@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   X,
-  DollarSign,
+  Coins,
   CreditCard,
   Calendar,
   AlertCircle,
@@ -158,7 +158,7 @@ export function RegistrarPagoModal({
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
-              <DollarSign className="w-5 h-5 text-green-500" />
+              <Coins className="w-5 h-5 text-green-500" />
             </div>
             <div>
               <h2 className="text-lg font-semibold text-foreground">
@@ -249,7 +249,7 @@ export function RegistrarPagoModal({
                 Monto Total del Pedido *
               </label>
               <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Coins className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
                   type="number"
                   step="0.01"
@@ -308,7 +308,7 @@ export function RegistrarPagoModal({
                   Monto a Pagar *
                 </label>
                 <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Coins className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <input
                     type="number"
                     step="0.01"
@@ -340,7 +340,7 @@ export function RegistrarPagoModal({
                         : "border-input bg-background text-muted-foreground hover:border-primary/50"
                     }`}
                   >
-                    <DollarSign className="w-6 h-6 mx-auto mb-1" />
+                    <Coins className="w-6 h-6 mx-auto mb-1" />
                     <span className="text-sm font-medium">Efectivo</span>
                   </button>
                   <button

@@ -180,8 +180,10 @@ export function EditarClienteModal({
               id="email"
               value={form.email}
               onChange={(e) => {
-                // Convertir a minúsculas
-                const valor = e.target.value.toLowerCase();
+                // Solo letras, números, @, . y -
+                const valor = e.target.value
+                  .replace(/[^a-zA-Z0-9@.\-]/g, "")
+                  .toLowerCase();
                 setForm({ ...form, email: valor });
                 setErrorEmail("");
               }}
