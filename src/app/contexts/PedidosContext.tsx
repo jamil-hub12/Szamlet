@@ -230,6 +230,12 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
     items?: PedidoItemData[];
   }): Promise<Pedido | null> => {
     try {
+      // Establecer flag ANTES de insertar
+      skipNextSubscriptionUpdate.current = true;
+      setTimeout(() => {
+        skipNextSubscriptionUpdate.current = false;
+      }, 1000);
+
       const insertData: PedidoInsert = {
         cliente_id: data.clienteId,
         articulo: data.articulo,
@@ -337,12 +343,6 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
         },
       });
 
-      // Evitar que la suscripción haga un fetch completo
-      skipNextSubscriptionUpdate.current = true;
-      setTimeout(() => {
-        skipNextSubscriptionUpdate.current = false;
-      }, 1000);
-
       setPedidos((prev) => [pedidoConvertido, ...prev]);
       return pedidoConvertido;
     } catch (err) {
@@ -360,6 +360,12 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
     datos: Partial<Pedido>,
   ): Promise<boolean> => {
     try {
+      // Establecer flag ANTES de actualizar
+      skipNextSubscriptionUpdate.current = true;
+      setTimeout(() => {
+        skipNextSubscriptionUpdate.current = false;
+      }, 1000);
+
       // Obtener el pedido actual
       const pedidoActual = pedidos.find((p) => p.codigo === codigo);
       if (!pedidoActual) {
@@ -405,12 +411,6 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
         .eq("codigo", codigo);
 
       if (updateError) throw updateError;
-
-      // Evitar que la suscripción haga un fetch completo
-      skipNextSubscriptionUpdate.current = true;
-      setTimeout(() => {
-        skipNextSubscriptionUpdate.current = false;
-      }, 1000);
 
       const usuario = await obtenerUsuarioActual();
       const usuarioFinal = usuario || { codigo: "SISTEMA", nombre: "Sistema" };

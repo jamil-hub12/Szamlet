@@ -173,6 +173,12 @@ export function PagosProvider({ children }: { children: ReactNode }) {
     pago: Omit<Pago, "id" | "createdAt">,
   ): Promise<boolean> => {
     try {
+      // Establecer flag ANTES de insertar
+      skipNextSubscriptionUpdate.current = true;
+      setTimeout(() => {
+        skipNextSubscriptionUpdate.current = false;
+      }, 1000);
+
       // 1. Insertar registro en tabla pagos
       const { error: errorPago } = await supabase.from("pagos").insert({
         pedido_codigo: pago.pedidoCodigo,
@@ -242,12 +248,6 @@ export function PagosProvider({ children }: { children: ReactNode }) {
       });
 
       console.log("✅ Pago registrado correctamente");
-
-      // Evitar que la suscripción haga un fetch completo
-      skipNextSubscriptionUpdate.current = true;
-      setTimeout(() => {
-        skipNextSubscriptionUpdate.current = false;
-      }, 1000);
 
       await fetchPagos();
       return true;

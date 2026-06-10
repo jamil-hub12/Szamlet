@@ -217,6 +217,12 @@ export function ProductosProvider({ children }: { children: ReactNode }) {
     tallas: { talla: string; colores: { color: string; stock: number }[] }[];
   }): Promise<ProductoCatalogo | null> => {
     try {
+      // Establecer flag ANTES de insertar
+      skipNextSubscriptionUpdate.current = true;
+      setTimeout(() => {
+        skipNextSubscriptionUpdate.current = false;
+      }, 1000);
+
       // Insertar producto
       const { data: nuevoProducto, error: productoError } = await supabase
         .from("productos")
@@ -257,12 +263,6 @@ export function ProductosProvider({ children }: { children: ReactNode }) {
         if (coloresError) throw coloresError;
       }
 
-      // Evitar que la suscripción haga múltiples fetches
-      skipNextSubscriptionUpdate.current = true;
-      setTimeout(() => {
-        skipNextSubscriptionUpdate.current = false;
-      }, 1000);
-
       await fetchProductos();
 
       // Registrar en auditoría
@@ -300,6 +300,12 @@ export function ProductosProvider({ children }: { children: ReactNode }) {
     data: Partial<ProductoDB>,
   ): Promise<boolean> => {
     try {
+      // Establecer flag ANTES de actualizar
+      skipNextSubscriptionUpdate.current = true;
+      setTimeout(() => {
+        skipNextSubscriptionUpdate.current = false;
+      }, 1000);
+
       const productoActual = productos.find((p) => p.id === id);
 
       const { error: updateError } = await supabase
@@ -344,6 +350,12 @@ export function ProductosProvider({ children }: { children: ReactNode }) {
     stock: number,
   ): Promise<boolean> => {
     try {
+      // Establecer flag ANTES de actualizar stock
+      skipNextSubscriptionUpdate.current = true;
+      setTimeout(() => {
+        skipNextSubscriptionUpdate.current = false;
+      }, 1000);
+
       const { error: updateError } = await supabase
         .from("producto_colores")
         .update({ stock })

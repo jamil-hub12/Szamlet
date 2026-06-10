@@ -114,6 +114,12 @@ export function ClientesProvider({ children }: { children: ReactNode }) {
     data: Omit<Cliente, "id" | "codigo" | "fechaRegistro">,
   ): Promise<Cliente | null> => {
     try {
+      // Establecer flag ANTES de insertar
+      skipNextSubscriptionUpdate.current = true;
+      setTimeout(() => {
+        skipNextSubscriptionUpdate.current = false;
+      }, 1000);
+
       const insertData: ClienteInsert = {
         nombre: data.nombre,
         email: data.email,
@@ -151,12 +157,6 @@ export function ClientesProvider({ children }: { children: ReactNode }) {
         },
       });
 
-      // Evitar que la suscripción haga un fetch completo
-      skipNextSubscriptionUpdate.current = true;
-      setTimeout(() => {
-        skipNextSubscriptionUpdate.current = false;
-      }, 1000);
-
       setClientes((prev) => [...prev, clienteConvertido]);
       return clienteConvertido;
     } catch (err) {
@@ -171,6 +171,12 @@ export function ClientesProvider({ children }: { children: ReactNode }) {
     data: Partial<Cliente>,
   ): Promise<boolean> => {
     try {
+      // Establecer flag ANTES de actualizar
+      skipNextSubscriptionUpdate.current = true;
+      setTimeout(() => {
+        skipNextSubscriptionUpdate.current = false;
+      }, 1000);
+
       const clienteActual = clientes.find((c) => c.codigo === codigo);
 
       const updateData: ClienteUpdate = {};
@@ -207,12 +213,6 @@ export function ClientesProvider({ children }: { children: ReactNode }) {
         });
       }
 
-      // Evitar que la suscripción haga un fetch completo
-      skipNextSubscriptionUpdate.current = true;
-      setTimeout(() => {
-        skipNextSubscriptionUpdate.current = false;
-      }, 1000);
-
       setClientes((prev) =>
         prev.map((cli) => (cli.codigo === codigo ? { ...cli, ...data } : cli)),
       );
@@ -228,6 +228,11 @@ export function ClientesProvider({ children }: { children: ReactNode }) {
 
   const eliminarCliente = async (codigo: string): Promise<boolean> => {
     try {
+      // Establecer flag ANTES de eliminar
+      skipNextSubscriptionUpdate.current = true;
+      setTimeout(() => {
+        skipNextSubscriptionUpdate.current = false;
+      }, 1000);
       const clienteActual = clientes.find((c) => c.codigo === codigo);
 
       const { error: deleteError } = await supabase
