@@ -211,6 +211,12 @@ export function EmpleadosProvider({ children }: { children: ReactNode }) {
         fecha_ingreso: new Date().toISOString().split("T")[0],
       };
 
+      // Establecer flag ANTES de insertar
+      skipNextSubscriptionUpdate.current = true;
+      setTimeout(() => {
+        skipNextSubscriptionUpdate.current = false;
+      }, 1000);
+
       const { data: nuevoEmpleado, error: insertError } = await supabase
         .from("empleados")
         .insert(insertData)
@@ -224,12 +230,6 @@ export function EmpleadosProvider({ children }: { children: ReactNode }) {
       }
 
       const empleadoConvertido = convertirEmpleado(nuevoEmpleado);
-
-      // Evitar que la suscripción haga un fetch completo
-      skipNextSubscriptionUpdate.current = true;
-      setTimeout(() => {
-        skipNextSubscriptionUpdate.current = false;
-      }, 1000);
 
       setEmpleados((prev) => [...prev, empleadoConvertido]);
 
@@ -267,6 +267,12 @@ export function EmpleadosProvider({ children }: { children: ReactNode }) {
     data: Partial<Empleado>,
   ): Promise<boolean> => {
     try {
+      // Establecer flag ANTES de actualizar
+      skipNextSubscriptionUpdate.current = true;
+      setTimeout(() => {
+        skipNextSubscriptionUpdate.current = false;
+      }, 1000);
+
       const updateData: EmpleadoUpdate = {};
 
       if (data.nombre !== undefined) updateData.nombre = data.nombre;
@@ -281,12 +287,6 @@ export function EmpleadosProvider({ children }: { children: ReactNode }) {
         .eq("codigo", codigo);
 
       if (updateError) throw updateError;
-
-      // Evitar que la suscripción haga un fetch completo
-      skipNextSubscriptionUpdate.current = true;
-      setTimeout(() => {
-        skipNextSubscriptionUpdate.current = false;
-      }, 1000);
 
       setEmpleados((prev) =>
         prev.map((emp) => (emp.codigo === codigo ? { ...emp, ...data } : emp)),
@@ -323,6 +323,12 @@ export function EmpleadosProvider({ children }: { children: ReactNode }) {
 
   const eliminarEmpleado = async (codigo: string): Promise<boolean> => {
     try {
+      // Establecer flag ANTES de eliminar
+      skipNextSubscriptionUpdate.current = true;
+      setTimeout(() => {
+        skipNextSubscriptionUpdate.current = false;
+      }, 1000);
+
       const empleadoAEliminar = empleados.find((emp) => emp.codigo === codigo);
 
       const { error: deleteError } = await supabase
@@ -331,12 +337,6 @@ export function EmpleadosProvider({ children }: { children: ReactNode }) {
         .eq("codigo", codigo);
 
       if (deleteError) throw deleteError;
-
-      // Evitar que la suscripción haga un fetch completo
-      skipNextSubscriptionUpdate.current = true;
-      setTimeout(() => {
-        skipNextSubscriptionUpdate.current = false;
-      }, 1000);
 
       setEmpleados((prev) => prev.filter((emp) => emp.codigo !== codigo));
 

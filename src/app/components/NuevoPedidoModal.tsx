@@ -72,7 +72,8 @@ type ProductoForm = {
   disenio: string;
   tallasSeleccionadas: string[];
   detallesTallas: Record<string, ColorCantidad[]>;
-  preciosPorTalla: Record<string, number | "">; // precio unitario por talla
+  preciosPorTalla: Record<string, number>; // precio unitario por talla (del catálogo)
+  descuentoPorcentaje: number; // 0, 5, o 10
   observaciones: string;
 };
 
@@ -119,7 +120,8 @@ function calcSub(p: ProductoForm): number {
   return p.tallasSeleccionadas.reduce((total, t) => {
     const precio = p.preciosPorTalla[t];
     if (!precio) return total;
-    return total + Number(precio) * cantTalla(p.detallesTallas[t] ?? []);
+    const precioConDescuento = precio * (1 - p.descuentoPorcentaje / 100);
+    return total + precioConDescuento * cantTalla(p.detallesTallas[t] ?? []);
   }, 0);
 }
 function calcTotal(ps: ProductoForm[]) {
@@ -134,6 +136,7 @@ function nuevoProducto(): ProductoForm {
     tallasSeleccionadas: [],
     detallesTallas: {},
     preciosPorTalla: {},
+    descuentoPorcentaje: 0,
     observaciones: "",
   };
 }
@@ -226,6 +229,7 @@ function ProductoCard({
       tallasSeleccionadas: [],
       detallesTallas: {},
       preciosPorTalla: {},
+      descuentoPorcentaje: 0,
     });
   const setTela = (v: string) =>
     onChange({
@@ -235,15 +239,25 @@ function ProductoCard({
       tallasSeleccionadas: [],
       detallesTallas: {},
       preciosPorTalla: {},
+      descuentoPorcentaje: 0,
     });
-  const setDisenio = (v: string) =>
+  const setDisenio = (v: string) => {
+    // Buscar el producto en el catálogo para cargar precios automáticamente
+    const prod = catalogoProductos.find(
+      (p) =>
+        p.modelo === producto.modelo &&
+        p.tela === producto.tela &&
+        p.disenio === v,
+    );
     onChange({
       ...producto,
       disenio: v,
       tallasSeleccionadas: [],
       detallesTallas: {},
-      preciosPorTalla: {},
+      preciosPorTalla: prod ? { ...prod.preciosPorTalla } : {},
+      descuentoPorcentaje: 0,
     });
+  };
 
   const toggleTalla = (t: string) => {
     const on = producto.tallasSeleccionadas.includes(t);
@@ -257,7 +271,10 @@ function ProductoCard({
       delete prec[t];
     } else {
       det[t] = [];
-      prec[t] = "";
+      // Cargar precio del catálogo para esta talla (incluso si es 0)
+      if (prodCatalogo && prodCatalogo.preciosPorTalla[t] !== undefined) {
+        prec[t] = prodCatalogo.preciosPorTalla[t];
+      }
     }
     onChange({
       ...producto,
@@ -267,12 +284,10 @@ function ProductoCard({
     });
   };
 
-  const setPrecioTalla = (t: string, val: string) => {
-    // No permitir precios negativos
-    const n = val === "" ? "" : Math.max(0, parseFloat(val) || 0);
+  const setDescuento = (descuento: number) => {
     onChange({
       ...producto,
-      preciosPorTalla: { ...producto.preciosPorTalla, [t]: n },
+      descuentoPorcentaje: descuento,
     });
   };
 
@@ -394,6 +409,34 @@ function ProductoCard({
           </div>
         )}
 
+        {/* Selector de descuento */}
+        {prodCatalogo && (
+          <div className="space-y-2 px-4 py-3 rounded-lg border border-blue-200 bg-blue-50">
+            <label className="text-sm font-medium text-foreground flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs">
+                %
+              </span>
+              Descuento en precio
+            </label>
+            <div className="flex gap-2">
+              {[0, 5, 10].map((descuento) => (
+                <button
+                  key={descuento}
+                  type="button"
+                  onClick={() => setDescuento(descuento)}
+                  className={`flex-1 px-3 py-2 rounded-lg text-sm border transition ${
+                    producto.descuentoPorcentaje === descuento
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "bg-white text-foreground border-border hover:border-blue-400"
+                  }`}
+                >
+                  {descuento === 0 ? "Sin descuento" : `${descuento}% off`}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Tallas — solo las registradas en el producto del catálogo */}
         {mostrarTallas && (
           <div className="space-y-2">
@@ -428,11 +471,13 @@ function ProductoCard({
 
             {producto.tallasSeleccionadas.map((t) => {
               const sel = producto.detallesTallas[t] ?? [];
-              const precioVal = producto.preciosPorTalla[t];
+              const precioOriginal = producto.preciosPorTalla[t];
+              const precioConDescuento = precioOriginal
+                ? precioOriginal * (1 - producto.descuentoPorcentaje / 100)
+                : 0;
               const cant = cantTalla(sel);
-              const subTalla = precioVal ? Number(precioVal) * cant : 0;
+              const subTalla = precioConDescuento * cant;
               const errCol = showErrors && sel.length === 0;
-              const errPrec = showErrors && precioVal === "";
               const esXL = t === "XL";
               const coloresDisp = coloresParaTalla(t);
 
@@ -440,7 +485,7 @@ function ProductoCard({
                 <div
                   key={t}
                   className={`border rounded-xl overflow-hidden ${
-                    errCol || errPrec
+                    errCol
                       ? "border-red-300"
                       : esXL
                         ? "border-amber-200"
@@ -471,35 +516,34 @@ function ProductoCard({
                         </span>
                       )}
                     </div>
-                    {/* Precio por talla — mínimo 0 */}
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs text-muted-foreground">S/</span>
-                      <input
-                        type="number"
-                        min={0}
-                        step={0.01}
-                        value={precioVal}
-                        onChange={(e) => setPrecioTalla(t, e.target.value)}
-                        onBlur={(e) => {
-                          // forzar ≥ 0 al salir del campo
-                          if (parseFloat(e.target.value) < 0)
-                            setPrecioTalla(t, "0");
-                        }}
-                        placeholder="0.00"
-                        className={`w-24 px-2 py-1 text-sm text-center rounded-lg bg-background border focus:outline-none focus:ring-2 focus:ring-foreground/20 ${errPrec ? "border-red-400" : "border-border"}`}
-                      />
-                      <span className="text-xs text-muted-foreground">
-                        / ud.
-                      </span>
+                    {/* Precio del catálogo (con descuento si aplica) */}
+                    <div className="flex items-center gap-2.5 text-sm">
+                      {!precioOriginal || precioOriginal <= 0 ? (
+                        <span className="text-red-600 font-semibold">
+                          Sin precio definido
+                        </span>
+                      ) : producto.descuentoPorcentaje > 0 ? (
+                        <>
+                          <span className="text-muted-foreground line-through">
+                            S/ {precioOriginal.toFixed(2)}
+                          </span>
+                          <span className="font-medium text-emerald-600">
+                            S/ {precioConDescuento.toFixed(2)}
+                          </span>
+                          <span className="text-xs text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded">
+                            -{producto.descuentoPorcentaje}%
+                          </span>
+                        </>
+                      ) : (
+                        <span className="font-medium">
+                          S/ {precioOriginal.toFixed(2)}
+                        </span>
+                      )}
+                      {precioOriginal && precioOriginal > 0 && (
+                        <span className="text-muted-foreground">/ ud.</span>
+                      )}
                     </div>
                   </div>
-
-                  {errPrec && (
-                    <p className="px-3 pt-2 text-xs text-red-500 flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" /> Ingresa el precio para
-                      talla {t}.
-                    </p>
-                  )}
 
                   <div className="p-3 space-y-2.5">
                     {/* Colores del producto registrado para esta talla */}
@@ -574,10 +618,10 @@ function ProductoCard({
                     )}
 
                     {/* Subtotal de esta talla */}
-                    {cant > 0 && !!precioVal && Number(precioVal) > 0 && (
+                    {cant > 0 && !!precioOriginal && precioConDescuento > 0 && (
                       <div className="flex justify-between items-center pt-1.5 border-t border-border/50 text-xs">
                         <span className="text-muted-foreground">
-                          {cant} ud. × {formatearSoles(Number(precioVal))}
+                          {cant} ud. × {formatearSoles(precioConDescuento)}
                         </span>
                         <span className="text-foreground">
                           {formatearSoles(subTalla)}
@@ -722,7 +766,13 @@ export function NuevoPedidoModal({
       if (p.tallasSeleccionadas.length === 0) return false;
       for (const t of p.tallasSeleccionadas) {
         if ((p.detallesTallas[t] ?? []).length === 0) return false;
-        if (p.preciosPorTalla[t] === "") return false;
+        // Permitir precio 0 o mayor, pero no undefined/null o negativos
+        if (
+          p.preciosPorTalla[t] === undefined ||
+          p.preciosPorTalla[t] === null ||
+          p.preciosPorTalla[t] < 0
+        )
+          return false;
       }
     }
     return true;
@@ -757,7 +807,10 @@ export function NuevoPedidoModal({
           // Iterar por cada talla seleccionada
           for (const talla of producto.tallasSeleccionadas) {
             const colores = producto.detallesTallas[talla] || [];
-            const precioUnitario = producto.preciosPorTalla[talla];
+            const precioOriginal = producto.preciosPorTalla[talla];
+            const precioConDescuento = precioOriginal
+              ? precioOriginal * (1 - producto.descuentoPorcentaje / 100)
+              : undefined;
 
             // Iterar por cada color en la talla
             for (const colorCantidad of colores) {
@@ -770,10 +823,7 @@ export function NuevoPedidoModal({
                   talla: talla,
                   color: colorCantidad.color,
                   cantidad: colorCantidad.cantidad,
-                  precioUnitario:
-                    typeof precioUnitario === "number"
-                      ? precioUnitario
-                      : undefined,
+                  precioUnitario: precioConDescuento,
                 });
               }
             }

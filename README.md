@@ -48,6 +48,7 @@ Disponible en `http://localhost:5173`
 | ----------------------- | -------------------------------------------------------------------------- |
 | **Administrador**       | Acceso completo: pedidos, clientes, empleados, productos, pagos, auditoría |
 | **Atención al Cliente** | Pedidos, clientes y pagos                                                  |
+| **Producción**          | Catálogo de productos y gestión de stock                                   |
 
 ## Módulos
 

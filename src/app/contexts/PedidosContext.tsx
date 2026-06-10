@@ -98,7 +98,7 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const skipNextSubscriptionUpdate = useRef(false);
+  const skipNextSubscriptionUpdate = useRef(0);
 
   const fetchPedidos = async () => {
     try {
@@ -207,10 +207,10 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
         "postgres_changes",
         { event: "*", schema: "public", table: "pedidos" },
         () => {
-          if (!skipNextSubscriptionUpdate.current) {
-            fetchPedidos();
+          if (skipNextSubscriptionUpdate.current > 0) {
+            skipNextSubscriptionUpdate.current -= 1;
           } else {
-            skipNextSubscriptionUpdate.current = false;
+            fetchPedidos();
           }
         },
       )
@@ -230,6 +230,9 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
     items?: PedidoItemData[];
   }): Promise<Pedido | null> => {
     try {
+      // Establecer flag para saltar 2 eventos: INSERT + UPDATE de monto_total
+      skipNextSubscriptionUpdate.current = 2;
+
       const insertData: PedidoInsert = {
         cliente_id: data.clienteId,
         articulo: data.articulo,
@@ -337,12 +340,6 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
         },
       });
 
-      // Evitar que la suscripción haga un fetch completo
-      skipNextSubscriptionUpdate.current = true;
-      setTimeout(() => {
-        skipNextSubscriptionUpdate.current = false;
-      }, 1000);
-
       setPedidos((prev) => [pedidoConvertido, ...prev]);
       return pedidoConvertido;
     } catch (err) {
@@ -360,6 +357,9 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
     datos: Partial<Pedido>,
   ): Promise<boolean> => {
     try {
+      // Establecer flag para saltar 1 evento de actualización
+      skipNextSubscriptionUpdate.current = 1;
+
       // Obtener el pedido actual
       const pedidoActual = pedidos.find((p) => p.codigo === codigo);
       if (!pedidoActual) {
@@ -405,12 +405,6 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
         .eq("codigo", codigo);
 
       if (updateError) throw updateError;
-
-      // Evitar que la suscripción haga un fetch completo
-      skipNextSubscriptionUpdate.current = true;
-      setTimeout(() => {
-        skipNextSubscriptionUpdate.current = false;
-      }, 1000);
 
       const usuario = await obtenerUsuarioActual();
       const usuarioFinal = usuario || { codigo: "SISTEMA", nombre: "Sistema" };
@@ -484,6 +478,9 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
     motivo: string,
   ): Promise<boolean> => {
     try {
+      // Establecer flag para saltar 1 evento de actualización
+      skipNextSubscriptionUpdate.current = 1;
+
       // Obtener el pedido actual
       const pedidoActual = pedidos.find((p) => p.codigo === codigo);
       if (!pedidoActual) {
@@ -561,6 +558,9 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
 
   const reactivarPedido = async (codigo: string): Promise<boolean> => {
     try {
+      // Establecer flag para saltar 1 evento de actualización
+      skipNextSubscriptionUpdate.current = 1;
+
       // Obtener el pedido actual
       const pedidoActual = pedidos.find((p) => p.codigo === codigo);
       if (!pedidoActual) {
