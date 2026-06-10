@@ -243,11 +243,11 @@ export function ProductosProvider({ children }: { children: ReactNode }) {
 
         if (varianteError) throw varianteError;
 
-        // Insertar colores sin stock inicial (será agregado por el confeccionador)
+        // Insertar colores sin stock inicial (será agregado por el equipo de Producción)
         const coloresInsert = talla.colores.map((c) => ({
           variante_id: nuevaVariante.id,
           color: c.color,
-          stock: 0, // Stock inicial 0, será actualizado por confeccionador
+          stock: 0, // Stock inicial 0, será actualizado por el equipo de Producción
         }));
 
         const { error: coloresError } = await supabase

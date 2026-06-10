@@ -78,7 +78,7 @@ function nextProductoCode(lista: { id: string }[]) {
 
 function stockVariante(v: VarianteForm) {
   // Ya no hay stock en el modal de creación
-  // El stock será agregado por el confeccionador después
+  // El stock será agregado por el equipo de Producción después
   return 0;
 }
 
@@ -772,7 +772,7 @@ export function NuevoProductoModal({
           colores: v.coloresSeleccionados.map((c) => ({
             id: `${c}-${Math.random()}`, // ID temporal
             color: c,
-            stock: 0, // Stock inicial 0, será agregado por confeccionador
+            stock: 0, // Stock inicial 0, será agregado por el equipo de Producción
           })),
         }));
 
@@ -982,7 +982,7 @@ export function NuevoProductoModal({
 
               <div className="flex items-center justify-between px-5 py-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-700">
                 <span className="text-sm">
-                  El stock será agregado por el confeccionador después
+                  El stock será agregado por el equipo de Producción después
                 </span>
               </div>
 
@@ -1037,8 +1037,8 @@ export function NuevoProductoModal({
                 </p>
               ))}
               <p className="text-xs text-emerald-600">
-                Los códigos ya están en el catálogo. El confeccionador deberá
-                agregar el stock.
+                Los códigos ya están en el catálogo. El equipo de Producción
+                deberá agregar el stock.
               </p>
             </div>
             <button
