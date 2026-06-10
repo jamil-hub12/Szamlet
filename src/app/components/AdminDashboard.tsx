@@ -2181,7 +2181,7 @@ export function AdminDashboard() {
                                       onClick={() => setProductoEditando(p)}
                                       className="px-3 py-1.5 rounded-lg text-xs border border-border text-foreground hover:bg-accent transition"
                                     >
-                                      Editar
+                                      Agregar tallas y colores
                                     </button>
                                   </div>
                                 </td>
@@ -3457,6 +3457,7 @@ export function AdminDashboard() {
         <EditarProductoModal
           producto={productoEditando}
           onClose={() => setProductoEditando(null)}
+          modo="admin"
           onGuardar={async (actualizado) => {
             const exito = await actualizarProducto(actualizado.id, {
               modelo: actualizado.modelo,
