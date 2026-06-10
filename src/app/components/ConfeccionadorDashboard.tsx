@@ -73,7 +73,7 @@ export function ConfeccionadorDashboard() {
   const productosCompletos = productos.filter((p) => !tieneStockFaltante(p));
 
   const handleLogout = async () => {
-    navigate("/login");
+    navigate("/");
   };
 
   return (
