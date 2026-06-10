@@ -75,7 +75,7 @@ export function LoginPage() {
         navigate("/admin");
       } else if (empleado.rol === "Atención al cliente") {
         navigate("/empleado");
-      } else if (empleado.rol === "Confeccionador") {
+      } else if (empleado.rol === "Producción") {
         navigate("/confeccionador");
       } else {
         setError("Rol de usuario no válido.");

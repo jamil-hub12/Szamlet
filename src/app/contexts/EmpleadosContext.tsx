@@ -38,7 +38,7 @@ export type Empleado = {
   nombre: string;
   email: string;
   telefono: string;
-  rol: "Atención al cliente" | "Administrador" | "Confeccionador";
+  rol: "Atención al cliente" | "Administrador" | "Producción";
   fechaIngreso: string;
   estado: "Activo" | "Licencia" | "Inactivo";
   permisos: Permiso[];
@@ -69,7 +69,7 @@ function convertirEmpleado(emp: EmpleadoDB): Empleado {
     nombre: emp.nombre,
     email: emp.email,
     telefono: emp.telefono,
-    rol: emp.rol as "Atención al cliente" | "Administrador" | "Confeccionador",
+    rol: emp.rol as "Atención al cliente" | "Administrador" | "Producción",
     fechaIngreso: emp.fecha_ingreso,
     estado: emp.estado as "Activo" | "Licencia" | "Inactivo",
     permisos: [],
@@ -78,7 +78,7 @@ function convertirEmpleado(emp: EmpleadoDB): Empleado {
 
 // Función para obtener permisos por defecto según el rol
 function obtenerPermisosDefault(
-  rol: "Atención al cliente" | "Administrador" | "Confeccionador",
+  rol: "Atención al cliente" | "Administrador" | "Producción",
 ): Permiso[] {
   if (rol === "Administrador") {
     return [
@@ -98,8 +98,8 @@ function obtenerPermisosDefault(
       "ver_pagos",
       "registrar_pagos",
     ];
-  } else if (rol === "Confeccionador") {
-    // Confeccionador: solo puede agregar stock al catálogo
+  } else if (rol === "Producción") {
+    // Producción: solo puede agregar stock al catálogo
     return ["ver_catalogo", "agregar_stock"];
   } else {
     // Atención al cliente: solo puede trabajar con pedidos, clientes y pagos

@@ -87,7 +87,7 @@ export function ConfeccionadorDashboard() {
             </div>
             <div>
               <h1 className="text-xl font-semibold text-foreground">
-                Confeccionador
+                Producción
               </h1>
               <p className="text-xs text-muted-foreground">
                 {user?.nombre || "Usuario"}

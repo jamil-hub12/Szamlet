@@ -25,7 +25,7 @@ export type Database = {
           nombre: string;
           email: string;
           telefono: string;
-          rol: "Atención al cliente" | "Administrador" | "Confeccionador";
+          rol: "Atención al cliente" | "Administrador" | "Producción";
           fecha_ingreso: string;
           estado: "Activo" | "Licencia" | "Inactivo";
           created_at: string;
@@ -37,7 +37,7 @@ export type Database = {
           nombre: string;
           email: string;
           telefono: string;
-          rol: "Atención al cliente" | "Administrador" | "Confeccionador";
+          rol: "Atención al cliente" | "Administrador" | "Producción";
           fecha_ingreso?: string;
           estado?: "Activo" | "Licencia" | "Inactivo";
           created_at?: string;
@@ -49,7 +49,7 @@ export type Database = {
           nombre?: string;
           email?: string;
           telefono?: string;
-          rol?: "Atención al cliente" | "Administrador" | "Confeccionador";
+          rol?: "Atención al cliente" | "Administrador" | "Producción";
           fecha_ingreso?: string;
           estado?: "Activo" | "Licencia" | "Inactivo";
           created_at?: string;

@@ -31,12 +31,12 @@ function TallaEditCard({
   talla,
   colores,
   onChange,
-  modo = "confeccionador",
+  modo = "producción",
 }: {
   talla: string;
   colores: ColorStock[];
   onChange: (cols: ColorStock[]) => void;
-  modo?: "admin" | "confeccionador";
+  modo?: "admin" | "producción";
 }) {
   const [addingColor, setAddingColor] = useState(false);
   const [nuevoColor, setNuevoColor] = useState("");
@@ -228,12 +228,12 @@ export function EditarProductoModal({
   producto,
   onClose,
   onGuardar,
-  modo = "confeccionador",
+  modo = "producción",
 }: {
   producto: ProductoCatalogo;
   onClose: () => void;
   onGuardar: (p: ProductoCatalogo) => Promise<void>;
-  modo?: "admin" | "confeccionador";
+  modo?: "admin" | "producción";
 }) {
   type Step = "form" | "guardando" | "exito";
   const [step, setStep] = useState<Step>("form");
@@ -437,7 +437,7 @@ export function EditarProductoModal({
               )}
 
               {/* Resumen */}
-              {tallasSeleccionadas.length > 0 && modo === "confeccionador" && (
+              {tallasSeleccionadas.length > 0 && modo === "producción" && (
                 <div className="rounded-xl bg-muted/40 border border-border px-4 py-3 flex justify-between items-center text-sm">
                   <span className="text-muted-foreground">
                     Stock total actualizado
@@ -502,9 +502,7 @@ export function EditarProductoModal({
               </div>
               <p className="text-xs font-mono text-emerald-700">
                 {producto.id}
-                {modo === "confeccionador"
-                  ? ` — ${stockTotal} uds. en stock`
-                  : ""}
+                {modo === "producción" ? ` — ${stockTotal} uds. en stock` : ""}
               </p>
             </div>
             <button
