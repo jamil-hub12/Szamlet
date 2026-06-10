@@ -10,6 +10,7 @@ import {
   Plus,
   Trash2,
   ShoppingBag,
+  Clock,
 } from "lucide-react";
 import type { Pedido } from "../contexts/PedidosContext";
 import { puedeEditarPedido } from "../utils/pedidosCicloVida";
@@ -17,6 +18,8 @@ import { obtenerItemsPedido, type PedidoItemData } from "../utils/stockManager";
 import { useProductos } from "../contexts/ProductosContext";
 import { supabase } from "../../lib/supabase";
 import { registrarAuditoria, obtenerUsuarioActual } from "../utils/auditoria";
+import { obtenerFechaPeruHoy } from "../../utils/fechas";
+import { esValidaFechaMinimaHoy } from "../utils/validaciones";
 
 type PedidoItem = {
   id?: string;
@@ -58,6 +61,7 @@ export function EditarPedidoModal({
   });
   const [loadingItems, setLoadingItems] = useState(true);
   const [showErrors, setShowErrors] = useState(false);
+  const [errorFecha, setErrorFecha] = useState<string | null>(null);
   const [step, setStep] = useState<"form" | "guardando" | "exito">("form");
   const [mostrarAgregarItem, setMostrarAgregarItem] = useState(false);
 
@@ -92,6 +96,13 @@ export function EditarPedidoModal({
     if (form.items.length === 0) return false;
     // Validar que todos los items tengan cantidad > 0
     if (form.items.some((item) => item.cantidad <= 0)) return false;
+    // Validar que si tiene fecha de entrega, no sea pasada
+    if (form.fechaEntrega && !esValidaFechaMinimaHoy(form.fechaEntrega)) {
+      setErrorFecha(
+        `La fecha de entrega no puede ser anterior a hoy (${obtenerFechaPeruHoy()})`,
+      );
+      return false;
+    }
     return true;
   };
 
@@ -467,11 +478,24 @@ export function EditarPedidoModal({
                   type="date"
                   id="fechaEntrega"
                   value={form.fechaEntrega || ""}
-                  onChange={(e) =>
-                    setForm({ ...form, fechaEntrega: e.target.value })
-                  }
-                  className="w-full px-3 py-2.5 rounded-lg bg-input-background border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                  min={obtenerFechaPeruHoy()}
+                  onChange={(e) => {
+                    const nuevaFecha = e.target.value;
+                    setForm({ ...form, fechaEntrega: nuevaFecha });
+                    // Limpiar error si la fecha es válida
+                    if (nuevaFecha && esValidaFechaMinimaHoy(nuevaFecha)) {
+                      setErrorFecha(null);
+                    }
+                  }}
+                  className={`w-full px-3 py-2.5 rounded-lg bg-input-background border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20 ${
+                    errorFecha ? "border-red-400" : "border-border"
+                  }`}
                 />
+                {errorFecha && (
+                  <p className="text-xs text-red-500 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" /> {errorFecha}
+                  </p>
+                )}
               </div>
 
               {/* Urgente */}
