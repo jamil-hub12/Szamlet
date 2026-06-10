@@ -119,9 +119,9 @@ export function DetallePedidoModal({
           {/* Alerta de próximo vencimiento */}
           {!esPedidoVencido(pedido.fechaEntrega, pedido.estado) &&
             pedido.fechaEntrega &&
-            diasHastaVencimiento(pedido.fechaEntrega) !== null &&
-            diasHastaVencimiento(pedido.fechaEntrega)! > 0 &&
-            diasHastaVencimiento(pedido.fechaEntrega)! <= 3 && (
+            diasHastaVencimiento(pedido.fechaEntrega, pedido.estado) !== null &&
+            diasHastaVencimiento(pedido.fechaEntrega, pedido.estado)! > 0 &&
+            diasHastaVencimiento(pedido.fechaEntrega, pedido.estado)! <= 3 && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                 <div className="flex gap-3">
                   <Clock className="w-5 h-5 text-yellow-600 shrink-0 mt-0.5" />
@@ -130,8 +130,12 @@ export function DetallePedidoModal({
                       Pedido próximo a vencer
                     </h4>
                     <p className="text-xs text-yellow-700">
-                      Vencimiento en {diasHastaVencimiento(pedido.fechaEntrega)}
-                      {diasHastaVencimiento(pedido.fechaEntrega) === 1
+                      Vencimiento en{" "}
+                      {diasHastaVencimiento(pedido.fechaEntrega, pedido.estado)}
+                      {diasHastaVencimiento(
+                        pedido.fechaEntrega,
+                        pedido.estado,
+                      ) === 1
                         ? " día"
                         : " días"}
                       . Asegúrate de completar el pago antes de esa fecha.

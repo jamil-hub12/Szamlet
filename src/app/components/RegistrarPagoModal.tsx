@@ -49,7 +49,7 @@ export function RegistrarPagoModal({
 
   // Verificar si el pedido está vencido
   const pedidoVencido = esPedidoVencido(fechaEntrega, estado);
-  const diasRestantes = diasHastaVencimiento(fechaEntrega);
+  const diasRestantes = diasHastaVencimiento(fechaEntrega, estado);
 
   // Detectar si el pedido no tiene monto total (pedido antiguo)
   const esPedidoSinPrecio = montoTotal === 0;
@@ -137,6 +137,7 @@ export function RegistrarPagoModal({
       metodoPago,
       usuarioCodigo,
       usuarioNombre,
+      fechaPago: obtenerFechaHoraPeruISO(),
       notas: notas.trim() || undefined,
     });
 

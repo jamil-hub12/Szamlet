@@ -51,7 +51,8 @@ type VarianteForm = {
   tela: string;
   disenio: string;
   tallasSeleccionadas: string[];
-  detallesTallas: Record<string, ColorStock[]>;
+  coloresSeleccionados: string[]; // Solo colores, sin stock
+  preciosPorTalla: Record<string, number>; // Precio por talla
 };
 
 type ProductoForm = {
@@ -76,9 +77,9 @@ function nextProductoCode(lista: { id: string }[]) {
 }
 
 function stockVariante(v: VarianteForm) {
-  return Object.values(v.detallesTallas)
-    .flat()
-    .reduce((s, cs) => s + cs.stock, 0);
+  // Ya no hay stock en el modal de creación
+  // El stock será agregado por el confeccionador después
+  return 0;
 }
 
 function emptyVariante(): VarianteForm {
@@ -87,7 +88,8 @@ function emptyVariante(): VarianteForm {
     tela: "",
     disenio: "",
     tallasSeleccionadas: [],
-    detallesTallas: {},
+    coloresSeleccionados: [],
+    preciosPorTalla: {},
   };
 }
 
@@ -100,6 +102,7 @@ function EditableSelect({
   onChange,
   disabled = false,
   hasError = false,
+  filterNumbers = false,
 }: {
   value: string;
   options: string[];
@@ -107,6 +110,7 @@ function EditableSelect({
   onChange: (v: string) => void;
   disabled?: boolean;
   hasError?: boolean;
+  filterNumbers?: boolean;
 }) {
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState("");
@@ -129,7 +133,13 @@ function EditableSelect({
           ref={ref}
           type="text"
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => {
+            let newValue = e.target.value;
+            if (filterNumbers) {
+              newValue = newValue.replace(/[0-9]/g, "");
+            }
+            setDraft(newValue);
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
@@ -189,18 +199,16 @@ function EditableSelect({
   );
 }
 
-// ─── TallaCard ────────────────────────────────────────────────────────────────
+// ─── ColoresSelector (simple, sin stock) ────────────────────────────────────
 
-function TallaCard({
-  talla,
-  colores,
-  showErrors,
+function ColoresSelector({
+  coloresSeleccionados,
   onChange,
+  showErrors,
 }: {
-  talla: string;
-  colores: ColorStock[];
+  coloresSeleccionados: string[];
+  onChange: (colores: string[]) => void;
   showErrors: boolean;
-  onChange: (cols: ColorStock[]) => void;
 }) {
   const [addingColor, setAddingColor] = useState(false);
   const [nuevoColor, setNuevoColor] = useState("");
@@ -209,24 +217,12 @@ function TallaCard({
     if (addingColor) colorRef.current?.focus();
   }, [addingColor]);
 
-  const esXL = talla === "XL";
-  const esPersonalizada = !TALLAS_BASE.includes(talla);
-
   const toggleColor = (color: string) => {
-    const ex = colores.find((cs) => cs.color === color);
-    const upd = ex
-      ? colores.filter((cs) => cs.color !== color)
-      : [...colores, { color, stock: 1 }];
-    onChange(upd);
-  };
-
-  const setStock = (color: string, val: string) => {
+    const ex = coloresSeleccionados.includes(color);
     onChange(
-      colores.map((cs) =>
-        cs.color === color
-          ? { ...cs, stock: Math.max(0, parseInt(val) || 0) }
-          : cs,
-      ),
+      ex
+        ? coloresSeleccionados.filter((c) => c !== color)
+        : [...coloresSeleccionados, color],
     );
   };
 
@@ -234,155 +230,102 @@ function TallaCard({
     const cn = nuevoColor.trim();
     if (
       cn &&
-      !colores.find((cs) => cs.color.toLowerCase() === cn.toLowerCase())
+      !coloresSeleccionados.find((c) => c.toLowerCase() === cn.toLowerCase())
     ) {
-      onChange([...colores, { color: cn, stock: 1 }]);
+      onChange([...coloresSeleccionados, cn]);
     }
     setAddingColor(false);
     setNuevoColor("");
   };
 
-  const errSinColores = showErrors && colores.length === 0;
-  const errStockCero = showErrors && colores.some((cs) => cs.stock <= 0);
+  const errSinColores = showErrors && coloresSeleccionados.length === 0;
 
   return (
     <div
-      className={`border rounded-xl overflow-hidden ${errSinColores || errStockCero ? "border-red-300" : esXL ? "border-amber-200" : esPersonalizada ? "border-violet-200" : "border-border"}`}
+      className={`space-y-3 px-4 py-3 rounded-lg border ${errSinColores ? "border-red-300 bg-red-50" : "border-border bg-muted/20"}`}
     >
-      <div
-        className={`flex items-center gap-2 px-3 py-2.5 border-b ${esXL ? "bg-amber-50 border-amber-200" : esPersonalizada ? "bg-violet-50 border-violet-200" : "bg-muted/30 border-border"}`}
-      >
-        <span
-          className={`text-sm px-2.5 py-0.5 rounded-full border ${esXL ? "bg-amber-100 text-amber-800 border-amber-300" : esPersonalizada ? "bg-violet-100 text-violet-800 border-violet-300" : "bg-foreground text-background border-foreground"}`}
-        >
-          {talla}
-        </span>
-        {esXL && (
-          <span className="text-xs text-amber-700">
-            precio diferenciado en pedidos
-          </span>
-        )}
-        {esPersonalizada && (
-          <span className="text-xs text-violet-700">talla personalizada</span>
-        )}
-        <span className="ml-auto text-xs text-muted-foreground">
-          {colores.reduce((s, cs) => s + cs.stock, 0)} uds. en stock
-        </span>
-      </div>
-      <div className="p-3 space-y-3">
-        <div className="flex flex-wrap gap-1.5">
-          {COLORES_BASE.map((color) => {
-            const on = colores.some((cs) => cs.color === color);
-            return (
-              <button
-                key={color}
-                type="button"
-                onClick={() => toggleColor(color)}
-                className={`px-2.5 py-0.5 rounded-full text-xs border transition ${on ? "bg-foreground text-background border-foreground" : "bg-input-background text-muted-foreground border-border hover:border-foreground/30"}`}
-              >
-                {color}
-              </button>
-            );
-          })}
-          {colores
-            .filter((cs) => !COLORES_BASE.includes(cs.color))
-            .map((cs) => (
-              <button
-                key={cs.color}
-                type="button"
-                onClick={() => toggleColor(cs.color)}
-                className="px-2.5 py-0.5 rounded-full text-xs border bg-violet-100 text-violet-700 border-violet-300 hover:bg-violet-200 transition"
-              >
-                {cs.color}
-              </button>
-            ))}
-          {addingColor ? (
-            <div className="flex items-center gap-1.5">
-              <input
-                ref={colorRef}
-                type="text"
-                value={nuevoColor}
-                onChange={(e) => setNuevoColor(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    confirmarColor();
-                  }
-                  if (e.key === "Escape") {
-                    setAddingColor(false);
-                    setNuevoColor("");
-                  }
-                }}
-                placeholder="Nombre del color…"
-                className="px-2.5 py-0.5 rounded-full text-xs border border-violet-400 bg-violet-50 text-violet-800 focus:outline-none w-36"
-              />
-              <button
-                type="button"
-                onClick={confirmarColor}
-                className="px-2 py-0.5 rounded-full text-xs bg-primary text-primary-foreground hover:bg-primary/90 transition"
-              >
-                OK
-              </button>
-              <button
-                type="button"
-                onClick={() => {
+      <label className="text-sm text-foreground flex items-center gap-1">
+        Colores disponibles <span className="text-red-500">*</span>
+      </label>
+      <div className="flex flex-wrap gap-2">
+        {COLORES_BASE.map((color) => {
+          const on = coloresSeleccionados.includes(color);
+          return (
+            <button
+              key={color}
+              type="button"
+              onClick={() => toggleColor(color)}
+              className={`px-2.5 py-0.5 rounded-full text-xs border transition ${on ? "bg-foreground text-background border-foreground" : "bg-input-background text-muted-foreground border-border hover:border-foreground/30"}`}
+            >
+              {color}
+            </button>
+          );
+        })}
+        {coloresSeleccionados
+          .filter((c) => !COLORES_BASE.includes(c))
+          .map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => toggleColor(c)}
+              className="px-2.5 py-0.5 rounded-full text-xs border bg-violet-100 text-violet-700 border-violet-300 hover:bg-violet-200 transition"
+            >
+              {c}
+            </button>
+          ))}
+        {addingColor ? (
+          <div className="flex items-center gap-1.5">
+            <input
+              ref={colorRef}
+              type="text"
+              value={nuevoColor}
+              onChange={(e) => setNuevoColor(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  confirmarColor();
+                }
+                if (e.key === "Escape") {
                   setAddingColor(false);
                   setNuevoColor("");
-                }}
-                className="px-2 py-0.5 rounded-full text-xs border border-border text-muted-foreground hover:bg-accent transition"
-              >
-                ✕
-              </button>
-            </div>
-          ) : (
+                }
+              }}
+              placeholder="Nombre del color…"
+              className="px-2.5 py-0.5 rounded-full text-xs border border-violet-400 bg-violet-50 text-violet-800 focus:outline-none w-36"
+            />
+            <button
+              type="button"
+              onClick={confirmarColor}
+              className="px-2 py-0.5 rounded-full text-xs bg-primary text-primary-foreground hover:bg-primary/90 transition"
+            >
+              OK
+            </button>
             <button
               type="button"
               onClick={() => {
-                setAddingColor(true);
+                setAddingColor(false);
                 setNuevoColor("");
               }}
-              className="px-2.5 py-0.5 rounded-full text-xs border border-dashed border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground transition flex items-center gap-1"
+              className="px-2 py-0.5 rounded-full text-xs border border-border text-muted-foreground hover:bg-accent transition"
             >
-              <Plus className="w-3 h-3" /> Color personalizado
+              ✕
             </button>
-          )}
-        </div>
-        {errSinColores && (
-          <p className="text-xs text-red-500 flex items-center gap-1">
-            <AlertCircle className="w-3 h-3" /> Selecciona al menos un color.
-          </p>
-        )}
-        {colores.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {colores.map((cs) => {
-              const si = showErrors && cs.stock <= 0;
-              return (
-                <div
-                  key={cs.color}
-                  className={`rounded-lg px-2.5 py-1.5 space-y-1 ${COLORES_BASE.includes(cs.color) ? "bg-muted/40" : "bg-violet-50 border border-violet-200"} ${si ? "border border-red-300" : ""}`}
-                >
-                  <span className="text-xs text-foreground block truncate">
-                    {cs.color}
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="number"
-                      min={1}
-                      value={cs.stock}
-                      onChange={(e) => setStock(cs.color, e.target.value)}
-                      className={`w-full px-2 py-0.5 text-xs text-center rounded bg-background border focus:outline-none ${si ? "border-red-400" : "border-border"}`}
-                    />
-                    <span className="text-xs text-muted-foreground shrink-0">
-                      ud.
-                    </span>
-                  </div>
-                  {si && <p className="text-xs text-red-500">Stock inválido</p>}
-                </div>
-              );
-            })}
           </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setAddingColor(true)}
+            className="px-2.5 py-0.5 rounded-full text-xs border border-dashed border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground transition flex items-center gap-1"
+          >
+            <Plus className="w-3 h-3" /> Personalizado
+          </button>
         )}
       </div>
+      {errSinColores && (
+        <p className="text-xs text-red-500 flex items-center gap-1">
+          <AlertCircle className="w-3 h-3" /> Selecciona al menos un color.
+        </p>
+      )}
     </div>
   );
 }
@@ -461,14 +404,16 @@ function VarianteCard({
       tela: v,
       disenio: "",
       tallasSeleccionadas: [],
-      detallesTallas: {},
+      coloresSeleccionados: [],
+      preciosPorTalla: {},
     });
   const setDisenio = (v: string) =>
     onChange({
       ...variante,
       disenio: v,
       tallasSeleccionadas: [],
-      detallesTallas: {},
+      coloresSeleccionados: [],
+      preciosPorTalla: {},
     });
 
   const toggleTalla = (t: string) => {
@@ -476,10 +421,13 @@ function VarianteCard({
     const next = on
       ? variante.tallasSeleccionadas.filter((x) => x !== t)
       : [...variante.tallasSeleccionadas, t];
-    const det = { ...variante.detallesTallas };
-    if (on) delete det[t];
-    else det[t] = [];
-    onChange({ ...variante, tallasSeleccionadas: next, detallesTallas: det });
+    const precios = { ...variante.preciosPorTalla };
+    if (on) delete precios[t];
+    onChange({
+      ...variante,
+      tallasSeleccionadas: next,
+      preciosPorTalla: precios,
+    });
   };
 
   const confirmarNuevaTalla = () => {
@@ -488,7 +436,7 @@ function VarianteCard({
       onChange({
         ...variante,
         tallasSeleccionadas: [...variante.tallasSeleccionadas, t],
-        detallesTallas: { ...variante.detallesTallas, [t]: [] },
+        preciosPorTalla: { ...variante.preciosPorTalla, [t]: 0 },
       });
     }
     setAddingTalla(false);
@@ -509,26 +457,19 @@ function VarianteCard({
     >
       {/* Cabecera */}
       <div className="flex items-center justify-between px-4 py-3 bg-muted/40 border-b border-border">
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">
-            Variante #{index + 1}
+        <span className="text-xs text-muted-foreground">
+          Variante #{index + 1}
+        </span>
+        {esDuplicado && (
+          <span className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-full px-2 py-0.5 flex items-center gap-1">
+            <AlertCircle className="w-3 h-3" /> Combinación ya registrada
           </span>
-          {variante.tela && variante.disenio && !esDuplicado && (
-            <span className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
-              {stockVariante(variante)} uds.
-            </span>
-          )}
-          {esDuplicado && (
-            <span className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-full px-2 py-0.5 flex items-center gap-1">
-              <AlertCircle className="w-3 h-3" /> Combinación ya registrada
-            </span>
-          )}
-        </div>
+        )}
         {canRemove && (
           <button
             type="button"
             onClick={onRemove}
-            className="p-1.5 rounded hover:bg-red-50 text-muted-foreground hover:text-red-500 transition"
+            className="p-1.5 rounded hover:bg-red-50 text-muted-foreground hover:text-red-500 transition ml-auto"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -548,6 +489,7 @@ function VarianteCard({
               placeholder="Seleccionar o agregar"
               onChange={setTela}
               hasError={errTela}
+              filterNumbers={true}
             />
             {errTela && <p className="text-xs text-red-500">Obligatorio</p>}
           </div>
@@ -562,6 +504,7 @@ function VarianteCard({
               onChange={setDisenio}
               disabled={!variante.tela}
               hasError={errDisenio}
+              filterNumbers={true}
             />
             {errDisenio && <p className="text-xs text-red-500">Obligatorio</p>}
           </div>
@@ -659,40 +602,85 @@ function VarianteCard({
           </div>
         )}
 
-        {/* Detalle por talla */}
+        {/* Colores disponibles */}
         {mostrarTallas && variante.tallasSeleccionadas.length > 0 && (
-          <div className="space-y-3">
-            <p className="text-xs text-muted-foreground uppercase tracking-wider">
-              Colores y stock por talla
-            </p>
-            {variante.tallasSeleccionadas.map((t) => (
-              <TallaCard
-                key={t}
-                talla={t}
-                colores={variante.detallesTallas[t] ?? []}
-                showErrors={showErrors}
-                onChange={(cols) =>
-                  onChange({
-                    ...variante,
-                    detallesTallas: { ...variante.detallesTallas, [t]: cols },
-                  })
-                }
-              />
-            ))}
+          <ColoresSelector
+            coloresSeleccionados={variante.coloresSeleccionados}
+            onChange={(cols) =>
+              onChange({ ...variante, coloresSeleccionados: cols })
+            }
+            showErrors={showErrors}
+          />
+        )}
+
+        {/* Precio por talla */}
+        {mostrarTallas && variante.tallasSeleccionadas.length > 0 && (
+          <div className="space-y-3 px-4 py-4 rounded-lg border border-blue-200 bg-blue-50">
+            <label className="text-sm font-medium text-foreground flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs">
+                💰
+              </span>
+              Precio por talla <span className="text-red-500">*</span>
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {variante.tallasSeleccionadas.map((t) => {
+                const precio = variante.preciosPorTalla[t] || 0;
+                const errPrecio = showErrors && (!precio || precio <= 0);
+                return (
+                  <div key={t} className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground block uppercase tracking-wide">
+                      Talla {t}
+                    </label>
+                    <div className="flex items-center gap-1.5 bg-white rounded-lg border border-blue-200 px-2.5 py-2 overflow-hidden">
+                      <span className="text-sm font-medium text-blue-600 shrink-0">
+                        S/
+                      </span>
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={precio}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value) || 0;
+                          onChange({
+                            ...variante,
+                            preciosPorTalla: {
+                              ...variante.preciosPorTalla,
+                              [t]: val,
+                            },
+                          });
+                        }}
+                        className={`flex-1 text-sm bg-transparent text-foreground focus:outline-none font-medium ${
+                          errPrecio ? "text-red-600" : ""
+                        }`}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    {errPrecio && (
+                      <p className="text-xs text-red-500 flex items-center gap-1">
+                        <span>⚠️</span> Requerido
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
-        {/* Mini resumen */}
+        {/* Resumen */}
         {mostrarTallas &&
           variante.tallasSeleccionadas.length > 0 &&
-          stockVariante(variante) > 0 && (
-            <div className="flex justify-between items-center px-3 py-2 rounded-lg bg-muted/40 text-xs text-muted-foreground">
+          variante.coloresSeleccionados.length > 0 && (
+            <div className="flex justify-between items-center px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-700">
               <span>
-                {variante.tallasSeleccionadas.length} talla
-                {variante.tallasSeleccionadas.length !== 1 ? "s" : ""}
+                {variante.tallasSeleccionadas.length} ×{" "}
+                {variante.coloresSeleccionados.length} colores
               </span>
-              <span className="text-foreground">
-                {stockVariante(variante)} unidades en esta variante
+              <span className="font-medium">
+                {variante.tallasSeleccionadas.length *
+                  variante.coloresSeleccionados.length}{" "}
+                variaciones
               </span>
             </div>
           )}
@@ -755,9 +743,10 @@ export function NuevoProductoModal({
       );
       if (dup) return false;
       if (v.tallasSeleccionadas.length === 0) return false;
+      if (v.coloresSeleccionados.length === 0) return false;
+      // Validar que cada talla tenga un precio
       for (const t of v.tallasSeleccionadas) {
-        const cols = v.detallesTallas[t] ?? [];
-        if (cols.length === 0 || cols.some((cs) => cs.stock <= 0)) return false;
+        if (!v.preciosPorTalla[t] || v.preciosPorTalla[t] <= 0) return false;
       }
     }
     return true;
@@ -776,17 +765,24 @@ export function NuevoProductoModal({
       let acum = [...productosExistentes];
       const nuevos: ProductoCatalogo[] = form.variantes.map((v) => {
         const codigo = nextProductoCode(acum);
-        const hoy = new Date().toISOString().split("T")[0];
+        // Construir tallas con colores (sin stock inicial)
+        const tallas: TallaProducto[] = v.tallasSeleccionadas.map((t) => ({
+          id: `${t}-${Math.random()}`, // ID temporal
+          talla: t,
+          colores: v.coloresSeleccionados.map((c) => ({
+            id: `${c}-${Math.random()}`, // ID temporal
+            color: c,
+            stock: 0, // Stock inicial 0, será agregado por confeccionador
+          })),
+        }));
+
         const nuevo: ProductoCatalogo = {
           id: codigo,
           codigo,
           modelo: form.modelo,
           tela: v.tela,
           disenio: v.disenio,
-          tallas: v.tallasSeleccionadas.map((t) => ({
-            talla: t,
-            colores: v.detallesTallas[t] ?? [],
-          })),
+          tallas,
           fechaRegistro: hoy,
         };
         acum = [...acum, nuevo];
@@ -801,10 +797,6 @@ export function NuevoProductoModal({
     }
   };
 
-  const totalUnidades = form.variantes.reduce(
-    (s, v) => s + stockVariante(v),
-    0,
-  );
   const errModelo = showErrors && !form.modelo;
 
   return (
@@ -852,6 +844,7 @@ export function NuevoProductoModal({
                     placeholder="Ej. Vestido, Camisa, Pantalón…"
                     onChange={setModelo}
                     hasError={errModelo}
+                    filterNumbers={true}
                   />
                   {errModelo && (
                     <p className="text-xs text-red-500">
@@ -902,19 +895,11 @@ export function NuevoProductoModal({
               </section>
 
               {/* Resumen total */}
-              {totalUnidades > 0 && (
-                <div className="rounded-xl bg-muted/40 border border-border px-4 py-3 flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground">
-                    Total a registrar
-                  </span>
-                  <span className="text-foreground">
-                    {form.variantes.filter((v) => v.tela && v.disenio).length}{" "}
-                    variante
-                    {form.variantes.filter((v) => v.tela && v.disenio)
-                      .length !== 1
-                      ? "s"
-                      : ""}{" "}
-                    · <strong>{totalUnidades} unidades</strong>
+              {form.variantes.filter((v) => v.tela && v.disenio).length > 0 && (
+                <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 flex justify-between items-center text-sm text-emerald-700">
+                  <span>Variantes definidas</span>
+                  <span className="font-medium">
+                    {form.variantes.filter((v) => v.tela && v.disenio).length}
                   </span>
                 </div>
               )}
@@ -971,52 +956,34 @@ export function NuevoProductoModal({
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">
                   Variantes a registrar ({form.variantes.length})
                 </p>
-                {form.variantes.map((v, i) => {
-                  const st = stockVariante(v);
-                  return (
-                    <div
-                      key={v.uid}
-                      className="rounded-xl border border-border px-4 py-3 space-y-2"
-                    >
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-foreground">
-                          {i + 1}. {v.tela} · {v.disenio}
-                        </p>
-                        <span className="text-xs text-muted-foreground">
-                          {st} uds.
+                {form.variantes.map((v, i) => (
+                  <div
+                    key={v.uid}
+                    className="rounded-xl border border-border px-4 py-3 space-y-2"
+                  >
+                    <p className="text-sm text-foreground">
+                      {i + 1}. {v.tela} · {v.disenio}
+                    </p>
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <div className="flex justify-between">
+                        <span>Tallas:</span>
+                        <span>{v.tallasSeleccionadas.join(", ")}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Colores:</span>
+                        <span>
+                          {v.coloresSeleccionados.length} seleccionados
                         </span>
                       </div>
-                      <div className="space-y-1">
-                        {v.tallasSeleccionadas.map((t) => {
-                          const cols = v.detallesTallas[t] ?? [];
-                          return (
-                            <div
-                              key={t}
-                              className="text-xs text-muted-foreground flex justify-between"
-                            >
-                              <span>
-                                Talla {t}:{" "}
-                                {cols
-                                  .map((cs) => `${cs.color} ×${cs.stock}`)
-                                  .join(", ")}
-                              </span>
-                              <span>
-                                {cols.reduce((s, cs) => s + cs.stock, 0)} uds.
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
 
-              <div className="flex items-center justify-between px-5 py-3 rounded-xl bg-foreground text-background">
-                <span className="text-sm opacity-70">
-                  Stock total a ingresar
+              <div className="flex items-center justify-between px-5 py-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-700">
+                <span className="text-sm">
+                  El stock será agregado por el confeccionador después
                 </span>
-                <span className="text-xl">{totalUnidades} unidades</span>
               </div>
 
               <div className="flex gap-3 pb-2">
@@ -1070,7 +1037,8 @@ export function NuevoProductoModal({
                 </p>
               ))}
               <p className="text-xs text-emerald-600">
-                {totalUnidades} unidades registradas en inventario.
+                Los códigos ya están en el catálogo. El confeccionador deberá
+                agregar el stock.
               </p>
             </div>
             <button

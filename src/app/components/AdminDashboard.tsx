@@ -44,7 +44,7 @@ import {
 } from "lucide-react";
 import { NuevoProductoModal } from "./NuevoProductoModal";
 import { EditarProductoModal } from "./EditarProductoModal";
-import { usePedidos } from "../contexts/PedidosContext";
+import { usePedidos, type Pedido } from "../contexts/PedidosContext";
 import { useEmpleados, type Empleado } from "../contexts/EmpleadosContext";
 import {
   useProductos,
@@ -337,7 +337,9 @@ export function AdminDashboard() {
   );
   const [filtroEstadoPedidos, setFiltroEstadoPedidos] = useState("Todos");
   const [filtroPrioridadPedidos, setFiltroPrioridadPedidos] = useState("Todas");
-  const [pedidoSeleccionado, setPedidoSeleccionado] = useState<any>(null);
+  const [pedidoSeleccionado, setPedidoSeleccionado] = useState<Pedido | null>(
+    null,
+  );
   const [modalEditarPedidoAbierto, setModalEditarPedidoAbierto] =
     useState(false);
   const [clienteHistorial, setClienteHistorial] = useState<any>(null);
@@ -840,7 +842,7 @@ export function AdminDashboard() {
           const montoPagado = p.montoPagado || 0;
           const pendiente = montoTotal - montoPagado;
           const vencido = esPedidoVencido(p.fechaEntrega, p.estado);
-          const diasRestantes = diasHastaVencimiento(p.fechaEntrega);
+          const diasRestantes = diasHastaVencimiento(p.fechaEntrega, p.estado);
 
           return {
             codigo: p.codigo,
@@ -849,7 +851,11 @@ export function AdminDashboard() {
             pagado: formatearSoles(montoPagado),
             pendiente: formatearSoles(pendiente),
             fecha: p.fechaEntrega ? formatearFechaCorta(p.fechaEntrega) : "—",
-            estado: vencido ? "Vencido" : `${diasRestantes} días`,
+            estado: vencido
+              ? "Vencido"
+              : diasRestantes !== null
+                ? `${diasRestantes} días`
+                : "—",
           };
         });
 
@@ -2169,13 +2175,15 @@ export function AdminDashboard() {
                                   {stockTotal} uds.
                                 </td>
                                 <td className="px-4 py-3 text-right">
-                                  <button
-                                    type="button"
-                                    onClick={() => setProductoEditando(p)}
-                                    className="px-3 py-1.5 rounded-lg text-xs border border-border text-foreground hover:bg-accent transition"
-                                  >
-                                    Editar
-                                  </button>
+                                  <div className="flex items-center justify-end gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => setProductoEditando(p)}
+                                      className="px-3 py-1.5 rounded-lg text-xs border border-border text-foreground hover:bg-accent transition"
+                                    >
+                                      Agregar tallas y colores
+                                    </button>
+                                  </div>
                                 </td>
                               </tr>
                               {isExpanded && (
@@ -2989,6 +2997,7 @@ export function AdminDashboard() {
                           );
                           const diasRestantes = diasHastaVencimiento(
                             p.fechaEntrega,
+                            p.estado,
                           );
 
                           return (
@@ -3448,6 +3457,7 @@ export function AdminDashboard() {
         <EditarProductoModal
           producto={productoEditando}
           onClose={() => setProductoEditando(null)}
+          modo="admin"
           onGuardar={async (actualizado) => {
             const exito = await actualizarProducto(actualizado.id, {
               modelo: actualizado.modelo,

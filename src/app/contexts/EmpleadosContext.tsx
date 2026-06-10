@@ -28,6 +28,7 @@ export type Permiso =
   | "crear_productos"
   | "editar_productos"
   | "eliminar_productos"
+  | "agregar_stock"
   | "ver_pagos"
   | "registrar_pagos";
 
@@ -37,7 +38,7 @@ export type Empleado = {
   nombre: string;
   email: string;
   telefono: string;
-  rol: "Atención al cliente" | "Administrador";
+  rol: "Atención al cliente" | "Administrador" | "Confeccionador";
   fechaIngreso: string;
   estado: "Activo" | "Licencia" | "Inactivo";
   permisos: Permiso[];
@@ -68,16 +69,16 @@ function convertirEmpleado(emp: EmpleadoDB): Empleado {
     nombre: emp.nombre,
     email: emp.email,
     telefono: emp.telefono,
-    rol: emp.rol as "Atención al cliente" | "Administrador",
+    rol: emp.rol as "Atención al cliente" | "Administrador" | "Confeccionador",
     fechaIngreso: emp.fecha_ingreso,
     estado: emp.estado as "Activo" | "Licencia" | "Inactivo",
-    permisos: (emp.permisos as Permiso[]) || [],
+    permisos: [],
   };
 }
 
 // Función para obtener permisos por defecto según el rol
 function obtenerPermisosDefault(
-  rol: "Atención al cliente" | "Administrador",
+  rol: "Atención al cliente" | "Administrador" | "Confeccionador",
 ): Permiso[] {
   if (rol === "Administrador") {
     return [
@@ -97,6 +98,9 @@ function obtenerPermisosDefault(
       "ver_pagos",
       "registrar_pagos",
     ];
+  } else if (rol === "Confeccionador") {
+    // Confeccionador: solo puede agregar stock al catálogo
+    return ["ver_catalogo", "agregar_stock"];
   } else {
     // Atención al cliente: solo puede trabajar con pedidos, clientes y pagos
     return [
@@ -189,15 +193,22 @@ export function EmpleadosProvider({ children }: { children: ReactNode }) {
       if (!authData.user)
         throw new Error("No se pudo crear el usuario de autenticación");
 
-      // Paso 2: Crear registro en la tabla empleados
-      const permisosDefault = obtenerPermisosDefault(data.rol);
+      // Paso 2: Generar código único para el empleado
+      const maxCodigo = empleados.reduce((max, emp) => {
+        const num = parseInt(emp.codigo.replace("EMP-", ""), 10);
+        return num > max ? num : max;
+      }, 0);
+      const nuevoCodigo = `EMP-${String(maxCodigo + 1).padStart(4, "0")}`;
+
+      // Paso 3: Crear registro en la tabla empleados
       const insertData: EmpleadoInsert = {
+        codigo: nuevoCodigo,
         nombre: data.nombre,
         email: data.email,
         telefono: data.telefono,
         rol: data.rol,
         estado: data.estado,
-        permisos: permisosDefault,
+        fecha_ingreso: new Date().toISOString().split("T")[0],
       };
 
       const { data: nuevoEmpleado, error: insertError } = await supabase
@@ -263,7 +274,6 @@ export function EmpleadosProvider({ children }: { children: ReactNode }) {
       if (data.telefono !== undefined) updateData.telefono = data.telefono;
       if (data.rol !== undefined) updateData.rol = data.rol;
       if (data.estado !== undefined) updateData.estado = data.estado;
-      if (data.permisos !== undefined) updateData.permisos = data.permisos;
 
       const { error: updateError } = await supabase
         .from("empleados")

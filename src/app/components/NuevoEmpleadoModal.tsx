@@ -17,7 +17,7 @@ type Empleado = {
   nombre: string;
   email: string;
   telefono: string;
-  rol: "Atención al cliente" | "Administrador";
+  rol: "Atención al cliente" | "Administrador" | "Confeccionador";
   fechaIngreso: string;
   estado: "Activo" | "Licencia" | "Inactivo";
 };
@@ -26,33 +26,51 @@ type FormData = {
   nombre: string;
   email: string;
   telefono: string;
-  rol: "Atención al cliente" | "Administrador" | "";
+  rol: "Atención al cliente" | "Administrador" | "Confeccionador" | "";
   password: string;
   confirmPassword: string;
 };
 
 type FormErrors = Partial<Record<keyof FormData, string>>;
 
-const rolesDisponibles = ["Atención al cliente", "Administrador"];
+const rolesDisponibles = [
+  "Atención al cliente",
+  "Administrador",
+  "Confeccionador",
+];
 
 function validateForm(
   data: FormData,
   empleadosExistentes: Empleado[] = [],
 ): FormErrors {
   const errors: FormErrors = {};
+
+  // Validar nombre: no números ni "@"
   if (!data.nombre.trim()) errors.nombre = "El nombre es obligatorio.";
+  else if (/[0-9]/.test(data.nombre))
+    errors.nombre = "El nombre no puede contener números.";
+  else if (/@/.test(data.nombre))
+    errors.nombre = "El nombre no puede contener el símbolo @.";
+
+  // Validar email: debe terminar en @gmail.com, @hotmail.com o @outlook.com
   if (!data.email.trim()) errors.email = "El correo es obligatorio.";
-  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email))
-    errors.email = "Ingresa un correo válido.";
+  else if (!/^[^\s@]+@(gmail\.com|hotmail\.com|outlook\.com)$/.test(data.email))
+    errors.email =
+      "El correo debe ser @gmail.com, @hotmail.com o @outlook.com.";
   else if (
     empleadosExistentes.some(
       (e) => e.email.toLowerCase() === data.email.toLowerCase(),
     )
   )
     errors.email = "Este correo ya está registrado para otro empleado.";
+
+  // Validar teléfono: comienza con 9, solo números, máximo 9 dígitos
   if (!data.telefono.trim()) errors.telefono = "El teléfono es obligatorio.";
-  else if (!/^9\d{8}$/.test(data.telefono.replace(/\s/g, "")))
-    errors.telefono = "Número inválido (9 dígitos, empieza en 9).";
+  else if (!/^\d+$/.test(data.telefono))
+    errors.telefono = "El teléfono solo puede contener números.";
+  else if (!/^9\d{8}$/.test(data.telefono))
+    errors.telefono = "Número inválido (9 dígitos, comienza en 9).";
+
   if (!data.rol) errors.rol = "Selecciona un rol.";
   if (!data.password.trim()) errors.password = "La contraseña es obligatoria.";
   else if (data.password.length < 8) errors.password = "Mínimo 8 caracteres.";
@@ -100,7 +118,19 @@ export function NuevoEmpleadoModal({
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleChange = (field: keyof FormData, value: string | boolean) => {
-    setForm((f) => ({ ...f, [field]: value }));
+    let finalValue: string | boolean = value;
+
+    // Filtro para nombre: no números ni "@"
+    if (field === "nombre" && typeof value === "string") {
+      finalValue = value.replace(/[0-9@]/g, "");
+    }
+
+    // Filtro para teléfono: solo números, máximo 9 dígitos
+    if (field === "telefono" && typeof value === "string") {
+      finalValue = value.replace(/[^0-9]/g, "").slice(0, 9);
+    }
+
+    setForm((f) => ({ ...f, [field]: finalValue }));
     if (errors[field]) setErrors((e) => ({ ...e, [field]: undefined }));
   };
 
@@ -121,7 +151,10 @@ export function NuevoEmpleadoModal({
         nombre: form.nombre.trim(),
         email: form.email.trim(),
         telefono: form.telefono.trim(),
-        rol: form.rol as "Atención al cliente" | "Administrador",
+        rol: form.rol as
+          | "Atención al cliente"
+          | "Administrador"
+          | "Confeccionador",
         fechaIngreso: new Date().toISOString().split("T")[0],
         estado: "Activo",
       };
@@ -202,7 +235,7 @@ export function NuevoEmpleadoModal({
                   <input
                     id="email"
                     type="email"
-                    placeholder="Ej. maria@szamlet.com"
+                    placeholder="Ej. maria@gmail.com"
                     value={form.email}
                     onChange={(e) => handleChange("email", e.target.value)}
                     className={`w-full pl-9 pr-4 py-2.5 rounded-lg bg-input-background border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20 transition ${
@@ -229,7 +262,7 @@ export function NuevoEmpleadoModal({
                   <input
                     id="telefono"
                     type="text"
-                    placeholder="Ej. 987 654 321"
+                    placeholder="Ej. 987654321"
                     value={form.telefono}
                     onChange={(e) => handleChange("telefono", e.target.value)}
                     className={`w-full pl-9 pr-4 py-2.5 rounded-lg bg-input-background border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20 transition ${
