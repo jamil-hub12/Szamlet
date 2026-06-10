@@ -193,13 +193,22 @@ export function EmpleadosProvider({ children }: { children: ReactNode }) {
       if (!authData.user)
         throw new Error("No se pudo crear el usuario de autenticación");
 
-      // Paso 2: Crear registro en la tabla empleados
+      // Paso 2: Generar código único para el empleado
+      const maxCodigo = empleados.reduce((max, emp) => {
+        const num = parseInt(emp.codigo.replace("EMP-", ""), 10);
+        return num > max ? num : max;
+      }, 0);
+      const nuevoCodigo = `EMP-${String(maxCodigo + 1).padStart(4, "0")}`;
+
+      // Paso 3: Crear registro en la tabla empleados
       const insertData: EmpleadoInsert = {
+        codigo: nuevoCodigo,
         nombre: data.nombre,
         email: data.email,
         telefono: data.telefono,
         rol: data.rol,
         estado: data.estado,
+        fecha_ingreso: new Date().toISOString().split("T")[0],
       };
 
       const { data: nuevoEmpleado, error: insertError } = await supabase

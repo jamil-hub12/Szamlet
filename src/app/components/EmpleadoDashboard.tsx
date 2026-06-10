@@ -1056,281 +1056,285 @@ export function EmpleadoDashboard() {
 
         {/* ── Sección Catálogo ── */}
         {seccion === "catalogo" && (
-          <div className="flex-1 p-6 space-y-5">
-            {/* Stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center shrink-0">
-                  <Layers className="w-5 h-5" />
+          <div className="flex-1 p-6">
+            <div className="space-y-5">
+              {/* Stats */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center shrink-0">
+                    <Layers className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-2xl text-foreground">
+                      {productos.length}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Productos</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-2xl text-foreground">{productos.length}</p>
-                  <p className="text-xs text-muted-foreground">Productos</p>
-                </div>
-              </div>
-              <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                  <Package className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-2xl text-foreground">
-                    {productos.reduce(
-                      (s, p) =>
-                        s +
-                        p.tallas.reduce(
-                          (ts, t) =>
-                            ts + t.colores.reduce((cs, c) => cs + c.stock, 0),
-                          0,
-                        ),
-                      0,
-                    )}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Unidades en stock
-                  </p>
-                </div>
-              </div>
-              <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                  <CheckCircle2 className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-2xl text-foreground">
-                    {[...new Set(productos.map((p) => p.modelo))].length}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Modelos distintos
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Barra de búsqueda y acción */}
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Buscar por modelo, tela, diseño o código…"
-                  value={busquedaProducto}
-                  onChange={(e) => setBusquedaProducto(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-input-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20 transition text-sm"
-                />
-              </div>
-              {currentUser.permisos?.includes("crear_productos") && (
-                <button
-                  onClick={() => setModalProductoAbierto(true)}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition text-sm shrink-0"
-                >
-                  <Plus className="w-4 h-4" /> Agregar producto
-                </button>
-              )}
-            </div>
-
-            {/* Tabla de productos */}
-            <div className="bg-card border border-border rounded-xl overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border bg-muted/40">
-                      <th className="w-8 px-3 py-3" />
-                      {["Modelo", "Tela", "Diseño", "Tallas", "Stock"].map(
-                        (h) => (
-                          <th
-                            key={h}
-                            className="text-left px-4 py-3 text-muted-foreground font-normal whitespace-nowrap"
-                          >
-                            {h}
-                          </th>
-                        ),
+                <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                    <Package className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-2xl text-foreground">
+                      {productos.reduce(
+                        (s, p) =>
+                          s +
+                          p.tallas.reduce(
+                            (ts, t) =>
+                              ts + t.colores.reduce((cs, c) => cs + c.stock, 0),
+                            0,
+                          ),
+                        0,
                       )}
-                      <th className="px-4 py-3 text-muted-foreground font-normal text-right">
-                        Acción
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(() => {
-                      const filtrados = productos.filter(
-                        (p) =>
-                          !busquedaProducto ||
-                          p.modelo
-                            .toLowerCase()
-                            .includes(busquedaProducto.toLowerCase()) ||
-                          p.tela
-                            .toLowerCase()
-                            .includes(busquedaProducto.toLowerCase()) ||
-                          p.disenio
-                            .toLowerCase()
-                            .includes(busquedaProducto.toLowerCase()) ||
-                          p.id
-                            .toLowerCase()
-                            .includes(busquedaProducto.toLowerCase()),
-                      );
-                      if (filtrados.length === 0)
-                        return (
-                          <tr>
-                            <td
-                              colSpan={7}
-                              className="px-4 py-10 text-center text-muted-foreground text-sm"
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Unidades en stock
+                    </p>
+                  </div>
+                </div>
+                <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-2xl text-foreground">
+                      {[...new Set(productos.map((p) => p.modelo))].length}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Modelos distintos
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Barra de búsqueda y acción */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="Buscar por modelo, tela, diseño o código…"
+                    value={busquedaProducto}
+                    onChange={(e) => setBusquedaProducto(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-input-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20 transition text-sm"
+                  />
+                </div>
+                {currentUser.permisos?.includes("crear_productos") && (
+                  <button
+                    onClick={() => setModalProductoAbierto(true)}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition text-sm shrink-0"
+                  >
+                    <Plus className="w-4 h-4" /> Agregar producto
+                  </button>
+                )}
+              </div>
+
+              {/* Tabla de productos */}
+              <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/40">
+                        <th className="w-8 px-3 py-3" />
+                        {["Modelo", "Tela", "Diseño", "Tallas", "Stock"].map(
+                          (h) => (
+                            <th
+                              key={h}
+                              className="text-left px-4 py-3 text-muted-foreground font-normal whitespace-nowrap"
                             >
-                              {productos.length === 0
-                                ? "No hay productos registrados aún. Agrega el primero."
-                                : "No se encontraron productos con ese criterio."}
-                            </td>
-                          </tr>
+                              {h}
+                            </th>
+                          ),
+                        )}
+                        <th className="px-4 py-3 text-muted-foreground font-normal text-right">
+                          Acción
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(() => {
+                        const filtrados = productos.filter(
+                          (p) =>
+                            !busquedaProducto ||
+                            p.modelo
+                              .toLowerCase()
+                              .includes(busquedaProducto.toLowerCase()) ||
+                            p.tela
+                              .toLowerCase()
+                              .includes(busquedaProducto.toLowerCase()) ||
+                            p.disenio
+                              .toLowerCase()
+                              .includes(busquedaProducto.toLowerCase()) ||
+                            p.id
+                              .toLowerCase()
+                              .includes(busquedaProducto.toLowerCase()),
                         );
-                      return filtrados.map((p, i) => {
-                        const stockTotal = p.tallas.reduce(
-                          (s, t) =>
-                            s + t.colores.reduce((cs, c) => cs + c.stock, 0),
-                          0,
-                        );
-                        const isExpanded = expandedProductos.has(p.id);
-                        return (
-                          <React.Fragment key={p.id}>
-                            <tr
-                              className={`border-b border-border hover:bg-accent/40 transition ${i % 2 === 0 ? "" : "bg-muted/20"} ${isExpanded ? "bg-accent/20" : ""}`}
-                            >
-                              <td className="px-3 py-3">
-                                <button
-                                  type="button"
-                                  onClick={() => toggleExpanded(p.id)}
-                                  className="p-1 rounded hover:bg-accent transition text-muted-foreground"
-                                >
-                                  <ChevronRight
-                                    className={`w-3.5 h-3.5 transition-transform ${isExpanded ? "rotate-90" : ""}`}
-                                  />
-                                </button>
-                              </td>
-                              <td className="px-4 py-3">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-7 h-7 rounded-lg bg-foreground text-background flex items-center justify-center shrink-0">
-                                    <Package className="w-3.5 h-3.5" />
-                                  </div>
-                                  <span className="text-foreground">
-                                    {p.modelo}
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 text-muted-foreground">
-                                {p.tela}
-                              </td>
-                              <td className="px-4 py-3 text-muted-foreground">
-                                {p.disenio}
-                              </td>
-                              <td className="px-4 py-3">
-                                <div className="flex flex-wrap gap-1">
-                                  {p.tallas.map((t) => (
-                                    <span
-                                      key={t.talla}
-                                      className={`text-xs px-1.5 py-0.5 rounded border ${
-                                        t.talla === "XL"
-                                          ? "bg-amber-50 text-amber-700 border-amber-200"
-                                          : !["S", "M", "L", "XL"].includes(
-                                                t.talla,
-                                              )
-                                            ? "bg-violet-50 text-violet-700 border-violet-200"
-                                            : "bg-muted text-muted-foreground border-border"
-                                      }`}
-                                    >
-                                      {t.talla}
-                                    </span>
-                                  ))}
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 text-foreground">
-                                {stockTotal} uds.
-                              </td>
-                              <td className="px-4 py-3 text-right">
-                                {currentUser.permisos?.includes(
-                                  "editar_productos",
-                                ) && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setProductoEditando(p)}
-                                    className="px-3 py-1.5 rounded-lg text-xs border border-border text-foreground hover:bg-accent transition"
-                                  >
-                                    Editar
-                                  </button>
-                                )}
+                        if (filtrados.length === 0)
+                          return (
+                            <tr>
+                              <td
+                                colSpan={7}
+                                className="px-4 py-10 text-center text-muted-foreground text-sm"
+                              >
+                                {productos.length === 0
+                                  ? "No hay productos registrados aún. Agrega el primero."
+                                  : "No se encontraron productos con ese criterio."}
                               </td>
                             </tr>
-                            {isExpanded && (
+                          );
+                        return filtrados.map((p, i) => {
+                          const stockTotal = p.tallas.reduce(
+                            (s, t) =>
+                              s + t.colores.reduce((cs, c) => cs + c.stock, 0),
+                            0,
+                          );
+                          const isExpanded = expandedProductos.has(p.id);
+                          return (
+                            <React.Fragment key={p.id}>
                               <tr
-                                key={`${p.id}-detail`}
-                                className="border-b border-border bg-muted/10"
+                                className={`border-b border-border hover:bg-accent/40 transition ${i % 2 === 0 ? "" : "bg-muted/20"} ${isExpanded ? "bg-accent/20" : ""}`}
                               >
-                                <td colSpan={8} className="px-6 py-4">
-                                  <div className="space-y-3">
-                                    <p className="text-xs text-muted-foreground uppercase tracking-wider">
-                                      Detalle de stock — {p.modelo} · {p.tela} ·{" "}
-                                      {p.disenio}
-                                    </p>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                      {p.tallas.map((t) => {
-                                        const stockTalla = t.colores.reduce(
-                                          (s, c) => s + c.stock,
-                                          0,
-                                        );
-                                        const esXL = t.talla === "XL";
-                                        const esPersonalizada = ![
-                                          "S",
-                                          "M",
-                                          "L",
-                                          "XL",
-                                        ].includes(t.talla);
-                                        return (
-                                          <div
-                                            key={t.talla}
-                                            className={`rounded-xl border p-3 space-y-2 ${esXL ? "border-amber-200 bg-amber-50/40" : esPersonalizada ? "border-violet-200 bg-violet-50/40" : "border-border bg-card"}`}
-                                          >
-                                            <div className="flex items-center justify-between">
-                                              <span
-                                                className={`text-sm px-2 py-0.5 rounded-full border ${esXL ? "bg-amber-100 text-amber-800 border-amber-300" : esPersonalizada ? "bg-violet-100 text-violet-800 border-violet-300" : "bg-foreground text-background border-foreground"}`}
-                                              >
-                                                {t.talla}
-                                              </span>
-                                              <span className="text-xs text-muted-foreground">
-                                                {stockTalla} uds. total
-                                              </span>
-                                            </div>
-                                            <div className="space-y-1">
-                                              {t.colores.map((c) => (
-                                                <div
-                                                  key={c.color}
-                                                  className="flex items-center justify-between text-xs"
-                                                >
-                                                  <span className="text-foreground">
-                                                    {c.color}
-                                                  </span>
-                                                  <span
-                                                    className={`font-mono ${c.stock === 0 ? "text-red-500" : "text-muted-foreground"}`}
-                                                  >
-                                                    {c.stock} ud.
-                                                  </span>
-                                                </div>
-                                              ))}
-                                              {t.colores.length === 0 && (
-                                                <p className="text-xs text-muted-foreground">
-                                                  Sin colores
-                                                </p>
-                                              )}
-                                            </div>
-                                          </div>
-                                        );
-                                      })}
+                                <td className="px-3 py-3">
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleExpanded(p.id)}
+                                    className="p-1 rounded hover:bg-accent transition text-muted-foreground"
+                                  >
+                                    <ChevronRight
+                                      className={`w-3.5 h-3.5 transition-transform ${isExpanded ? "rotate-90" : ""}`}
+                                    />
+                                  </button>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-7 h-7 rounded-lg bg-foreground text-background flex items-center justify-center shrink-0">
+                                      <Package className="w-3.5 h-3.5" />
                                     </div>
+                                    <span className="text-foreground">
+                                      {p.modelo}
+                                    </span>
                                   </div>
                                 </td>
+                                <td className="px-4 py-3 text-muted-foreground">
+                                  {p.tela}
+                                </td>
+                                <td className="px-4 py-3 text-muted-foreground">
+                                  {p.disenio}
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="flex flex-wrap gap-1">
+                                    {p.tallas.map((t) => (
+                                      <span
+                                        key={t.talla}
+                                        className={`text-xs px-1.5 py-0.5 rounded border ${
+                                          t.talla === "XL"
+                                            ? "bg-amber-50 text-amber-700 border-amber-200"
+                                            : !["S", "M", "L", "XL"].includes(
+                                                  t.talla,
+                                                )
+                                              ? "bg-violet-50 text-violet-700 border-violet-200"
+                                              : "bg-muted text-muted-foreground border-border"
+                                        }`}
+                                      >
+                                        {t.talla}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-foreground">
+                                  {stockTotal} uds.
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                  {currentUser.permisos?.includes(
+                                    "editar_productos",
+                                  ) && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setProductoEditando(p)}
+                                      className="px-3 py-1.5 rounded-lg text-xs border border-border text-foreground hover:bg-accent transition"
+                                    >
+                                      Agregar tallas y colores
+                                    </button>
+                                  )}
+                                </td>
                               </tr>
-                            )}
-                          </React.Fragment>
-                        );
-                      });
-                    })()}
-                  </tbody>
-                </table>
+                              {isExpanded && (
+                                <tr
+                                  key={`${p.id}-detail`}
+                                  className="border-b border-border bg-muted/10"
+                                >
+                                  <td colSpan={8} className="px-6 py-4">
+                                    <div className="space-y-3">
+                                      <p className="text-xs text-muted-foreground uppercase tracking-wider">
+                                        Detalle de stock — {p.modelo} · {p.tela}{" "}
+                                        · {p.disenio}
+                                      </p>
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                        {p.tallas.map((t) => {
+                                          const stockTalla = t.colores.reduce(
+                                            (s, c) => s + c.stock,
+                                            0,
+                                          );
+                                          const esXL = t.talla === "XL";
+                                          const esPersonalizada = ![
+                                            "S",
+                                            "M",
+                                            "L",
+                                            "XL",
+                                          ].includes(t.talla);
+                                          return (
+                                            <div
+                                              key={t.talla}
+                                              className={`rounded-xl border p-3 space-y-2 ${esXL ? "border-amber-200 bg-amber-50/40" : esPersonalizada ? "border-violet-200 bg-violet-50/40" : "border-border bg-card"}`}
+                                            >
+                                              <div className="flex items-center justify-between">
+                                                <span
+                                                  className={`text-sm px-2 py-0.5 rounded-full border ${esXL ? "bg-amber-100 text-amber-800 border-amber-300" : esPersonalizada ? "bg-violet-100 text-violet-800 border-violet-300" : "bg-foreground text-background border-foreground"}`}
+                                                >
+                                                  {t.talla}
+                                                </span>
+                                                <span className="text-xs text-muted-foreground">
+                                                  {stockTalla} uds. total
+                                                </span>
+                                              </div>
+                                              <div className="space-y-1">
+                                                {t.colores.map((c) => (
+                                                  <div
+                                                    key={c.color}
+                                                    className="flex items-center justify-between text-xs"
+                                                  >
+                                                    <span className="text-foreground">
+                                                      {c.color}
+                                                    </span>
+                                                    <span
+                                                      className={`font-mono ${c.stock === 0 ? "text-red-500" : "text-muted-foreground"}`}
+                                                    >
+                                                      {c.stock} ud.
+                                                    </span>
+                                                  </div>
+                                                ))}
+                                                {t.colores.length === 0 && (
+                                                  <p className="text-xs text-muted-foreground">
+                                                    Sin colores
+                                                  </p>
+                                                )}
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
+                          );
+                        });
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>
@@ -2809,6 +2813,7 @@ export function EmpleadoDashboard() {
           <EditarProductoModal
             producto={productoEditando}
             onClose={() => setProductoEditando(null)}
+            modo="admin"
             onGuardar={async (actualizado) => {
               const exito = await actualizarProducto(actualizado.id, {
                 modelo: actualizado.modelo,
