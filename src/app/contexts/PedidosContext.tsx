@@ -81,11 +81,27 @@ type PedidosContextType = {
     urgente: boolean;
     notas?: string;
     fechaEntrega?: string;
-    items?: PedidoItemData[]; // Items detallados de productos
+    items?: PedidoItemData[];
   }) => Promise<Pedido | null>;
   actualizarPedido: (
     codigo: string,
     datos: Partial<Pedido>,
+  ) => Promise<boolean>;
+  actualizarPedidoConItems: (
+    codigo: string,
+    datosBasicos: Partial<Pedido>,
+    items: Array<{
+      pedido_codigo: string;
+      producto_codigo: string;
+      modelo: string;
+      tela: string;
+      disenio: string;
+      talla: string;
+      color: string;
+      cantidad: number;
+      precio_unitario?: number | null;
+      subtotal?: number | null;
+    }>,
   ) => Promise<boolean>;
   cancelarPedido: (codigo: string, motivo: string) => Promise<boolean>;
   reactivarPedido: (codigo: string) => Promise<boolean>;
@@ -99,13 +115,13 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const skipNextSubscriptionUpdate = useRef(0);
+  const isModifyingRef = useRef(false);
 
   const fetchPedidos = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Obtener pedidos con información del cliente
       const { data: pedidosData, error: pedidosError } = await supabase
         .from("pedidos")
         .select(
@@ -123,7 +139,6 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
 
       if (pedidosError) throw pedidosError;
 
-      // Obtener items de todos los pedidos
       const { data: itemsData, error: itemsError } = await supabase
         .from("pedido_items")
         .select("*");
@@ -137,7 +152,6 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
 
       const pedidosConvertidos: Pedido[] = (pedidosData || []).map(
         (pedido: any) => {
-          // Filtrar items de este pedido
           const itemsPedido = (itemsData || [])
             .filter((item: any) => item.pedido_codigo === pedido.codigo)
             .map((item: any) => ({
@@ -207,11 +221,11 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
         "postgres_changes",
         { event: "*", schema: "public", table: "pedidos" },
         () => {
-          if (skipNextSubscriptionUpdate.current > 0) {
-            skipNextSubscriptionUpdate.current -= 1;
-          } else {
-            fetchPedidos();
+          if (isModifyingRef.current) {
+            console.debug("⏭️ Ignorando evento durante modificación");
+            return;
           }
+          fetchPedidos();
         },
       )
       .subscribe();
@@ -230,8 +244,7 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
     items?: PedidoItemData[];
   }): Promise<Pedido | null> => {
     try {
-      // Establecer flag para saltar 2 eventos: INSERT + UPDATE de monto_total
-      skipNextSubscriptionUpdate.current = 2;
+      isModifyingRef.current = true;
 
       const insertData: PedidoInsert = {
         cliente_id: data.clienteId,
@@ -240,7 +253,7 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
         notas: data.notas || null,
         fecha: obtenerFechaPeruHoy(),
         fecha_entrega: data.fechaEntrega || null,
-        estado: "Recibido", // Estado inicial del ciclo de vida
+        estado: "Recibido",
       };
 
       const { data: nuevoPedido, error: insertError } = await supabase
@@ -261,7 +274,6 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
 
       if (insertError) throw insertError;
 
-      // Calcular montoTotal basado en los items
       let montoTotal = 0;
       if (data.items && data.items.length > 0) {
         montoTotal = data.items.reduce((sum, item) => {
@@ -289,7 +301,6 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
         fechaEntrega: data.fechaEntrega || undefined,
       };
 
-      // Actualizar el pedido en BD con el montoTotal calculado
       if (montoTotal > 0) {
         const { error: updateError } = await supabase
           .from("pedidos")
@@ -301,7 +312,6 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // Actualizar stock si se enviaron items detallados
       const usuario = await obtenerUsuarioActual();
       const usuarioFinal = usuario || { codigo: "SISTEMA", nombre: "Sistema" };
 
@@ -314,7 +324,6 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
         );
 
         if (!resultadoStock.exito) {
-          // Si falla el stock, eliminar el pedido creado
           await supabase
             .from("pedidos")
             .delete()
@@ -324,7 +333,6 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // Registrar en auditoría
       await registrarAuditoria({
         usuarioCodigo: usuarioFinal.codigo,
         usuarioNombre: usuarioFinal.nombre,
@@ -341,13 +349,19 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
       });
 
       setPedidos((prev) => [pedidoConvertido, ...prev]);
+
+      setTimeout(() => {
+        isModifyingRef.current = false;
+        fetchPedidos();
+      }, 800);
+
       return pedidoConvertido;
     } catch (err) {
       const errorMsg =
         err instanceof Error ? err.message : "Error al agregar pedido";
       console.error("❌ Error al agregar pedido:", err);
-      console.error("Detalles del error:", errorMsg);
       setError(errorMsg);
+      isModifyingRef.current = false;
       return null;
     }
   };
@@ -357,17 +371,14 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
     datos: Partial<Pedido>,
   ): Promise<boolean> => {
     try {
-      // Establecer flag para saltar 1 evento de actualización
-      skipNextSubscriptionUpdate.current = 1;
+      isModifyingRef.current = true;
 
-      // Obtener el pedido actual
       const pedidoActual = pedidos.find((p) => p.codigo === codigo);
       if (!pedidoActual) {
         setError("Pedido no encontrado");
         return false;
       }
 
-      // Validar si se puede editar el pedido
       if (
         datos.articulo !== undefined ||
         datos.urgente !== undefined ||
@@ -381,7 +392,6 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // Validar transición de estado si se está cambiando
       if (datos.estado !== undefined && datos.estado !== pedidoActual.estado) {
         const validacion = validarTransicion(pedidoActual.estado, datos.estado);
         if (!validacion.valido) {
@@ -409,7 +419,6 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
       const usuario = await obtenerUsuarioActual();
       const usuarioFinal = usuario || { codigo: "SISTEMA", nombre: "Sistema" };
 
-      // Registrar en auditoría si cambió el estado
       if (datos.estado !== undefined && datos.estado !== pedidoActual.estado) {
         await registrarAuditoria({
           usuarioCodigo: usuarioFinal.codigo,
@@ -430,7 +439,6 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
         });
       }
 
-      // Registrar en auditoría si se editaron otros campos
       if (
         datos.articulo !== undefined ||
         datos.urgente !== undefined ||
@@ -463,12 +471,169 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
       setPedidos((prev) =>
         prev.map((p) => (p.codigo === codigo ? { ...p, ...datos } : p)),
       );
+
+      setTimeout(() => {
+        isModifyingRef.current = false;
+        fetchPedidos();
+      }, 800);
+
       return true;
     } catch (err) {
       console.error("Error al actualizar pedido:", err);
       setError(
         err instanceof Error ? err.message : "Error al actualizar pedido",
       );
+      isModifyingRef.current = false;
+      return false;
+    }
+  };
+
+  const actualizarPedidoConItems = async (
+    codigo: string,
+    datosBasicos: Partial<Pedido>,
+    items: Array<{
+      pedido_codigo: string;
+      producto_codigo: string;
+      modelo: string;
+      tela: string;
+      disenio: string;
+      talla: string;
+      color: string;
+      cantidad: number;
+      precio_unitario?: number | null;
+      subtotal?: number | null;
+    }>,
+  ): Promise<boolean> => {
+    try {
+      isModifyingRef.current = true;
+
+      const pedidoActual = pedidos.find((p) => p.codigo === codigo);
+      if (!pedidoActual) {
+        setError("Pedido no encontrado");
+        isModifyingRef.current = false;
+        return false;
+      }
+
+      if (
+        datosBasicos.articulo !== undefined ||
+        datosBasicos.urgente !== undefined ||
+        datosBasicos.notas !== undefined ||
+        datosBasicos.fechaEntrega !== undefined
+      ) {
+        const validacionEdicion = puedeEditarPedido(pedidoActual.estado);
+        if (!validacionEdicion.puede) {
+          setError(validacionEdicion.mensaje);
+          isModifyingRef.current = false;
+          return false;
+        }
+      }
+
+      // PASO 1: Obtener items actuales
+      const { data: itemsActuales } = await supabase
+        .from("pedido_items")
+        .select("*")
+        .eq("pedido_codigo", codigo);
+
+      // PASO 2: Eliminar items existentes
+      const { error: deleteError } = await supabase
+        .from("pedido_items")
+        .delete()
+        .eq("pedido_codigo", codigo);
+
+      if (deleteError) {
+        setError(`Error al eliminar items: ${deleteError.message}`);
+        isModifyingRef.current = false;
+        return false;
+      }
+
+      // Verificación post-DELETE
+      const { data: itemsAfterDelete } = await supabase
+        .from("pedido_items")
+        .select("*")
+        .eq("pedido_codigo", codigo);
+
+      if (itemsAfterDelete && itemsAfterDelete.length > 0) {
+        setError(
+          `Error crítico: DELETE no eliminó los items (quedan ${itemsAfterDelete.length})`,
+        );
+        isModifyingRef.current = false;
+        return false;
+      }
+
+      // PASO 3: Insertar nuevos items
+      if (items.length > 0) {
+        const { error: insertError } = await supabase
+          .from("pedido_items")
+          .insert(items);
+
+        if (insertError) {
+          setError(`Error al guardar items: ${insertError.message}`);
+          isModifyingRef.current = false;
+          return false;
+        }
+      }
+
+      // PASO 4: Actualizar datos básicos del pedido
+      const updateData: PedidoUpdate = {};
+
+      if (datosBasicos.articulo !== undefined)
+        updateData.articulo = datosBasicos.articulo;
+      if (datosBasicos.urgente !== undefined)
+        updateData.urgente = datosBasicos.urgente;
+      if (datosBasicos.notas !== undefined)
+        updateData.notas = datosBasicos.notas;
+      if (datosBasicos.fechaEntrega !== undefined)
+        updateData.fecha_entrega = datosBasicos.fechaEntrega || null;
+
+      if (Object.keys(updateData).length > 0) {
+        const { error: updateError } = await supabase
+          .from("pedidos")
+          .update(updateData)
+          .eq("codigo", codigo);
+
+        if (updateError) {
+          setError(`Error al actualizar pedido: ${updateError.message}`);
+          isModifyingRef.current = false;
+          return false;
+        }
+      }
+
+      // PASO 5: Registrar auditoría
+      const usuario = await obtenerUsuarioActual();
+      const usuarioFinal = usuario || { codigo: "SISTEMA", nombre: "Sistema" };
+
+      await registrarAuditoria({
+        usuarioCodigo: usuarioFinal.codigo,
+        usuarioNombre: usuarioFinal.nombre,
+        accion: "editar",
+        modulo: "pedidos",
+        entidadId: codigo,
+        entidadNombre: `${pedidoActual.cliente} - ${datosBasicos.articulo || pedidoActual.articulo}`,
+        detalles: {
+          cambios: updateData,
+          itemsEliminados: itemsActuales?.length || 0,
+          itemsInsertados: items.length,
+        },
+      });
+
+      // PASO 6: Actualizar estado local  ← FIX: removido setItems() inexistente
+      setPedidos((prev) =>
+        prev.map((p) => (p.codigo === codigo ? { ...p, ...datosBasicos } : p)),
+      );
+
+      // PASO 7: Desactivar flag y refetch
+      setTimeout(() => {
+        isModifyingRef.current = false;
+        fetchPedidos();
+      }, 1500);
+
+      return true;
+    } catch (err) {
+      console.error("❌ Error en actualizarPedidoConItems:", err);
+      setError(
+        err instanceof Error ? err.message : "Error al actualizar pedido",
+      );
+      isModifyingRef.current = false;
       return false;
     }
   };
@@ -478,28 +643,23 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
     motivo: string,
   ): Promise<boolean> => {
     try {
-      // Establecer flag para saltar 1 evento de actualización
-      skipNextSubscriptionUpdate.current = 1;
+      isModifyingRef.current = true;
 
-      // Obtener el pedido actual
       const pedidoActual = pedidos.find((p) => p.codigo === codigo);
       if (!pedidoActual) {
         setError("Pedido no encontrado");
         return false;
       }
 
-      // Validar si se puede cancelar el pedido
       const validacion = puedeCancelarPedido(pedidoActual.estado);
       if (!validacion.puede) {
         setError(validacion.mensaje);
         return false;
       }
 
-      // Obtener usuario actual
       const usuario = await obtenerUsuarioActual();
       const usuarioFinal = usuario || { codigo: "SISTEMA", nombre: "Sistema" };
 
-      // Restaurar stock antes de cancelar
       const resultadoStock = await restaurarStockPedidoCancelado(
         codigo,
         usuarioFinal.codigo,
@@ -522,7 +682,6 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
 
       if (updateError) throw updateError;
 
-      // Registrar en auditoría
       await registrarAuditoria({
         usuarioCodigo: usuarioFinal.codigo,
         usuarioNombre: usuarioFinal.nombre,
@@ -548,33 +707,36 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
             : p,
         ),
       );
+
+      setTimeout(() => {
+        isModifyingRef.current = false;
+        fetchPedidos();
+      }, 800);
+
       return true;
     } catch (err) {
       console.error("Error al cancelar pedido:", err);
       setError(err instanceof Error ? err.message : "Error al cancelar pedido");
+      isModifyingRef.current = false;
       return false;
     }
   };
 
   const reactivarPedido = async (codigo: string): Promise<boolean> => {
     try {
-      // Establecer flag para saltar 1 evento de actualización
-      skipNextSubscriptionUpdate.current = 1;
+      isModifyingRef.current = true;
 
-      // Obtener el pedido actual
       const pedidoActual = pedidos.find((p) => p.codigo === codigo);
       if (!pedidoActual) {
         setError("Pedido no encontrado");
         return false;
       }
 
-      // Verificar que esté cancelado
       if (pedidoActual.estado !== "Cancelado") {
         setError("Solo se pueden reactivar pedidos cancelados");
         return false;
       }
 
-      // Verificar que tenga un estado anterior guardado
       if (!pedidoActual.estadoAnteriorCancelacion) {
         setError(
           "No se puede reactivar este pedido (no tiene estado anterior guardado)",
@@ -582,11 +744,10 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
-      // Obtener usuario actual
       const usuario = await obtenerUsuarioActual();
       const usuarioFinal = usuario || { codigo: "SISTEMA", nombre: "Sistema" };
 
-      // Descontar el stock nuevamente (revertir la restauración)
+      // FIX: soloStock=true para no reinsertar items que ya existen en pedido_items
       const resultadoStock = await actualizarStockPedidoCreado(
         codigo,
         pedidoActual.items?.map((item) => ({
@@ -600,6 +761,7 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
         })) || [],
         usuarioFinal.codigo,
         usuarioFinal.nombre,
+        true, // soloStock: solo actualiza stock, NO inserta en pedido_items
       );
 
       if (!resultadoStock.exito) {
@@ -607,7 +769,6 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
-      // Reactivar el pedido al estado anterior
       const { error: updateError } = await supabase
         .from("pedidos")
         .update({
@@ -619,7 +780,6 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
 
       if (updateError) throw updateError;
 
-      // Registrar en auditoría
       await registrarAuditoria({
         usuarioCodigo: usuarioFinal.codigo,
         usuarioNombre: usuarioFinal.nombre,
@@ -647,12 +807,18 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
         ),
       );
 
+      setTimeout(() => {
+        isModifyingRef.current = false;
+        fetchPedidos();
+      }, 800);
+
       return true;
     } catch (err) {
       console.error("Error al reactivar pedido:", err);
       setError(
         err instanceof Error ? err.message : "Error al reactivar pedido",
       );
+      isModifyingRef.current = false;
       return false;
     }
   };
@@ -665,6 +831,7 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
         error,
         agregarPedido,
         actualizarPedido,
+        actualizarPedidoConItems,
         cancelarPedido,
         reactivarPedido,
         refetch: fetchPedidos,

@@ -12,41 +12,55 @@ export type PedidoItemData = {
 };
 
 /**
- * Actualiza el stock cuando se crea un pedido
+ * Actualiza el stock cuando se crea un pedido.
+ * @param soloStock - Si es true, omite el INSERT en pedido_items (usar al reactivar un pedido).
  */
 export async function actualizarStockPedidoCreado(
   pedidoCodigo: string,
   items: PedidoItemData[],
   usuarioCodigo: string,
-  usuarioNombre: string
+  usuarioNombre: string,
+  soloStock = false, // FIX: parámetro para evitar duplicar items al reactivar
 ): Promise<{ exito: boolean; mensaje: string }> {
   try {
-    console.log(`📦 Actualizando stock para pedido ${pedidoCodigo} con ${items.length} items`);
+    console.log(
+      `📦 Actualizando stock para pedido ${pedidoCodigo} con ${items.length} items`,
+    );
 
-    // 1. Guardar items del pedido
-    const pedidoItemsInsert = items.map((item) => ({
-      pedido_codigo: pedidoCodigo,
-      producto_codigo: item.productoCodigo,
-      modelo: item.modelo,
-      tela: item.tela,
-      disenio: item.disenio,
-      talla: item.talla,
-      color: item.color,
-      cantidad: item.cantidad,
-      precio_unitario: item.precioUnitario || null,
-      subtotal: item.precioUnitario ? item.precioUnitario * item.cantidad : null,
-    }));
+    // 1. Guardar items del pedido (solo al crear, no al reactivar)
+    if (!soloStock) {
+      const pedidoItemsInsert = items.map((item) => ({
+        pedido_codigo: pedidoCodigo,
+        producto_codigo: item.productoCodigo,
+        modelo: item.modelo,
+        tela: item.tela,
+        disenio: item.disenio,
+        talla: item.talla,
+        color: item.color,
+        cantidad: item.cantidad,
+        precio_unitario: item.precioUnitario || null,
+        subtotal: item.precioUnitario
+          ? item.precioUnitario * item.cantidad
+          : null,
+      }));
 
-    const { error: insertError } = await supabase
-      .from("pedido_items")
-      .insert(pedidoItemsInsert);
+      const { error: insertError } = await supabase
+        .from("pedido_items")
+        .insert(pedidoItemsInsert);
 
-    if (insertError) throw insertError;
-    console.log(`✅ Items del pedido guardados en pedido_items`);
+      if (insertError) throw insertError;
+      console.log(`✅ Items del pedido guardados en pedido_items`);
+    } else {
+      console.log(
+        `⏭️ soloStock=true: omitiendo INSERT en pedido_items (reactivación)`,
+      );
+    }
 
-    // 2. Actualizar stock de cada producto
+    // 2. Actualizar stock de cada producto (siempre)
     for (const item of items) {
-      console.log(`   ⬇️ Restando ${item.cantidad} unidades de ${item.modelo} - Talla ${item.talla} - ${item.color}`);
+      console.log(
+        `   ⬇️ Restando ${item.cantidad} unidades de ${item.modelo} - Talla ${item.talla} - ${item.color}`,
+      );
 
       const resultado = await supabase.rpc("actualizar_stock_pedido", {
         p_producto_codigo: item.productoCodigo,
@@ -62,14 +76,16 @@ export async function actualizarStockPedidoCreado(
       if (resultado.error) {
         console.error(`❌ Error al actualizar stock:`, resultado.error);
         throw new Error(
-          `Error al actualizar stock de ${item.modelo} - ${item.talla} - ${item.color}: ${resultado.error.message}`
+          `Error al actualizar stock de ${item.modelo} - ${item.talla} - ${item.color}: ${resultado.error.message}`,
         );
       }
 
       console.log(`   ✅ Stock actualizado correctamente`);
     }
 
-    console.log(`✅ Stock actualizado para todos los items del pedido ${pedidoCodigo}`);
+    console.log(
+      `✅ Stock actualizado para todos los items del pedido ${pedidoCodigo}`,
+    );
     return {
       exito: true,
       mensaje: "Stock actualizado correctamente",
@@ -89,12 +105,11 @@ export async function actualizarStockPedidoCreado(
 export async function restaurarStockPedidoCancelado(
   pedidoCodigo: string,
   usuarioCodigo: string,
-  usuarioNombre: string
+  usuarioNombre: string,
 ): Promise<{ exito: boolean; mensaje: string }> {
   try {
     console.log(`🔄 Restaurando stock para pedido cancelado ${pedidoCodigo}`);
 
-    // 1. Obtener items del pedido
     const { data: items, error: fetchError } = await supabase
       .from("pedido_items")
       .select("*")
@@ -111,9 +126,10 @@ export async function restaurarStockPedidoCancelado(
 
     console.log(`   📦 Restaurando ${items.length} items`);
 
-    // 2. Restaurar stock de cada producto
     for (const item of items) {
-      console.log(`   ⬆️ Sumando ${item.cantidad} unidades de ${item.modelo} - Talla ${item.talla} - ${item.color}`);
+      console.log(
+        `   ⬆️ Sumando ${item.cantidad} unidades de ${item.modelo} - Talla ${item.talla} - ${item.color}`,
+      );
 
       const resultado = await supabase.rpc("actualizar_stock_pedido", {
         p_producto_codigo: item.producto_codigo,
@@ -128,15 +144,15 @@ export async function restaurarStockPedidoCancelado(
 
       if (resultado.error) {
         console.error(`❌ Error al restaurar stock:`, resultado.error);
-        throw new Error(
-          `Error al restaurar stock: ${resultado.error.message}`
-        );
+        throw new Error(`Error al restaurar stock: ${resultado.error.message}`);
       }
 
       console.log(`   ✅ Stock restaurado correctamente`);
     }
 
-    console.log(`✅ Stock restaurado para todos los items del pedido ${pedidoCodigo}`);
+    console.log(
+      `✅ Stock restaurado para todos los items del pedido ${pedidoCodigo}`,
+    );
     return {
       exito: true,
       mensaje: "Stock restaurado correctamente",
