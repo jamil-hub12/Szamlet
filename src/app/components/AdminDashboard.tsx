@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router";
+import { useSearchParams } from "react-router";
 import {
   Scissors,
   BarChart2,
@@ -314,7 +315,10 @@ export function AdminDashboard() {
     cargando: loadingPagos,
   } = usePagos();
   const { clientes, loading: loadingClientes } = useClientes();
-  const [seccion, setSeccion] = useState("panel");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const seccion = searchParams.get("seccion") ?? "panel";
+
+  const setSeccion = (s: string) => setSearchParams({ seccion: s });
 
   // Fecha actual formateada en zona horaria de Perú
   const fechaActual = formatearFechaHoraPeru(new Date()).split(",")[0];

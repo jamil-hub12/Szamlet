@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
+import { useSearchParams } from "react-router";
 import {
   Scissors,
   ClipboardList,
@@ -619,9 +620,14 @@ export function EmpleadoDashboard() {
   } = useProductos();
   const { agregarNotificacion, enviarEmailCambioEstado } = useNotificaciones();
   const { obtenerInfoPagoPedido } = usePagos();
-  const [seccion, setSeccion] = useState<
-    "pedidos" | "clientes" | "pagos" | "catalogo"
-  >("pedidos");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const seccion = (searchParams.get("seccion") ?? "pedidos") as
+    | "pedidos"
+    | "clientes"
+    | "pagos"
+    | "catalogo";
+  const setSeccion = (s: "pedidos" | "clientes" | "pagos" | "catalogo") =>
+    setSearchParams({ seccion: s });
 
   // Fecha actual formateada en zona horaria de Perú
   const fechaActual = formatearFechaHoraPeru(new Date()).split(",")[0];
