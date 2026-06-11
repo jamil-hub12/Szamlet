@@ -298,7 +298,7 @@ export function EditarPedidoModal({
         onClick={step === "form" ? onClose : undefined}
       />
 
-      <div className="relative z-10 bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg">
+      <div className="relative z-10 bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[85vh]">
         {/* Form */}
         {step === "form" && (
           <>
