@@ -355,7 +355,9 @@ export function EditarProductoModal({
             <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
               {/* Tallas disponibles */}
               <div className="space-y-2">
-                <p className="text-sm text-foreground">Tallas disponibles</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">
+                  TALLAS DISPONIBLES
+                </p>
                 <div className="flex flex-wrap gap-2 items-center">
                   {tallasDisp.map((t) => (
                     <button
@@ -427,27 +429,6 @@ export function EditarProductoModal({
                 )}
               </div>
 
-              {/* Detalle por talla */}
-              {tallasSeleccionadas.length > 0 && (
-                <div className="space-y-3">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">
-                    {modo === "admin"
-                      ? "Colores por talla"
-                      : "Colores y stock por talla"}
-                  </p>
-                  {tallasSeleccionadas.map((t) => (
-                    <TallaEditCard
-                      key={t}
-                      talla={t}
-                      colores={detalleTallas[t] ?? []}
-                      onChange={(cols) =>
-                        setDetalleTallas((prev) => ({ ...prev, [t]: cols }))
-                      }
-                      modo={modo}
-                    />
-                  ))}
-                </div>
-              )}
               {/* Precios por talla */}
               {tallasSeleccionadas.length > 0 && (
                 <div className="space-y-3">
@@ -485,6 +466,28 @@ export function EditarProductoModal({
                       );
                     })}
                   </div>
+                </div>
+              )}
+
+              {/* Detalle por talla */}
+              {tallasSeleccionadas.length > 0 && (
+                <div className="space-y-3">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">
+                    {modo === "admin"
+                      ? "Colores por talla"
+                      : "Colores y stock por talla"}
+                  </p>
+                  {tallasSeleccionadas.map((t) => (
+                    <TallaEditCard
+                      key={t}
+                      talla={t}
+                      colores={detalleTallas[t] ?? []}
+                      onChange={(cols) =>
+                        setDetalleTallas((prev) => ({ ...prev, [t]: cols }))
+                      }
+                      modo={modo}
+                    />
+                  ))}
                 </div>
               )}
 
