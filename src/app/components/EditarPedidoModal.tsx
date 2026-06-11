@@ -233,7 +233,7 @@ export function EditarPedidoModal({
           className="absolute inset-0 bg-black/40 backdrop-blur-sm"
           onClick={onClose}
         />
-        <div className="relative z-10 bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh]">
+        <div className="relative z-10 bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[85vh]">
           <div className="flex items-center justify-between px-6 py-5 border-b border-border">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center">
@@ -552,7 +552,7 @@ export function EditarPedidoModal({
               </div>
             </div>
 
-            <div className="px-6 py-4 border-t border-border flex gap-3">
+            <div className="px-6 py-4 border-t border-border flex gap-3 shrink-0">
               <button
                 onClick={onClose}
                 className="flex-1 py-2.5 rounded-lg border border-border text-foreground text-sm hover:bg-accent transition"
