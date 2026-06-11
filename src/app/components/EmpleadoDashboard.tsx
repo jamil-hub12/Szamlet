@@ -1885,7 +1885,7 @@ export function EmpleadoDashboard() {
                     placeholder="Buscar por cliente o código de pedido..."
                     value={busquedaPagos}
                     onChange={(e) => setBusquedaPagos(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-input-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20 transition text-sm"
                   />
                 </div>
               </div>
@@ -2769,21 +2769,6 @@ export function EmpleadoDashboard() {
         <EditarPedidoModal
           pedido={pedidoEditando}
           onClose={() => setPedidoEditando(null)}
-          onGuardar={async (datos) => {
-            const exito = await actualizarPedido(pedidoEditando.codigo, datos);
-            if (exito) {
-              // Actualizar el pedido seleccionado si es el mismo
-              if (pedidoSeleccionado?.codigo === pedidoEditando.codigo) {
-                setPedidoSeleccionado((prev) =>
-                  prev ? { ...prev, ...datos } : null,
-                );
-              }
-              // Pequeño delay para permitir que la suscripción actualice
-              await new Promise((resolve) => setTimeout(resolve, 500));
-              setPedidoEditando(null);
-            }
-            return exito;
-          }}
         />
       )}
 

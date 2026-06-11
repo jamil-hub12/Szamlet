@@ -654,7 +654,7 @@ function VarianteCard({
                         type="number"
                         min={0}
                         step={0.01}
-                        value={precio}
+                        value={precio || ""} // ← cambiar de {precio} a {precio || ""}
                         onChange={(e) => {
                           const val = parseFloat(e.target.value) || 0;
                           onChange({
