@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useSearchParams } from "react-router";
+
 import {
   Scissors,
   ClipboardList,
@@ -875,7 +876,6 @@ export function EmpleadoDashboard() {
       const nb = parseInt(b.id.replace("PED-", ""), 10);
       return ordenFecha === "desc" ? nb - na : na - nb;
     });
-
   const clientesFiltrados = clientes.filter(
     (c) =>
       c.nombre.toLowerCase().includes(busquedaCliente.toLowerCase()) ||
