@@ -3750,22 +3750,6 @@ export function AdminDashboard() {
         <EditarPedidoModal
           pedido={pedidoSeleccionado}
           onClose={() => setModalEditarPedidoAbierto(false)}
-          onGuardar={async (datos) => {
-            const exito = await actualizarPedido(
-              pedidoSeleccionado.codigo,
-              datos,
-            );
-            if (exito) {
-              // Actualizar el pedido en el panel lateral
-              setPedidoSeleccionado((prev) =>
-                prev ? { ...prev, ...datos } : null,
-              );
-              // Pequeño delay para permitir que la suscripción actualice
-              await new Promise((resolve) => setTimeout(resolve, 500));
-              setModalEditarPedidoAbierto(false);
-            }
-            return exito;
-          }}
         />
       )}
       {detalleAuditoria && (
@@ -3829,11 +3813,76 @@ function EditarEmpleadoModal({
     telefono: empleado.telefono,
     rol: empleado.rol,
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [guardando, setGuardando] = useState(false);
 
-  const rolesDisponibles = ["Atención al cliente", "Administrador"];
+  const rolesDisponibles = [
+    "Atención al cliente",
+    "Administrador",
+    "Producción",
+  ];
+
+  const handleChange = (field: keyof typeof form, value: string) => {
+    let finalValue = value;
+
+    // Nombre: solo letras, espacios, tildes y ñ
+    if (field === "nombre") {
+      finalValue = value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s]/g, "");
+    }
+
+    // Email: solo letras, números, @, . y -
+    if (field === "email") {
+      finalValue = value.replace(/[^a-zA-Z0-9@.\-]/g, "").toLowerCase();
+    }
+
+    // Teléfono: solo números, máximo 9 dígitos
+    if (field === "telefono") {
+      finalValue = value.replace(/[^0-9]/g, "").slice(0, 9);
+    }
+
+    setForm((f) => ({ ...f, [field]: finalValue }));
+    if (errors[field])
+      setErrors((e) => {
+        const next = { ...e };
+        delete next[field];
+        return next;
+      });
+  };
+
+  const validate = (): boolean => {
+    const errs: Record<string, string> = {};
+
+    if (!form.nombre.trim()) {
+      errs.nombre = "El nombre es obligatorio.";
+    } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s]+$/.test(form.nombre)) {
+      errs.nombre = "El nombre solo puede contener letras y espacios.";
+    }
+
+    if (!form.email.trim()) {
+      errs.email = "El correo es obligatorio.";
+    } else if (
+      !/^[^\s@]+@(gmail\.com|hotmail\.com|outlook\.com)$/.test(form.email)
+    ) {
+      errs.email =
+        "El correo debe ser @gmail.com, @hotmail.com o @outlook.com.";
+    }
+
+    if (!form.telefono.trim()) {
+      errs.telefono = "El teléfono es obligatorio.";
+    } else if (!/^9\d{8}$/.test(form.telefono)) {
+      errs.telefono = "Número inválido (9 dígitos, comienza en 9).";
+    }
+
+    if (!form.rol) {
+      errs.rol = "Selecciona un rol.";
+    }
+
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
 
   const handleGuardar = async () => {
+    if (!validate()) return;
     setGuardando(true);
     try {
       await onGuardar({ ...empleado, ...form });
@@ -3867,6 +3916,7 @@ function EditarEmpleadoModal({
         </div>
 
         <div className="px-6 py-5 space-y-4">
+          {/* Nombre */}
           <div className="space-y-1.5">
             <label className="text-sm text-foreground">Nombre completo</label>
             <div className="relative">
@@ -3874,12 +3924,18 @@ function EditarEmpleadoModal({
               <input
                 type="text"
                 value={form.nombre}
-                onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-                className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-input-background border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                onChange={(e) => handleChange("nombre", e.target.value)}
+                className={`w-full pl-9 pr-4 py-2.5 rounded-lg bg-input-background border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20 transition ${
+                  errors.nombre ? "border-red-400" : "border-border"
+                }`}
               />
             </div>
+            {errors.nombre && (
+              <p className="text-xs text-red-500">{errors.nombre}</p>
+            )}
           </div>
 
+          {/* Email */}
           <div className="space-y-1.5">
             <label className="text-sm text-foreground">
               Correo electrónico
@@ -3889,12 +3945,18 @@ function EditarEmpleadoModal({
               <input
                 type="email"
                 value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-input-background border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                onChange={(e) => handleChange("email", e.target.value)}
+                className={`w-full pl-9 pr-4 py-2.5 rounded-lg bg-input-background border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20 transition ${
+                  errors.email ? "border-red-400" : "border-border"
+                }`}
               />
             </div>
+            {errors.email && (
+              <p className="text-xs text-red-500">{errors.email}</p>
+            )}
           </div>
 
+          {/* Teléfono */}
           <div className="space-y-1.5">
             <label className="text-sm text-foreground">Teléfono</label>
             <div className="relative">
@@ -3902,12 +3964,18 @@ function EditarEmpleadoModal({
               <input
                 type="text"
                 value={form.telefono}
-                onChange={(e) => setForm({ ...form, telefono: e.target.value })}
-                className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-input-background border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                onChange={(e) => handleChange("telefono", e.target.value)}
+                className={`w-full pl-9 pr-4 py-2.5 rounded-lg bg-input-background border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20 transition ${
+                  errors.telefono ? "border-red-400" : "border-border"
+                }`}
               />
             </div>
+            {errors.telefono && (
+              <p className="text-xs text-red-500">{errors.telefono}</p>
+            )}
           </div>
 
+          {/* Rol */}
           <div className="space-y-1.5">
             <label className="text-sm text-foreground">Rol</label>
             <div className="relative">
@@ -3915,14 +3983,14 @@ function EditarEmpleadoModal({
               <select
                 value={form.rol}
                 onChange={(e) =>
-                  setForm({
-                    ...form,
-                    rol: e.target.value as
-                      | "Atención al cliente"
-                      | "Administrador",
-                  })
+                  setForm((f) => ({
+                    ...f,
+                    rol: e.target.value as typeof form.rol,
+                  }))
                 }
-                className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-input-background border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                className={`w-full pl-9 pr-4 py-2.5 rounded-lg bg-input-background border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20 transition ${
+                  errors.rol ? "border-red-400" : "border-border"
+                }`}
               >
                 {rolesDisponibles.map((r) => (
                   <option key={r} value={r}>
@@ -3931,6 +3999,7 @@ function EditarEmpleadoModal({
                 ))}
               </select>
             </div>
+            {errors.rol && <p className="text-xs text-red-500">{errors.rol}</p>}
           </div>
         </div>
 

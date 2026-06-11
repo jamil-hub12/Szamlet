@@ -41,41 +41,54 @@ function validateForm(
 ): FormErrors {
   const errors: FormErrors = {};
 
-  // Validar nombre: no números ni "@"
-  if (!data.nombre.trim()) errors.nombre = "El nombre es obligatorio.";
-  else if (/[0-9]/.test(data.nombre))
-    errors.nombre = "El nombre no puede contener números.";
-  else if (/@/.test(data.nombre))
-    errors.nombre = "El nombre no puede contener el símbolo @.";
+  // Nombre: solo letras, espacios, tildes y ñ
+  if (!data.nombre.trim()) {
+    errors.nombre = "El nombre es obligatorio.";
+  } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s]+$/.test(data.nombre)) {
+    errors.nombre = "El nombre solo puede contener letras y espacios.";
+  }
 
-  // Validar email: debe terminar en @gmail.com, @hotmail.com o @outlook.com
-  if (!data.email.trim()) errors.email = "El correo es obligatorio.";
-  else if (!/^[^\s@]+@(gmail\.com|hotmail\.com|outlook\.com)$/.test(data.email))
+  // Email: @gmail.com, @hotmail.com o @outlook.com
+  if (!data.email.trim()) {
+    errors.email = "El correo es obligatorio.";
+  } else if (
+    !/^[^\s@]+@(gmail\.com|hotmail\.com|outlook\.com)$/.test(data.email)
+  ) {
     errors.email =
       "El correo debe ser @gmail.com, @hotmail.com o @outlook.com.";
-  else if (
+  } else if (
     empleadosExistentes.some(
       (e) => e.email.toLowerCase() === data.email.toLowerCase(),
     )
-  )
+  ) {
     errors.email = "Este correo ya está registrado para otro empleado.";
+  }
 
-  // Validar teléfono: comienza con 9, solo números, máximo 9 dígitos
-  if (!data.telefono.trim()) errors.telefono = "El teléfono es obligatorio.";
-  else if (!/^\d+$/.test(data.telefono))
+  // Teléfono: 9 dígitos, comienza con 9
+  if (!data.telefono.trim()) {
+    errors.telefono = "El teléfono es obligatorio.";
+  } else if (!/^\d+$/.test(data.telefono)) {
     errors.telefono = "El teléfono solo puede contener números.";
-  else if (!/^9\d{8}$/.test(data.telefono))
+  } else if (!/^9\d{8}$/.test(data.telefono)) {
     errors.telefono = "Número inválido (9 dígitos, comienza en 9).";
+  }
 
   if (!data.rol) errors.rol = "Selecciona un rol.";
-  if (!data.password.trim()) errors.password = "La contraseña es obligatoria.";
-  else if (data.password.length < 8) errors.password = "Mínimo 8 caracteres.";
-  else if (!/[A-Z]/.test(data.password))
+
+  if (!data.password.trim()) {
+    errors.password = "La contraseña es obligatoria.";
+  } else if (data.password.length < 8) {
+    errors.password = "Mínimo 8 caracteres.";
+  } else if (!/[A-Z]/.test(data.password)) {
     errors.password = "Debe contener al menos 1 mayúscula.";
-  else if (!/[0-9]/.test(data.password))
+  } else if (!/[0-9]/.test(data.password)) {
     errors.password = "Debe contener al menos 1 número.";
-  if (data.password !== data.confirmPassword)
+  }
+
+  if (data.password !== data.confirmPassword) {
     errors.confirmPassword = "Las contraseñas no coinciden.";
+  }
+
   return errors;
 }
 
@@ -113,21 +126,21 @@ export function NuevoEmpleadoModal({
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const handleChange = (field: keyof FormData, value: string | boolean) => {
-    let finalValue: string | boolean = value;
+  const handleChange = (field: keyof FormData, value: string) => {
+    let finalValue = value;
 
-    // Filtro para nombre: no números ni "@"
-    if (field === "nombre" && typeof value === "string") {
-      finalValue = value.replace(/[0-9@]/g, "");
+    // Nombre: solo letras, espacios, tildes y ñ
+    if (field === "nombre") {
+      finalValue = value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s]/g, "");
     }
 
-    // Filtro para email: solo letras, números, @, . y -
-    if (field === "email" && typeof value === "string") {
+    // Email: solo letras, números, @, . y -
+    if (field === "email") {
       finalValue = value.replace(/[^a-zA-Z0-9@.\-]/g, "").toLowerCase();
     }
 
-    // Filtro para teléfono: solo números, máximo 9 dígitos
-    if (field === "telefono" && typeof value === "string") {
+    // Teléfono: solo números, máximo 9 dígitos
+    if (field === "telefono") {
       finalValue = value.replace(/[^0-9]/g, "").slice(0, 9);
     }
 
@@ -194,6 +207,7 @@ export function NuevoEmpleadoModal({
             </div>
 
             <div className="px-6 py-5 space-y-4 max-h-[65vh] overflow-y-auto">
+              {/* Nombre */}
               <div className="space-y-1.5">
                 <label
                   htmlFor="nombre"
@@ -221,6 +235,7 @@ export function NuevoEmpleadoModal({
                 )}
               </div>
 
+              {/* Email */}
               <div className="space-y-1.5">
                 <label
                   htmlFor="email"
@@ -248,6 +263,7 @@ export function NuevoEmpleadoModal({
                 )}
               </div>
 
+              {/* Teléfono */}
               <div className="space-y-1.5">
                 <label
                   htmlFor="telefono"
@@ -275,6 +291,7 @@ export function NuevoEmpleadoModal({
                 )}
               </div>
 
+              {/* Rol */}
               <div className="space-y-1.5">
                 <label
                   htmlFor="rol"
@@ -307,6 +324,7 @@ export function NuevoEmpleadoModal({
                 )}
               </div>
 
+              {/* Contraseña */}
               <div className="space-y-1.5">
                 <label
                   htmlFor="password"
@@ -319,7 +337,7 @@ export function NuevoEmpleadoModal({
                   <input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Mínimo 6 caracteres"
+                    placeholder="Mínimo 8 caracteres"
                     value={form.password}
                     onChange={(e) => handleChange("password", e.target.value)}
                     className={`w-full pl-9 pr-11 py-2.5 rounded-lg bg-input-background border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20 transition ${
@@ -345,6 +363,7 @@ export function NuevoEmpleadoModal({
                 )}
               </div>
 
+              {/* Confirmar contraseña */}
               <div className="space-y-1.5">
                 <label
                   htmlFor="confirmPassword"

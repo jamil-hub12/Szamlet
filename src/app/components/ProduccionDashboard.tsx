@@ -17,9 +17,9 @@ import {
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { AgregarStockModal } from "./AgregarStockModal";
 
-export function ConfeccionadorDashboard() {
+export function ProduccionDashboard() {
   const navigate = useNavigate();
-  const { user } = useCurrentUser();
+  const user = useCurrentUser();
   const { productos, agregarStockPorColor } = useProductos();
   const [busqueda, setBusqueda] = useState("");
   const [productoPendienteStock, setProductoPendienteStock] =
