@@ -52,7 +52,7 @@ function TallaEditCard({
     const ex = colores.find((cs) => cs.color === color);
     const upd = ex
       ? colores.filter((cs) => cs.color !== color)
-      : [...colores, { color, stock: 1 }];
+      : [...colores, { color, stock: 0 }];
     onChange(upd);
   };
 
@@ -72,7 +72,7 @@ function TallaEditCard({
       cn &&
       !colores.find((cs) => cs.color.toLowerCase() === cn.toLowerCase())
     ) {
-      onChange([...colores, { color: cn, stock: 1 }]);
+      onChange([...colores, { color: cn, stock: 0 }]);
     }
     setAddingColor(false);
     setNuevoColor("");
@@ -253,10 +253,18 @@ export function EditarProductoModal({
   const [detalleTallas, setDetalleTallas] = useState<TallasState>(
     Object.fromEntries(producto.tallas.map((t) => [t.talla, [...t.colores]])),
   );
+  const [preciosPorTalla, setPreciosPorTalla] = useState<
+    Record<string, number>
+  >(producto.preciosPorTalla ?? {});
+  const detalleTallasGuardado = useRef<TallasState>(
+    Object.fromEntries(producto.tallas.map((t) => [t.talla, [...t.colores]])),
+  );
 
   const toggleTalla = (t: string) => {
     const on = tallasSeleccionadas.includes(t);
     if (on) {
+      // Guardar antes de eliminar
+      detalleTallasGuardado.current[t] = detalleTallas[t] ?? [];
       setTallasSeleccionadas((prev) => prev.filter((x) => x !== t));
       setDetalleTallas((prev) => {
         const n = { ...prev };
@@ -265,7 +273,11 @@ export function EditarProductoModal({
       });
     } else {
       setTallasSeleccionadas((prev) => [...prev, t]);
-      setDetalleTallas((prev) => ({ ...prev, [t]: [] }));
+      setDetalleTallas((prev) => ({
+        ...prev,
+        // Restaurar si existía antes, sino vacío
+        [t]: detalleTallasGuardado.current[t] ?? [],
+      }));
     }
   };
 
@@ -293,6 +305,7 @@ export function EditarProductoModal({
     try {
       await onGuardar({
         ...producto,
+        preciosPorTalla, // ← agregar
         tallas: tallasSeleccionadas.map((t) => ({
           talla: t,
           colores: detalleTallas[t] ?? [],
@@ -433,6 +446,45 @@ export function EditarProductoModal({
                       modo={modo}
                     />
                   ))}
+                </div>
+              )}
+              {/* Precios por talla */}
+              {tallasSeleccionadas.length > 0 && (
+                <div className="space-y-3">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">
+                    Precio por talla
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {tallasSeleccionadas.map((t) => {
+                      const precio = preciosPorTalla[t] ?? 0;
+                      return (
+                        <div key={t} className="space-y-1.5">
+                          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block">
+                            Talla {t}
+                          </label>
+                          <div className="flex items-center gap-1.5 bg-card rounded-lg border border-border px-2.5 py-2">
+                            <span className="text-sm font-medium text-blue-600 shrink-0">
+                              S/
+                            </span>
+                            <input
+                              type="number"
+                              min={0}
+                              step={0.01}
+                              value={precio || ""}
+                              onChange={(e) =>
+                                setPreciosPorTalla((prev) => ({
+                                  ...prev,
+                                  [t]: parseFloat(e.target.value) || 0,
+                                }))
+                              }
+                              className="flex-1 text-sm bg-transparent text-foreground focus:outline-none"
+                              placeholder="0.00"
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
