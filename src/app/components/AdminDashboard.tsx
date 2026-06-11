@@ -943,7 +943,11 @@ export function AdminDashboard() {
         filtroPrioridadPedidos === "Todas" ||
         (filtroPrioridadPedidos === "Urgente" && p.urgente) ||
         (filtroPrioridadPedidos === "Normal" && !p.urgente);
-      return matchEstado && matchPrioridad;
+      const fechaPedido = formatearFechaISO(new Date(p.fecha));
+      const matchDesde = !fechaDesdePedidos || fechaPedido >= fechaDesdePedidos;
+      const matchHasta = !fechaHastaPedidos || fechaPedido <= fechaHastaPedidos;
+
+      return matchEstado && matchPrioridad && matchDesde && matchHasta;
     })
     .sort((a, b) => {
       const dateA = new Date(a.fecha).getTime();
