@@ -76,7 +76,7 @@ export function LoginPage() {
       } else if (empleado.rol === "Atención al cliente") {
         navigate("/empleado");
       } else if (empleado.rol === "Producción") {
-        navigate("/confeccionador");
+        navigate("/produccion");
       } else {
         setError("Rol de usuario no válido.");
         await supabase.auth.signOut();
