@@ -10,14 +10,13 @@ import {
   Plus,
   Trash2,
   ShoppingBag,
-  Clock,
+  FileText,
 } from "lucide-react";
 import type { Pedido } from "../contexts/PedidosContext";
+import { usePedidos } from "../contexts/PedidosContext";
 import { puedeEditarPedido } from "../utils/pedidosCicloVida";
-import { obtenerItemsPedido, type PedidoItemData } from "../utils/stockManager";
+import { obtenerItemsPedido } from "../utils/stockManager";
 import { useProductos } from "../contexts/ProductosContext";
-import { supabase } from "../../lib/supabase";
-import { registrarAuditoria, obtenerUsuarioActual } from "../utils/auditoria";
 import { obtenerFechaPeruHoy } from "../../utils/fechas";
 import { esValidaFechaMinimaHoy } from "../utils/validaciones";
 
@@ -44,14 +43,13 @@ type EditarPedidoForm = {
 export function EditarPedidoModal({
   pedido,
   onClose,
-  onGuardar,
 }: {
   pedido: Pedido;
   onClose: () => void;
-  onGuardar: (datos: Partial<Pedido>) => Promise<boolean>;
 }) {
   const validacionEdicion = puedeEditarPedido(pedido.estado);
   const { productos } = useProductos();
+  const { actualizarPedidoConItems } = usePedidos();
   const [form, setForm] = useState<EditarPedidoForm>({
     articulo: pedido.articulo,
     urgente: pedido.urgente,
@@ -62,41 +60,62 @@ export function EditarPedidoModal({
   const [loadingItems, setLoadingItems] = useState(true);
   const [showErrors, setShowErrors] = useState(false);
   const [errorFecha, setErrorFecha] = useState<string | null>(null);
-  const [step, setStep] = useState<"form" | "guardando" | "exito">("form");
+  const [step, setStep] = useState<"form" | "guardando" | "exito" | "error">(
+    "form",
+  );
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [mostrarAgregarItem, setMostrarAgregarItem] = useState(false);
 
-  // Cargar items del pedido
   useEffect(() => {
+    let isMounted = true;
+
     async function cargarItems() {
-      setLoadingItems(true);
-      const items = await obtenerItemsPedido(pedido.codigo);
-      setForm((prev) => ({
-        ...prev,
-        items: items.map((item) => ({
-          id: item.id,
-          productoCodigo: item.producto_codigo,
-          modelo: item.modelo,
-          tela: item.tela,
-          disenio: item.disenio,
-          talla: item.talla,
-          color: item.color,
-          cantidad: item.cantidad,
-          precioUnitario: item.precio_unitario || undefined,
-        })),
-      }));
-      setLoadingItems(false);
+      try {
+        setLoadingItems(true);
+        setForm((prev) => ({ ...prev, items: [] }));
+        const items = await obtenerItemsPedido(pedido.codigo);
+
+        if (!isMounted) return;
+
+        setForm((prev) => ({
+          ...prev,
+          items: items.map((item) => ({
+            id: item.id,
+            productoCodigo: item.producto_codigo,
+            modelo: item.modelo,
+            tela: item.tela,
+            disenio: item.disenio,
+            talla: item.talla,
+            color: item.color,
+            cantidad: item.cantidad,
+            precioUnitario: item.precio_unitario || undefined,
+          })),
+        }));
+      } catch (error) {
+        console.error("Error al cargar items:", error);
+        if (isMounted) {
+          setForm((prev) => ({ ...prev, items: [] }));
+        }
+      } finally {
+        if (isMounted) {
+          setLoadingItems(false);
+        }
+      }
     }
+
     if (validacionEdicion.puede) {
       cargarItems();
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, [pedido.codigo, validacionEdicion.puede]);
 
   const validate = () => {
     if (!form.articulo.trim()) return false;
     if (form.items.length === 0) return false;
-    // Validar que todos los items tengan cantidad > 0
     if (form.items.some((item) => item.cantidad <= 0)) return false;
-    // Validar que si tiene fecha de entrega, no sea pasada
     if (form.fechaEntrega && !esValidaFechaMinimaHoy(form.fechaEntrega)) {
       setErrorFecha(
         `La fecha de entrega no puede ser anterior a hoy (${obtenerFechaPeruHoy()})`,
@@ -107,10 +126,7 @@ export function EditarPedidoModal({
   };
 
   const handleAgregarItem = (item: PedidoItem) => {
-    setForm((prev) => ({
-      ...prev,
-      items: [...prev.items, item],
-    }));
+    setForm((prev) => ({ ...prev, items: [...prev.items, item] }));
     setMostrarAgregarItem(false);
   };
 
@@ -122,7 +138,6 @@ export function EditarPedidoModal({
   };
 
   const handleActualizarCantidad = (index: number, cantidad: number) => {
-    if (cantidad <= 0) return;
     setForm((prev) => ({
       ...prev,
       items: prev.items.map((item, i) =>
@@ -136,35 +151,9 @@ export function EditarPedidoModal({
     if (!validate()) return;
 
     setStep("guardando");
+    setErrorMessage(null);
 
     try {
-      // 1. Actualizar datos básicos del pedido
-      const exito = await onGuardar({
-        articulo: form.articulo.trim(),
-        urgente: form.urgente,
-        notas: form.notas.trim() || undefined,
-        fechaEntrega: form.fechaEntrega || undefined,
-      });
-
-      if (!exito) {
-        setStep("form");
-        return;
-      }
-
-      // 2. Actualizar items del pedido
-      // Primero eliminar todos los items existentes
-      const { error: deleteError } = await supabase
-        .from("pedido_items")
-        .delete()
-        .eq("pedido_codigo", pedido.codigo);
-
-      if (deleteError) {
-        console.error("Error al eliminar items:", deleteError);
-        setStep("form");
-        return;
-      }
-
-      // Luego insertar los nuevos items
       const itemsInsert = form.items.map((item) => ({
         pedido_codigo: pedido.codigo,
         producto_codigo: item.productoCodigo,
@@ -180,40 +169,22 @@ export function EditarPedidoModal({
           : null,
       }));
 
-      const { error: insertError } = await supabase
-        .from("pedido_items")
-        .insert(itemsInsert);
+      const exito = await actualizarPedidoConItems(
+        pedido.codigo,
+        {
+          articulo: form.articulo.trim(),
+          urgente: form.urgente,
+          notas: form.notas.trim() || undefined,
+          fechaEntrega: form.fechaEntrega || undefined,
+        },
+        itemsInsert,
+      );
 
-      if (insertError) {
-        console.error("Error al insertar items:", insertError);
-        setStep("form");
+      if (!exito) {
+        setErrorMessage("Error al guardar los cambios del pedido");
+        setStep("error");
         return;
       }
-
-      // 3. Registrar cambios en items en auditoría
-      const usuario = await obtenerUsuarioActual();
-      const usuarioFinal = usuario || { codigo: "SISTEMA", nombre: "Sistema" };
-
-      await registrarAuditoria({
-        usuarioCodigo: usuarioFinal.codigo,
-        usuarioNombre: usuarioFinal.nombre,
-        accion: "editar",
-        modulo: "pedidos",
-        entidadId: pedido.codigo,
-        entidadNombre: `${pedido.cliente} - ${form.articulo.trim()}`,
-        detalles: {
-          cambioItems: true,
-          itemsCount: form.items.length,
-          items: form.items.map((item) => ({
-            modelo: item.modelo,
-            talla: item.talla,
-            color: item.color,
-            cantidad: item.cantidad,
-          })),
-        },
-      });
-
-      console.log("✅ Pedido actualizado con", form.items.length, "items");
 
       setStep("exito");
       setTimeout(() => {
@@ -221,11 +192,15 @@ export function EditarPedidoModal({
       }, 1500);
     } catch (error) {
       console.error("Error al guardar pedido:", error);
-      setStep("form");
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Error desconocido al guardar el pedido",
+      );
+      setStep("error");
     }
   };
 
-  // Si el pedido no puede ser editado, mostrar mensaje de error
   if (!validacionEdicion.puede) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -299,16 +274,20 @@ export function EditarPedidoModal({
       />
 
       <div className="relative z-10 bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[85vh]">
-        {/* Form */}
         {step === "form" && (
           <>
-            <div className="flex items-center justify-between px-6 py-5 border-b border-border">
+            <div className="flex items-start justify-between px-6 py-5 border-b border-border shrink-0">
               <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-mono text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded border border-border">
+                    {pedido.codigo}
+                  </span>
+                  <span className="text-muted-foreground text-xs">·</span>
+                  <span className="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded">
+                    {pedido.estado}
+                  </span>
+                </div>
                 <h3 className="text-foreground">Editar pedido</h3>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  <span className="font-mono">{pedido.codigo}</span> ·{" "}
-                  {pedido.cliente}
-                </p>
               </div>
               <button
                 onClick={onClose}
@@ -318,218 +297,225 @@ export function EditarPedidoModal({
               </button>
             </div>
 
-            <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
-              {/* Información del cliente (no editable) */}
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">
-                  Cliente (no editable)
-                </p>
-                <div className="px-3 py-2.5 rounded-lg bg-muted border border-border">
-                  <p className="text-sm text-foreground">{pedido.cliente}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+              {/* Cliente */}
+              <div className="flex items-center gap-3 bg-muted/50 rounded-xl px-3 py-3">
+                <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-sm font-medium shrink-0">
+                  {pedido.cliente
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .slice(0, 2)
+                    .toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-foreground font-medium">
+                    {pedido.cliente}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">
                     {pedido.telefono} · {pedido.email}
                   </p>
                 </div>
+                <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded shrink-0">
+                  no editable
+                </span>
               </div>
 
-              {/* Artículo - Resumen */}
+              {/* Artículo */}
               <div className="space-y-1.5">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                  <Package className="w-3.5 h-3.5" />
-                  Resumen del pedido
-                </p>
-                <div className="px-3 py-2.5 rounded-lg bg-muted border border-border">
-                  <p className="text-sm text-foreground">{form.articulo}</p>
-                </div>
+                <label className="text-sm font-medium text-foreground">
+                  Artículo <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={form.articulo}
+                  onChange={(e) =>
+                    setForm({ ...form, articulo: e.target.value })
+                  }
+                  className={`w-full px-3 py-2 rounded-lg bg-input-background border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20 ${
+                    showErrors && !form.articulo.trim()
+                      ? "border-red-400"
+                      : "border-border"
+                  }`}
+                  placeholder="Descripción del artículo..."
+                />
+                {showErrors && !form.articulo.trim() && (
+                  <p className="text-xs text-red-500 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" /> Campo requerido
+                  </p>
+                )}
               </div>
 
-              {/* Items del pedido */}
+              {/* Productos */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm text-foreground flex items-center gap-1">
+                  <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
                     <ShoppingBag className="w-4 h-4" />
                     Productos del pedido <span className="text-red-500">*</span>
                   </label>
                   <button
                     type="button"
                     onClick={() => setMostrarAgregarItem(true)}
-                    className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-primary text-primary-foreground text-xs hover:bg-primary/90 transition"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-foreground text-xs hover:bg-accent transition"
                   >
-                    <Plus className="w-3 h-3" />
-                    Agregar producto
+                    <Plus className="w-3.5 h-3.5" />
+                    Agregar
                   </button>
                 </div>
 
-                {loadingItems ? (
-                  <div className="px-4 py-8 text-center border border-border rounded-lg bg-muted/20">
-                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground mx-auto mb-2" />
-                    <p className="text-xs text-muted-foreground">
-                      Cargando productos...
-                    </p>
+                <div className="border border-border rounded-xl overflow-hidden">
+                  <div className="grid grid-cols-[1fr_auto_auto] gap-2 px-3 py-2 bg-muted/40 border-b border-border">
+                    <span className="text-xs text-muted-foreground uppercase tracking-wider">
+                      Producto
+                    </span>
+                    <span className="text-xs text-muted-foreground uppercase tracking-wider text-center w-20">
+                      Cantidad
+                    </span>
+                    <span className="w-7" />
                   </div>
-                ) : form.items.length === 0 ? (
-                  <div className="px-4 py-8 text-center border border-dashed border-border rounded-lg bg-muted/20">
-                    <ShoppingBag className="w-8 h-8 text-muted-foreground mx-auto mb-2 opacity-40" />
-                    <p className="text-sm text-muted-foreground">
-                      No hay productos en este pedido
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Agrega al menos un producto
-                    </p>
-                    {showErrors && (
-                      <p className="text-xs text-red-500 flex items-center justify-center gap-1 mt-2">
-                        <AlertCircle className="w-3 h-3" /> Debe haber al menos
-                        un producto
+
+                  {loadingItems ? (
+                    <div className="px-4 py-8 text-center">
+                      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground mx-auto mb-2" />
+                      <p className="text-xs text-muted-foreground">
+                        Cargando productos...
                       </p>
-                    )}
-                  </div>
-                ) : (
-                  <div className="border border-border rounded-lg overflow-hidden">
-                    <div className="max-h-64 overflow-y-auto">
-                      {form.items.map((item, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center gap-3 px-3 py-3 border-b border-border last:border-0 hover:bg-accent/30 transition"
-                        >
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-foreground font-medium truncate">
-                              {item.modelo}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {item.tela} · {item.disenio} · Talla {item.talla}{" "}
-                              · {item.color}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-1 bg-muted px-2 py-1 rounded">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleActualizarCantidad(
-                                    index,
-                                    item.cantidad - 1,
-                                  )
-                                }
-                                disabled={item.cantidad <= 1}
-                                className="w-5 h-5 flex items-center justify-center text-foreground hover:bg-background rounded disabled:opacity-40 disabled:cursor-not-allowed transition"
-                              >
-                                -
-                              </button>
-                              <span className="text-sm text-foreground font-mono w-8 text-center">
-                                {item.cantidad}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleActualizarCantidad(
-                                    index,
-                                    item.cantidad + 1,
-                                  )
-                                }
-                                className="w-5 h-5 flex items-center justify-center text-foreground hover:bg-background rounded transition"
-                              >
-                                +
-                              </button>
+                    </div>
+                  ) : form.items.length === 0 ? (
+                    <div className="px-4 py-8 text-center">
+                      <ShoppingBag className="w-8 h-8 text-muted-foreground mx-auto mb-2 opacity-40" />
+                      <p className="text-sm text-muted-foreground">
+                        Sin productos
+                      </p>
+                      {showErrors && (
+                        <p className="text-xs text-red-500 flex items-center justify-center gap-1 mt-2">
+                          <AlertCircle className="w-3 h-3" /> Agrega al menos un
+                          producto
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      <div className="max-h-52 overflow-y-auto">
+                        {form.items.map((item, index) => (
+                          <div
+                            key={index}
+                            className="grid grid-cols-[1fr_auto_auto] gap-2 px-3 py-2.5 border-b border-border last:border-0 items-center hover:bg-accent/20 transition"
+                          >
+                            <div>
+                              <p className="text-sm font-medium text-foreground">
+                                {item.modelo}
+                              </p>
+                              <div className="flex gap-1 mt-1 flex-wrap">
+                                <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
+                                  {item.tela}
+                                </span>
+                                <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
+                                  Talla {item.talla}
+                                </span>
+                                <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
+                                  {item.color}
+                                </span>
+                              </div>
                             </div>
+                            <input
+                              type="number"
+                              min={1}
+                              value={item.cantidad}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value);
+                                if (!isNaN(val) && val >= 1)
+                                  handleActualizarCantidad(index, val);
+                              }}
+                              className="w-16 text-center px-2 py-1 rounded-lg bg-muted border border-border text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                            />
                             <button
                               type="button"
                               onClick={() => handleEliminarItem(index)}
-                              className="p-1.5 rounded hover:bg-red-50 text-muted-foreground hover:text-red-600 transition"
+                              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-500 transition"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                      <div className="px-3 py-2 bg-muted/40 border-t border-border flex justify-end">
+                        <span className="text-xs text-muted-foreground">
+                          {form.items.length}{" "}
+                          {form.items.length === 1 ? "producto" : "productos"} ·{" "}
+                          {form.items.reduce((s, i) => s + i.cantidad, 0)}{" "}
+                          unidades
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Fecha y Prioridad */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                    <Calendar className="w-4 h-4" />
+                    Fecha de entrega
+                  </label>
+                  <input
+                    type="date"
+                    value={form.fechaEntrega || ""}
+                    min={obtenerFechaPeruHoy()}
+                    onChange={(e) => {
+                      setForm({ ...form, fechaEntrega: e.target.value });
+                      if (
+                        e.target.value &&
+                        esValidaFechaMinimaHoy(e.target.value)
+                      )
+                        setErrorFecha(null);
+                    }}
+                    className={`w-full px-3 py-2 rounded-lg bg-input-background border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20 ${errorFecha ? "border-red-400" : "border-border"}`}
+                  />
+                  {errorFecha && (
+                    <p className="text-xs text-red-500 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" /> {errorFecha}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-foreground">
+                    Prioridad
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, urgente: false })}
+                      className={`py-2 rounded-lg text-sm border transition ${!form.urgente ? "bg-blue-50 text-blue-700 border-blue-300 font-medium" : "bg-input-background text-muted-foreground border-border hover:border-foreground/30"}`}
+                    >
+                      Normal
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, urgente: true })}
+                      className={`py-2 rounded-lg text-sm border transition ${form.urgente ? "bg-red-50 text-red-700 border-red-300 font-medium" : "bg-input-background text-muted-foreground border-border hover:border-foreground/30"}`}
+                    >
+                      Urgente
+                    </button>
                   </div>
-                )}
-              </div>
-
-              {/* Fecha de entrega */}
-              <div className="space-y-1.5">
-                <label
-                  htmlFor="fechaEntrega"
-                  className="text-sm text-foreground flex items-center gap-1"
-                >
-                  <Calendar className="w-4 h-4" />
-                  Fecha de entrega
-                </label>
-                <input
-                  type="date"
-                  id="fechaEntrega"
-                  value={form.fechaEntrega || ""}
-                  min={obtenerFechaPeruHoy()}
-                  onChange={(e) => {
-                    const nuevaFecha = e.target.value;
-                    setForm({ ...form, fechaEntrega: nuevaFecha });
-                    // Limpiar error si la fecha es válida
-                    if (nuevaFecha && esValidaFechaMinimaHoy(nuevaFecha)) {
-                      setErrorFecha(null);
-                    }
-                  }}
-                  className={`w-full px-3 py-2.5 rounded-lg bg-input-background border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20 ${
-                    errorFecha ? "border-red-400" : "border-border"
-                  }`}
-                />
-                {errorFecha && (
-                  <p className="text-xs text-red-500 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" /> {errorFecha}
-                  </p>
-                )}
-              </div>
-
-              {/* Urgente */}
-              <div className="space-y-1.5">
-                <label className="text-sm text-foreground">Prioridad</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setForm({ ...form, urgente: false })}
-                    className={`py-2.5 rounded-lg text-sm border transition ${
-                      !form.urgente
-                        ? "bg-blue-50 text-blue-700 border-blue-200"
-                        : "bg-input-background text-muted-foreground border-border hover:border-foreground/30"
-                    }`}
-                  >
-                    Normal
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setForm({ ...form, urgente: true })}
-                    className={`py-2.5 rounded-lg text-sm border transition ${
-                      form.urgente
-                        ? "bg-red-50 text-red-700 border-red-200"
-                        : "bg-input-background text-muted-foreground border-border hover:border-foreground/30"
-                    }`}
-                  >
-                    Urgente
-                  </button>
                 </div>
               </div>
 
               {/* Notas */}
               <div className="space-y-1.5">
-                <label htmlFor="notas" className="text-sm text-foreground">
+                <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                  <FileText className="w-4 h-4" />
                   Notas internas
                 </label>
                 <textarea
-                  id="notas"
                   value={form.notas}
                   onChange={(e) => setForm({ ...form, notas: e.target.value })}
-                  rows={3}
-                  className="w-full px-3 py-2.5 rounded-lg bg-input-background border border-border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20 resize-none"
-                  placeholder="Observaciones adicionales sobre el pedido..."
+                  rows={2}
+                  className="w-full px-3 py-2 rounded-lg bg-input-background border border-border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20 resize-none"
+                  placeholder="Observaciones adicionales..."
                 />
-              </div>
-
-              {/* Advertencia */}
-              <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-200">
-                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                <p className="text-xs text-amber-700">
-                  Los cambios quedarán registrados en el historial de auditoría
-                  del sistema.
-                </p>
               </div>
             </div>
 
@@ -542,15 +528,15 @@ export function EditarPedidoModal({
               </button>
               <button
                 onClick={handleGuardar}
-                className="flex-1 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm hover:bg-primary/90 transition"
+                className="flex-2 px-6 py-2.5 rounded-lg bg-foreground text-background text-sm hover:bg-foreground/90 transition flex items-center gap-2"
               >
+                <Package className="w-4 h-4" />
                 Guardar cambios
               </button>
             </div>
           </>
         )}
 
-        {/* Guardando */}
         {step === "guardando" && (
           <div className="px-6 py-20 flex flex-col items-center justify-center gap-4">
             <Loader2 className="w-10 h-10 text-muted-foreground animate-spin" />
@@ -560,7 +546,6 @@ export function EditarPedidoModal({
           </div>
         )}
 
-        {/* Éxito */}
         {step === "exito" && (
           <div className="px-6 py-20 flex flex-col items-center justify-center gap-4">
             <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center">
@@ -574,9 +559,35 @@ export function EditarPedidoModal({
             </div>
           </div>
         )}
+
+        {step === "error" && (
+          <div className="flex flex-col h-full">
+            <div className="flex-1 px-6 py-8 flex flex-col items-center justify-center gap-4">
+              <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
+                <XCircle className="w-8 h-8 text-red-600" />
+              </div>
+              <div className="text-center">
+                <h3 className="text-foreground">Error al guardar</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {errorMessage || "Ocurrió un error inesperado"}
+                </p>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-border">
+              <button
+                onClick={() => {
+                  setStep("form");
+                  setErrorMessage(null);
+                }}
+                className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-sm hover:bg-primary/90 transition"
+              >
+                Reintentar
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Modal para agregar item */}
       {mostrarAgregarItem && (
         <AgregarItemModal
           onClose={() => setMostrarAgregarItem(false)}
@@ -588,7 +599,6 @@ export function EditarPedidoModal({
   );
 }
 
-// Subcomponente para agregar un item
 function AgregarItemModal({
   onClose,
   onAgregar,
@@ -632,7 +642,7 @@ function AgregarItemModal({
       talla: talla.talla,
       color: color.color,
       cantidad,
-      precioUnitario: undefined, // No hay precio en la estructura actual
+      precioUnitario: undefined,
     });
   };
 
@@ -654,7 +664,7 @@ function AgregarItemModal({
         </div>
 
         <div className="px-6 py-5 space-y-4">
-          {/* Seleccionar producto */}
+          {/* Producto */}
           <div className="space-y-1.5">
             <label className="text-sm text-foreground">
               Producto <span className="text-red-500">*</span>
@@ -690,7 +700,7 @@ function AgregarItemModal({
             )}
           </div>
 
-          {/* Seleccionar talla */}
+          {/* Talla */}
           {producto && (
             <div className="space-y-1.5">
               <label className="text-sm text-foreground">
@@ -727,7 +737,7 @@ function AgregarItemModal({
             </div>
           )}
 
-          {/* Seleccionar color */}
+          {/* Color */}
           {talla && (
             <div className="space-y-1.5">
               <label className="text-sm text-foreground">
