@@ -365,28 +365,24 @@ function VarianteCard({
     if (addingTalla) tallaRef.current?.focus();
   }, [addingTalla]);
 
-  // Opciones de tela y diseño derivadas del catálogo registrado
-  // Solo telas del modelo seleccionado (sugerencias del catálogo)
-  const telasEnCatalogo = modelo
+  // Todas las telas del catálogo, independiente del modelo
+  // Todas las telas, deduplicadas case-insensitive
+  const telasEnCatalogo = [
+    ...new Map(
+      productosExistentes.map((p) => [p.tela.toLowerCase(), p.tela]),
+    ).values(),
+  ];
+
+  // Todos los diseños para la tela seleccionada, deduplicados case-insensitive
+  const diseniosParaTela = variante.tela
     ? [
-        ...new Set(
+        ...new Map(
           productosExistentes
-            .filter((p) => p.modelo === modelo)
-            .map((p) => p.tela),
-        ),
+            .filter((p) => p.tela.toLowerCase() === variante.tela.toLowerCase())
+            .map((p) => [p.disenio.toLowerCase(), p.disenio]),
+        ).values(),
       ]
     : [];
-  // Solo diseños del modelo+tela seleccionados
-  const diseniosParaTela =
-    modelo && variante.tela
-      ? [
-          ...new Set(
-            productosExistentes
-              .filter((p) => p.modelo === modelo && p.tela === variante.tela)
-              .map((p) => p.disenio),
-          ),
-        ]
-      : [];
 
   // Verificar duplicado: mismo modelo+tela+diseño ya registrado
   const esDuplicado =
