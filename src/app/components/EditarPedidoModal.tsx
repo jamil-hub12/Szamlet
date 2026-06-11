@@ -334,32 +334,13 @@ export function EditarPedidoModal({
 
               {/* Artículo - Resumen */}
               <div className="space-y-1.5">
-                <label
-                  htmlFor="articulo"
-                  className="text-sm text-foreground flex items-center gap-1"
-                >
-                  <Package className="w-4 h-4" />
-                  Descripción del pedido <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="articulo"
-                  value={form.articulo}
-                  onChange={(e) =>
-                    setForm({ ...form, articulo: e.target.value })
-                  }
-                  className={`w-full px-3 py-2.5 rounded-lg bg-input-background border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20 ${
-                    showErrors && !form.articulo.trim()
-                      ? "border-red-400"
-                      : "border-border"
-                  }`}
-                  placeholder="Ej. 3 Polos, 2 Pantalones"
-                />
-                {showErrors && !form.articulo.trim() && (
-                  <p className="text-xs text-red-500 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" /> Descripción obligatoria
-                  </p>
-                )}
+                <p className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                  <Package className="w-3.5 h-3.5" />
+                  Resumen del pedido
+                </p>
+                <div className="px-3 py-2.5 rounded-lg bg-muted border border-border">
+                  <p className="text-sm text-foreground">{form.articulo}</p>
+                </div>
               </div>
 
               {/* Items del pedido */}
