@@ -351,6 +351,7 @@ export function AdminDashboard() {
   const [filtroEstadoCliente, setFiltroEstadoCliente] = useState("Todos");
   const [fechaDesdePedidos, setFechaDesdePedidos] = useState("");
   const [fechaHastaPedidos, setFechaHastaPedidos] = useState("");
+  const [busquedaEmpleado, setBusquedaEmpleado] = useState("");
   const [ordenFechaPedidos, setOrdenFechaPedidos] = useState<"desc" | "asc">(
     "desc",
   );
@@ -363,6 +364,7 @@ export function AdminDashboard() {
   const [filtroAccion, setFiltroAccion] = useState<string>("");
   const [filtroModulo, setFiltroModulo] = useState<string>("");
   const [mostrarFiltrosAuditoria, setMostrarFiltrosAuditoria] = useState(false);
+  const [detalleAuditoria, setDetalleAuditoria] = useState<any>(null);
 
   // Estados para filtros de pagos
   const [fechaDesdePagos, setFechaDesdePagos] = useState("");
@@ -943,7 +945,11 @@ export function AdminDashboard() {
         filtroPrioridadPedidos === "Todas" ||
         (filtroPrioridadPedidos === "Urgente" && p.urgente) ||
         (filtroPrioridadPedidos === "Normal" && !p.urgente);
-      return matchEstado && matchPrioridad;
+      const fechaPedido = formatearFechaISO(new Date(p.fecha));
+      const matchDesde = !fechaDesdePedidos || fechaPedido >= fechaDesdePedidos;
+      const matchHasta = !fechaHastaPedidos || fechaPedido <= fechaHastaPedidos;
+
+      return matchEstado && matchPrioridad && matchDesde && matchHasta;
     })
     .sort((a, b) => {
       const dateA = new Date(a.fecha).getTime();
@@ -1449,7 +1455,9 @@ export function AdminDashboard() {
                   <input
                     type="text"
                     placeholder="Buscar empleado..."
-                    className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-input-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20 transition text-sm"
+                    value={busquedaEmpleado}
+                    onChange={(e) => setBusquedaEmpleado(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2.5 ..."
                   />
                 </div>
                 <button
@@ -1485,92 +1493,112 @@ export function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {empleados.map((e, i) => (
-                      <tr
-                        key={e.id}
-                        className={`border-b border-border last:border-0 hover:bg-accent/40 transition ${i % 2 === 0 ? "" : "bg-muted/20"}`}
-                      >
-                        <td className="px-4 py-3 font-mono text-muted-foreground text-xs">
-                          {e.id}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-full bg-foreground text-background flex items-center justify-center text-xs shrink-0">
-                              {e.nombre
-                                .split(" ")
-                                .map((n) => n[0])
-                                .join("")
-                                .slice(0, 2)}
+                    {empleados
+                      .filter(
+                        (e) =>
+                          !busquedaEmpleado ||
+                          e.nombre
+                            .toLowerCase()
+                            .includes(busquedaEmpleado.toLowerCase()) ||
+                          e.email
+                            .toLowerCase()
+                            .includes(busquedaEmpleado.toLowerCase()) ||
+                          e.id
+                            .toLowerCase()
+                            .includes(busquedaEmpleado.toLowerCase()),
+                      )
+                      .map((e, i) => (
+                        <tr
+                          key={e.id}
+                          className={`border-b border-border last:border-0 hover:bg-accent/40 transition ${i % 2 === 0 ? "" : "bg-muted/20"}`}
+                        >
+                          <td className="px-4 py-3 font-mono text-muted-foreground text-xs">
+                            {e.id}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-full bg-foreground text-background flex items-center justify-center text-xs shrink-0">
+                                {e.nombre
+                                  .split(" ")
+                                  .map((n) => n[0])
+                                  .join("")
+                                  .slice(0, 2)}
+                              </div>
+                              <span className="text-foreground">
+                                {e.nombre}
+                              </span>
                             </div>
-                            <span className="text-foreground">{e.nombre}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground">
-                          {e.rol}
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground">
-                          {e.email}
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground">
-                          {e.telefono}
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground">
-                          {new Date(e.fechaIngreso).toLocaleDateString(
-                            "es-ES",
-                            { day: "2-digit", month: "short", year: "numeric" },
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <select
-                            value={e.estado}
-                            onChange={(evt) => {
-                              actualizarEmpleado(e.id, {
-                                estado: evt.target.value as
-                                  | "Activo"
-                                  | "Licencia"
-                                  | "Inactivo",
-                              });
-                            }}
-                            className={`px-2 py-1 rounded-full text-xs border text-center focus:outline-none focus:ring-2 focus:ring-foreground/20 transition ${
-                              e.estado === "Activo"
-                                ? "bg-emerald-100 text-emerald-700 border-emerald-200"
-                                : e.estado === "Licencia"
-                                  ? "bg-amber-100 text-amber-700 border-amber-200"
-                                  : "bg-gray-100 text-gray-700 border-gray-200"
-                            }`}
-                          >
-                            <option value="Activo">Activo</option>
-                            <option value="Licencia">Licencia</option>
-                            <option value="Inactivo">Inactivo</option>
-                          </select>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => setEmpleadoEditando(e)}
-                              className="p-1.5 rounded hover:bg-accent transition text-muted-foreground"
-                              title="Editar empleado"
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground">
+                            {e.rol}
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground">
+                            {e.email}
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground">
+                            {e.telefono}
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground">
+                            {new Date(e.fechaIngreso).toLocaleDateString(
+                              "es-ES",
+                              {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              },
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <select
+                              value={e.estado}
+                              onChange={(evt) => {
+                                actualizarEmpleado(e.id, {
+                                  estado: evt.target.value as
+                                    | "Activo"
+                                    | "Licencia"
+                                    | "Inactivo",
+                                });
+                              }}
+                              className={`px-2 py-1 rounded-full text-xs border text-center focus:outline-none focus:ring-2 focus:ring-foreground/20 transition ${
+                                e.estado === "Activo"
+                                  ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+                                  : e.estado === "Licencia"
+                                    ? "bg-amber-100 text-amber-700 border-amber-200"
+                                    : "bg-gray-100 text-gray-700 border-gray-200"
+                              }`}
                             >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => setEmpleadoPassword(e)}
-                              className="p-1.5 rounded hover:bg-accent transition text-muted-foreground"
-                              title="Establecer contraseña"
-                            >
-                              <Lock className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => setEmpleadoPermisos(e)}
-                              className="p-1.5 rounded hover:bg-accent transition text-blue-600"
-                              title="Gestionar permisos"
-                            >
-                              <Shield className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                              <option value="Activo">Activo</option>
+                              <option value="Licencia">Licencia</option>
+                              <option value="Inactivo">Inactivo</option>
+                            </select>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => setEmpleadoEditando(e)}
+                                className="p-1.5 rounded hover:bg-accent transition text-muted-foreground"
+                                title="Editar empleado"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => setEmpleadoPassword(e)}
+                                className="p-1.5 rounded hover:bg-accent transition text-muted-foreground"
+                                title="Establecer contraseña"
+                              >
+                                <Lock className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => setEmpleadoPermisos(e)}
+                                className="p-1.5 rounded hover:bg-accent transition text-blue-600"
+                                title="Gestionar permisos"
+                              >
+                                <Shield className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
                     {loadingEmpleados && (
                       <tr>
                         <td
@@ -3400,15 +3428,9 @@ export function AdminDashboard() {
                                 {registro.detalles ? (
                                   <button
                                     className="text-xs text-primary hover:underline"
-                                    onClick={() => {
-                                      alert(
-                                        JSON.stringify(
-                                          registro.detalles,
-                                          null,
-                                          2,
-                                        ),
-                                      );
-                                    }}
+                                    onClick={() =>
+                                      setDetalleAuditoria(registro.detalles)
+                                    }
                                   >
                                     Ver detalles
                                   </button>
@@ -3745,6 +3767,47 @@ export function AdminDashboard() {
             return exito;
           }}
         />
+      )}
+      {detalleAuditoria && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setDetalleAuditoria(null)}
+          />
+          <div className="relative z-10 bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <h3 className="text-foreground">Detalles de auditoría</h3>
+              <button
+                onClick={() => setDetalleAuditoria(null)}
+                className="p-1.5 rounded-lg hover:bg-accent transition"
+              >
+                <X className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+            <div className="px-6 py-4 space-y-2 max-h-[60vh] overflow-y-auto">
+              {Object.entries(detalleAuditoria).map(([key, value]) => (
+                <div key={key} className="flex flex-col gap-0.5">
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider">
+                    {key}
+                  </span>
+                  <span className="text-sm text-foreground bg-muted rounded px-2 py-1 font-mono break-all">
+                    {typeof value === "object"
+                      ? JSON.stringify(value, null, 2)
+                      : String(value)}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="px-6 py-4 border-t border-border">
+              <button
+                onClick={() => setDetalleAuditoria(null)}
+                className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-sm hover:bg-primary/90 transition"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

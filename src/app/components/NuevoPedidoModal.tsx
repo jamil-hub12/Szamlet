@@ -304,8 +304,11 @@ function ProductoCard({
   };
 
   const setCantColor = (t: string, color: string, n: number) => {
+    const stockDisp = stockColor(t, color);
     const upd = (producto.detallesTallas[t] ?? []).map((cc) =>
-      cc.color === color ? { ...cc, cantidad: Math.max(1, n || 1) } : cc,
+      cc.color === color
+        ? { ...cc, cantidad: Math.min(Math.max(1, n || 1), stockDisp) }
+        : cc,
     );
     onChange({
       ...producto,
