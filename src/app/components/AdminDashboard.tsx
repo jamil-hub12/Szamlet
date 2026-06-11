@@ -364,6 +364,7 @@ export function AdminDashboard() {
   const [filtroAccion, setFiltroAccion] = useState<string>("");
   const [filtroModulo, setFiltroModulo] = useState<string>("");
   const [mostrarFiltrosAuditoria, setMostrarFiltrosAuditoria] = useState(false);
+  const [detalleAuditoria, setDetalleAuditoria] = useState<any>(null);
 
   // Estados para filtros de pagos
   const [fechaDesdePagos, setFechaDesdePagos] = useState("");
@@ -3427,15 +3428,9 @@ export function AdminDashboard() {
                                 {registro.detalles ? (
                                   <button
                                     className="text-xs text-primary hover:underline"
-                                    onClick={() => {
-                                      alert(
-                                        JSON.stringify(
-                                          registro.detalles,
-                                          null,
-                                          2,
-                                        ),
-                                      );
-                                    }}
+                                    onClick={() =>
+                                      setDetalleAuditoria(registro.detalles)
+                                    }
                                   >
                                     Ver detalles
                                   </button>
@@ -3772,6 +3767,47 @@ export function AdminDashboard() {
             return exito;
           }}
         />
+      )}
+      {detalleAuditoria && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setDetalleAuditoria(null)}
+          />
+          <div className="relative z-10 bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <h3 className="text-foreground">Detalles de auditoría</h3>
+              <button
+                onClick={() => setDetalleAuditoria(null)}
+                className="p-1.5 rounded-lg hover:bg-accent transition"
+              >
+                <X className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+            <div className="px-6 py-4 space-y-2 max-h-[60vh] overflow-y-auto">
+              {Object.entries(detalleAuditoria).map(([key, value]) => (
+                <div key={key} className="flex flex-col gap-0.5">
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider">
+                    {key}
+                  </span>
+                  <span className="text-sm text-foreground bg-muted rounded px-2 py-1 font-mono break-all">
+                    {typeof value === "object"
+                      ? JSON.stringify(value, null, 2)
+                      : String(value)}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="px-6 py-4 border-t border-border">
+              <button
+                onClick={() => setDetalleAuditoria(null)}
+                className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-sm hover:bg-primary/90 transition"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
