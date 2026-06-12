@@ -1468,7 +1468,7 @@ export function AdminDashboard() {
                     placeholder="Buscar empleado..."
                     value={busquedaEmpleado}
                     onChange={(e) => setBusquedaEmpleado(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 ..."
+                    className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-input-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20 transition text-sm"
                   />
                 </div>
                 <button
@@ -2672,7 +2672,7 @@ export function AdminDashboard() {
                         placeholder="Nombre, email, teléfono o RUC..."
                         value={busquedaCliente}
                         onChange={(e) => setBusquedaCliente(e.target.value)}
-                        className="w-full pl-10 pr-3 py-2.5 bg-background border border-input rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary transition"
+                        className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-input-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20 transition text-sm"
                       />
                       {busquedaCliente && (
                         <button
