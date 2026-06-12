@@ -48,6 +48,10 @@ const estadoConfig: Record<
     color: "bg-red-100 text-red-700 border-red-200",
     icon: <XCircle className="w-3.5 h-3.5" />,
   },
+  Vencido: {
+    color: "bg-red-200 text-red-800 border-red-300",
+    icon: <XCircle className="w-3.5 h-3.5" />,
+  },
 };
 
 export function HistorialClienteModal({
