@@ -177,6 +177,13 @@ export function LoginPage() {
                 <label htmlFor="password" className="text-sm text-foreground">
                   Contraseña
                 </label>
+                <button
+                  type="button"
+                  onClick={() => navigate("/forgot-password")}
+                  className="text-xs text-muted-foreground hover:text-foreground transition"
+                >
+                  ¿Olvidaste tu contraseña?
+                </button>
               </div>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
