@@ -32,7 +32,7 @@ export async function actualizarStockPedidoCreado(
     if (!soloStock) {
       const pedidoItemsInsert = items.map((item) => ({
         pedido_codigo: pedidoCodigo,
-        producto_codigo: item.productoCodigo,
+        producto_codigo: item.esEspecial ? "ESP-ESPECIAL" : item.productoCodigo,
         modelo: item.modelo,
         tela: item.tela,
         disenio: item.disenio,

@@ -1125,7 +1125,7 @@ export function NuevoPedidoModal({
               for (const colorCantidad of colores) {
                 if (colorCantidad.cantidad > 0) {
                   items.push({
-                    productoCodigo: "ESPECIAL",
+                    productoCodigo: "ESP-ESPECIAL",
                     modelo: producto.modelo,
                     tela: producto.tela,
                     disenio: producto.disenio,
