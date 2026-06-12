@@ -46,7 +46,11 @@ type ProductosContextType = {
     modelo: string;
     tela: string;
     disenio: string;
-    tallas: { talla: string; colores: { color: string }[] }[];
+    tallas: {
+      talla: string;
+      precio?: number;
+      colores: { color: string; stock: number }[];
+    }[];
   }) => Promise<ProductoCatalogo | null>;
   actualizarProducto: (
     id: string,

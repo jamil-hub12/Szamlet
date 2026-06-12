@@ -12,7 +12,9 @@ type RegistrarAuditoriaParams = {
     | "reactivar"
     | "login"
     | "logout"
-    | "establecer_password";
+    | "establecer_password"
+    | "actualizar_stock"
+    | "vencer_pedido";
   modulo: "empleados" | "clientes" | "productos" | "pedidos" | "autenticacion";
   entidadId?: string | null;
   entidadNombre?: string | null;
