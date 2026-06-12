@@ -117,7 +117,7 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const skipNextSubscriptionUpdate = useRef(0);
+  const skipNextSubscriptionUpdate = useRef(false);
   const isModifyingRef = useRef(false);
 
   const fetchPedidos = async () => {
@@ -228,10 +228,7 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
         const codigos = aVencer.map((p) => p.codigo);
         await supabase
           .from("pedidos")
-          .update({
-            estado: "Vencido",
-            estado_anterior_cancelacion: undefined, // no sobrescribir
-          })
+          .update({ estado: "Vencido" })
           .in("codigo", codigos);
 
         // Actualizar estado local sin refetch completo

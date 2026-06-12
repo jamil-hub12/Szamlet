@@ -11,7 +11,10 @@
  * formatearSoles(1234.5) // "S/ 1,234.50"
  * formatearSoles(1234.5, false) // "1,234.50"
  */
-export function formatearSoles(monto: number, incluirSimbolo: boolean = true): string {
+export function formatearSoles(
+  monto: number,
+  incluirSimbolo: boolean = true,
+): string {
   const montoFormateado = monto.toLocaleString("es-PE", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -33,7 +36,9 @@ export function formatearSolesIntl(monto: number): string {
     style: "currency",
     currency: "PEN",
     minimumFractionDigits: 2,
-  }).replace("PEN", "S/"); // Reemplaza "PEN" por "S/"
+  })
+    .format(monto)
+    .replace("PEN", "S/");
 }
 
 /**
@@ -45,9 +50,6 @@ export function formatearSolesIntl(monto: number): string {
  * parsearSoles("S/ 1,234.50") // 1234.5
  */
 export function parsearSoles(precioString: string): number {
-  const limpio = precioString
-    .replace("S/", "")
-    .replace(/,/g, "")
-    .trim();
+  const limpio = precioString.replace("S/", "").replace(/,/g, "").trim();
   return parseFloat(limpio) || 0;
 }
