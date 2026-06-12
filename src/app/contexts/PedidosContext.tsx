@@ -71,6 +71,8 @@ export type Pedido = {
   fechaPago?: string;
   notasPago?: string;
   tieneEspeciales?: boolean;
+  tipoPedido?: "venta_directa" | "fabricar";
+  notificarEstados?: string[];
   items?: PedidoItem[];
 };
 
@@ -84,6 +86,7 @@ type PedidosContextType = {
     urgente: boolean;
     notas?: string;
     fechaEntrega?: string;
+    tipoPedido?: "venta_directa" | "fabricar";
     items?: PedidoItemData[];
   }) => Promise<Pedido | null>;
   actualizarPedido: (
@@ -203,6 +206,11 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
             fechaPago: pedido.fecha_pago || undefined,
             notasPago: pedido.notas_pago || undefined,
             tieneEspeciales: pedido.tiene_especiales ?? false,
+            tipoPedido: pedido.tipo_pedido ?? "fabricar",
+            notificarEstados: pedido.notificar_estados ?? [
+              "Listo para entrega",
+              "Entregado",
+            ],
             items: itemsPedido.length > 0 ? itemsPedido : undefined,
           };
         },
@@ -276,12 +284,18 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
     urgente: boolean;
     notas?: string;
     fechaEntrega?: string;
+    tipoPedido?: "venta_directa" | "fabricar";
     items?: PedidoItemData[];
   }): Promise<Pedido | null> => {
     try {
       isModifyingRef.current = true;
 
       const tieneEspeciales = data.items?.some((i) => i.esEspecial) ?? false;
+      const tipoPedido = data.tipoPedido ?? "fabricar";
+      const notificarEstados =
+        tipoPedido === "venta_directa"
+          ? ["Entregado"]
+          : ["Listo para entrega", "Entregado"];
 
       const insertData: PedidoInsert = {
         cliente_id: data.clienteId,
@@ -290,8 +304,10 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
         notas: data.notas || null,
         fecha: obtenerFechaPeruHoy(),
         fecha_entrega: data.fechaEntrega || null,
-        estado: "Recibido",
+        estado: tipoPedido === "venta_directa" ? "Entregado" : "Recibido",
         tiene_especiales: tieneEspeciales,
+        tipo_pedido: tipoPedido,
+        notificar_estados: notificarEstados,
       };
 
       const { data: nuevoPedido, error: insertError } = await supabase
@@ -338,6 +354,8 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
         montoPagado: 0,
         fechaEntrega: data.fechaEntrega || undefined,
         tieneEspeciales,
+        tipoPedido,
+        notificarEstados,
       };
 
       if (montoTotal > 0) {
@@ -360,6 +378,8 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
           data.items,
           usuarioFinal.codigo,
           usuarioFinal.nombre,
+          false,
+          tipoPedido,
         );
 
         if (!resultadoStock.exito) {
@@ -623,6 +643,8 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
         updateData.notas = datosBasicos.notas;
       if (datosBasicos.fechaEntrega !== undefined)
         updateData.fecha_entrega = datosBasicos.fechaEntrega || null;
+      if (datosBasicos.montoTotal !== undefined)
+        updateData.monto_total = datosBasicos.montoTotal;
 
       if (Object.keys(updateData).length > 0) {
         const { error: updateError } = await supabase

@@ -83,6 +83,7 @@ type PedidoForm = {
   fechaEntrega: string;
   prioridad: "Normal" | "Urgente";
   observacionesGenerales: string;
+  tipoPedido: "venta_directa" | "fabricar";
   productos: ProductoForm[];
 };
 
@@ -110,6 +111,7 @@ export type NuevoPedidoOutput = {
   telefono: string;
   email: string;
   notas?: string;
+  tipoPedido: "venta_directa" | "fabricar";
   items: PedidoItemOutput[];
 };
 
@@ -200,6 +202,8 @@ function ProductoCard({
   canRemove,
   showErrors,
   catalogoProductos,
+  esAdmin = false,
+  esVentaDirecta = false,
 }: {
   producto: ProductoForm;
   index: number;
@@ -208,6 +212,8 @@ function ProductoCard({
   canRemove: boolean;
   showErrors: boolean;
   catalogoProductos: ProductoCatalogo[];
+  esAdmin?: boolean;
+  esVentaDirecta?: boolean;
 }) {
   // Estado local para agregar talla/color personalizado en modo especial
   const [nuevaTalla, setNuevaTalla] = useState("");
@@ -451,23 +457,25 @@ function ProductoCard({
           )}
         </div>
         <div className="flex items-center gap-2">
-          {/* Toggle catálogo / especial */}
-          <button
-            type="button"
-            onClick={toggleModoEspecial}
-            className={`text-xs px-2.5 py-1 rounded-lg border transition ${
-              producto.esEspecial
-                ? "bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200"
-                : "bg-input-background text-muted-foreground border-border hover:border-foreground/30"
-            }`}
-            title={
-              producto.esEspecial
-                ? "Cambiar a producto del catálogo"
-                : "Registrar producto especial (fuera de catálogo)"
-            }
-          >
-            {producto.esEspecial ? "Usar catálogo" : "Producto especial"}
-          </button>
+          {/* Toggle catálogo / especial — oculto en venta directa */}
+          {!esVentaDirecta && (
+            <button
+              type="button"
+              onClick={toggleModoEspecial}
+              className={`text-xs px-2.5 py-1 rounded-lg border transition ${
+                producto.esEspecial
+                  ? "bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200"
+                  : "bg-input-background text-muted-foreground border-border hover:border-foreground/30"
+              }`}
+              title={
+                producto.esEspecial
+                  ? "Cambiar a producto del catálogo"
+                  : "Registrar producto especial (fuera de catálogo)"
+              }
+            >
+              {producto.esEspecial ? "Usar catálogo" : "Producto especial"}
+            </button>
+          )}
           {canRemove && (
             <button
               type="button"
@@ -588,33 +596,34 @@ function ProductoCard({
           </div>
         )}
 
-        {/* Selector de descuento — catálogo con precio */}
-        {!producto.esEspecial && prodCatalogo && (
-          <div className="space-y-2 px-4 py-3 rounded-lg border border-blue-200 bg-blue-50">
-            <label className="text-sm font-medium text-foreground flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs">
-                %
-              </span>
-              Descuento en precio
-            </label>
-            <div className="flex gap-2">
-              {[0, 5, 10].map((descuento) => (
-                <button
-                  key={descuento}
-                  type="button"
-                  onClick={() => setDescuento(descuento)}
-                  className={`flex-1 px-3 py-2 rounded-lg text-sm border transition ${
-                    producto.descuentoPorcentaje === descuento
-                      ? "bg-blue-600 text-white border-blue-600"
-                      : "bg-white text-foreground border-border hover:border-blue-400"
-                  }`}
-                >
-                  {descuento === 0 ? "Sin descuento" : `${descuento}% off`}
-                </button>
-              ))}
+        {/* Selector de descuento — visible para todos, en cualquier tipo de producto */}
+        {!esVentaDirecta &&
+          (producto.esEspecial || (!producto.esEspecial && prodCatalogo)) && (
+            <div className="space-y-2 px-4 py-3 rounded-lg border border-blue-200 bg-blue-50">
+              <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs">
+                  %
+                </span>
+                Descuento en precio
+              </label>
+              <div className="flex gap-2">
+                {[0, 5, 10].map((descuento) => (
+                  <button
+                    key={descuento}
+                    type="button"
+                    onClick={() => setDescuento(descuento)}
+                    className={`flex-1 px-3 py-2 rounded-lg text-sm border transition ${
+                      producto.descuentoPorcentaje === descuento
+                        ? "bg-blue-600 text-white border-blue-600"
+                        : "bg-white text-foreground border-border hover:border-blue-400"
+                    }`}
+                  >
+                    {descuento === 0 ? "Sin descuento" : `${descuento}% off`}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
         {/* Tallas */}
         {mostrarTallas && (
@@ -731,28 +740,37 @@ function ProductoCard({
                       </span>
                     </div>
 
-                    {/* Precio — editable en modo especial, del catálogo en modo normal */}
+                    {/* Precio — editable en modo especial (solo admin), del catálogo en modo normal */}
                     <div className="flex items-center gap-2 text-sm">
                       {producto.esEspecial ? (
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs text-muted-foreground">
-                            S/
+                        esAdmin ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-muted-foreground">
+                              S/
+                            </span>
+                            <input
+                              type="number"
+                              min={0}
+                              step="0.50"
+                              value={precioOriginal ?? ""}
+                              onChange={(e) =>
+                                setPrecioTalla(
+                                  t,
+                                  parseFloat(e.target.value) || 0,
+                                )
+                              }
+                              placeholder="0.00"
+                              className="w-20 px-2 py-0.5 text-xs text-center rounded bg-background border border-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-300"
+                            />
+                            <span className="text-xs text-muted-foreground">
+                              / ud.
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
+                            Precio lo asigna el administrador
                           </span>
-                          <input
-                            type="number"
-                            min={0}
-                            step="0.50"
-                            value={precioOriginal ?? ""}
-                            onChange={(e) =>
-                              setPrecioTalla(t, parseFloat(e.target.value) || 0)
-                            }
-                            placeholder="0.00"
-                            className="w-20 px-2 py-0.5 text-xs text-center rounded bg-background border border-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-300"
-                          />
-                          <span className="text-xs text-muted-foreground">
-                            / ud.
-                          </span>
-                        </div>
+                        )
                       ) : !precioOriginal || precioOriginal <= 0 ? (
                         <span className="text-red-600 font-semibold text-xs">
                           Sin precio definido
@@ -1007,12 +1025,14 @@ export function NuevoPedidoModal({
   onGuardar,
   pedidosExistentes,
   productos = [],
+  esAdmin = false,
 }: {
   onClose: () => void;
   clientes: ClienteRef[];
   onGuardar: (p: NuevoPedidoOutput) => void;
   pedidosExistentes: { id: string }[];
   productos?: ProductoCatalogo[];
+  esAdmin?: boolean;
 }) {
   type Step = "form" | "confirmacion" | "guardando" | "exito" | "error";
   const [step, setStep] = useState<Step>("form");
@@ -1041,6 +1061,7 @@ export function NuevoPedidoModal({
     fechaEntrega: "",
     prioridad: "Normal",
     observacionesGenerales: "",
+    tipoPedido: "fabricar",
     productos: [nuevoProducto()],
   });
   const [errorFecha, setErrorFecha] = useState<string>("");
@@ -1187,6 +1208,7 @@ export function NuevoPedidoModal({
           telefono: clienteSel!.celular,
           email: clienteSel!.email,
           notas: form.observacionesGenerales || undefined,
+          tipoPedido: form.tipoPedido,
           items,
         });
         setStep("exito");
@@ -1406,11 +1428,81 @@ export function NuevoPedidoModal({
 
               <div className="border-t border-border" />
 
-              {/* 3. Productos */}
-              <section className="space-y-4">
+              {/* Tipo de pedido */}
+              <section className="space-y-3">
                 <h4 className="text-foreground flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-foreground text-background text-xs flex items-center justify-center shrink-0">
                     3
+                  </span>
+                  Tipo de pedido
+                </h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm((f) => ({ ...f, tipoPedido: "fabricar" }))
+                    }
+                    className={`flex flex-col items-start gap-1 px-4 py-3 rounded-xl border text-sm transition ${
+                      form.tipoPedido === "fabricar"
+                        ? "border-foreground bg-foreground text-background"
+                        : "border-border bg-input-background text-muted-foreground hover:border-foreground/30"
+                    }`}
+                  >
+                    <span className="font-medium">A fabricar</span>
+                    <span
+                      className={`text-xs ${form.tipoPedido === "fabricar" ? "text-background/70" : "text-muted-foreground"}`}
+                    >
+                      Va por Producción. Notifica al entregar.
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm((f) => ({
+                        ...f,
+                        tipoPedido: "venta_directa",
+                        // Forzar todos los productos a modo catálogo
+                        productos: f.productos.map((p) => ({
+                          ...p,
+                          esEspecial: false,
+                          tallasSeleccionadas: [],
+                          detallesTallas: {},
+                          preciosPorTalla: {},
+                          modelo: "",
+                          tela: "",
+                          disenio: "",
+                        })),
+                      }))
+                    }
+                    className={`flex flex-col items-start gap-1 px-4 py-3 rounded-xl border text-sm transition ${
+                      form.tipoPedido === "venta_directa"
+                        ? "border-emerald-600 bg-emerald-600 text-white"
+                        : "border-border bg-input-background text-muted-foreground hover:border-emerald-400"
+                    }`}
+                  >
+                    <span className="font-medium">Venta directa</span>
+                    <span
+                      className={`text-xs ${form.tipoPedido === "venta_directa" ? "text-white/80" : "text-muted-foreground"}`}
+                    >
+                      Hay stock. Resta inventario al crear.
+                    </span>
+                  </button>
+                </div>
+                {form.tipoPedido === "venta_directa" && (
+                  <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                    ⚡ El pedido pasará directo a <strong>Entregado</strong> sin
+                    pasar por Producción. Se enviará un solo email al cliente.
+                  </p>
+                )}
+              </section>
+
+              <div className="border-t border-border" />
+
+              {/* 4. Productos */}
+              <section className="space-y-4">
+                <h4 className="text-foreground flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-foreground text-background text-xs flex items-center justify-center shrink-0">
+                    4
                   </span>
                   Productos
                 </h4>
@@ -1437,6 +1529,8 @@ export function NuevoPedidoModal({
                       canRemove={form.productos.length > 1}
                       showErrors={showErrors}
                       catalogoProductos={productos}
+                      esAdmin={esAdmin}
+                      esVentaDirecta={form.tipoPedido === "venta_directa"}
                     />
                   ))}
                 </div>

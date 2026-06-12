@@ -4006,6 +4006,7 @@ export function AdminDashboard() {
         <EditarPedidoModal
           pedido={pedidoSeleccionado}
           onClose={() => setModalEditarPedidoAbierto(false)}
+          esAdmin={true}
         />
       )}
       {detalleAuditoria && (

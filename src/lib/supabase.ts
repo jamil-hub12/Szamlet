@@ -127,6 +127,8 @@ export type Database = {
           fecha_pago: string | null;
           notas_pago: string | null;
           tiene_especiales: boolean;
+          tipo_pedido: "venta_directa" | "fabricar";
+          notificar_estados: string[] | null;
           created_at: string;
           updated_at: string;
         };
@@ -156,6 +158,8 @@ export type Database = {
           fecha_pago?: string | null;
           notas_pago?: string | null;
           tiene_especiales?: boolean;
+          tipo_pedido?: "venta_directa" | "fabricar";
+          notificar_estados?: string[] | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -185,6 +189,8 @@ export type Database = {
           fecha_pago?: string | null;
           notas_pago?: string | null;
           tiene_especiales?: boolean;
+          tipo_pedido?: "venta_directa" | "fabricar";
+          notificar_estados?: string[] | null;
           created_at?: string;
           updated_at?: string;
         };

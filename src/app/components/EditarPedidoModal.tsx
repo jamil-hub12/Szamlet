@@ -45,13 +45,15 @@ type EditarPedidoForm = {
 export function EditarPedidoModal({
   pedido,
   onClose,
+  esAdmin = false,
 }: {
   pedido: Pedido;
   onClose: () => void;
+  esAdmin?: boolean;
 }) {
   const validacionEdicion = puedeEditarPedido(pedido.estado);
   const { productos } = useProductos();
-  const { actualizarPedidoConItems } = usePedidos();
+  const { actualizarPedidoConItems, actualizarPedido } = usePedidos();
   const [form, setForm] = useState<EditarPedidoForm>({
     articulo: pedido.articulo,
     urgente: pedido.urgente,
@@ -59,6 +61,9 @@ export function EditarPedidoModal({
     fechaEntrega: pedido.fechaEntrega || "",
     items: [],
   });
+  const [montoTotalAdmin, setMontoTotalAdmin] = useState<string>(
+    pedido.montoTotal ? pedido.montoTotal.toFixed(2) : "",
+  );
   const [loadingItems, setLoadingItems] = useState(true);
   const [showErrors, setShowErrors] = useState(false);
   const [errorFecha, setErrorFecha] = useState<string | null>(null);
@@ -183,14 +188,21 @@ export function EditarPedidoModal({
         };
       });
 
+      // Si es admin y puso un monto total, lo incluimos en los datos básicos
+      const montoNumerico = parseFloat(montoTotalAdmin);
+      const datosBasicos: Parameters<typeof actualizarPedidoConItems>[1] = {
+        articulo: form.articulo.trim(),
+        urgente: form.urgente,
+        notas: form.notas.trim() || undefined,
+        fechaEntrega: form.fechaEntrega || undefined,
+        ...(esAdmin && !isNaN(montoNumerico) && montoNumerico >= 0
+          ? { montoTotal: montoNumerico }
+          : {}),
+      };
+
       const exito = await actualizarPedidoConItems(
         pedido.codigo,
-        {
-          articulo: form.articulo.trim(),
-          urgente: form.urgente,
-          notas: form.notas.trim() || undefined,
-          fechaEntrega: form.fechaEntrega || undefined,
-        },
+        datosBasicos,
         itemsInsert,
       );
 
@@ -533,6 +545,40 @@ export function EditarPedidoModal({
                   </div>
                 </div>
               </div>
+
+              {/* Precio total — solo admin */}
+              {esAdmin && (
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                    <span className="w-4 h-4 flex items-center justify-center text-xs font-bold text-emerald-700">
+                      S/
+                    </span>
+                    Precio total del pedido
+                    <span className="text-xs text-muted-foreground font-normal">
+                      (solo administrador)
+                    </span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
+                      S/
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.50"
+                      value={montoTotalAdmin}
+                      onChange={(e) => setMontoTotalAdmin(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full pl-9 pr-3 py-2 rounded-lg bg-input-background border border-emerald-300 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                    />
+                  </div>
+                  {pedido.montoTotal && pedido.montoTotal > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Precio actual: S/ {pedido.montoTotal.toFixed(2)}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Notas */}
               <div className="space-y-1.5">

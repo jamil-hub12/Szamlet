@@ -15,13 +15,15 @@ export type PedidoItemData = {
 /**
  * Actualiza el stock cuando se crea un pedido.
  * @param soloStock - Si es true, omite el INSERT en pedido_items (usar al reactivar un pedido).
+ * @param tipoPedido - Si es 'venta_directa', resta stock inmediatamente.
  */
 export async function actualizarStockPedidoCreado(
   pedidoCodigo: string,
   items: PedidoItemData[],
   usuarioCodigo: string,
   usuarioNombre: string,
-  soloStock = false, // FIX: parámetro para evitar duplicar items al reactivar
+  soloStock = false,
+  tipoPedido: "venta_directa" | "fabricar" = "fabricar",
 ): Promise<{ exito: boolean; mensaje: string }> {
   try {
     console.log(
@@ -58,12 +60,41 @@ export async function actualizarStockPedidoCreado(
       );
     }
 
-    // 2. Stock NO se resta al crear el pedido.
-    // Producción confirma cada ítem fabricado desde "Solicitudes de fabricación"
-    // y ahí se actualiza el stock por ítem individual.
-    console.log(
-      `⏳ ${items.length} ítem(s) registrados como solicitudes de fabricación pendientes`,
-    );
+    // 2. Manejo de stock según tipo de pedido
+    if (tipoPedido === "venta_directa") {
+      // Venta directa: restar stock inmediatamente (solo ítems normales, no especiales)
+      const itemsNormales = items.filter((i) => !i.esEspecial);
+      console.log(
+        `⬇️ Venta directa: restando stock de ${itemsNormales.length} ítem(s) inmediatamente`,
+      );
+      for (const item of itemsNormales) {
+        const resultado = await supabase.rpc("actualizar_stock_pedido", {
+          p_producto_codigo: item.productoCodigo,
+          p_talla: item.talla,
+          p_color: item.color,
+          p_cantidad: item.cantidad,
+          p_tipo: "restar",
+          p_pedido_codigo: pedidoCodigo,
+          p_usuario_codigo: usuarioCodigo,
+          p_usuario_nombre: usuarioNombre,
+        });
+        if (resultado.error) {
+          throw new Error(
+            `Error al restar stock de ${item.modelo} - ${item.talla} - ${item.color}: ${resultado.error.message}`,
+          );
+        }
+      }
+      // Marcar todos los ítems como confirmados (ya están "entregados")
+      await supabase
+        .from("pedido_items")
+        .update({ estado_fabricacion: "confirmado" })
+        .eq("pedido_codigo", pedidoCodigo);
+    } else {
+      // Fabricar: no restar stock. Producción confirma ítem por ítem.
+      console.log(
+        `⏳ ${items.length} ítem(s) registrados como solicitudes de fabricación pendientes`,
+      );
+    }
 
     console.log(
       `✅ Stock actualizado para todos los items del pedido ${pedidoCodigo}`,
