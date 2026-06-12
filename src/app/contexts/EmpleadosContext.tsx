@@ -72,7 +72,7 @@ function convertirEmpleado(emp: EmpleadoDB): Empleado {
     rol: emp.rol as "Atención al cliente" | "Administrador" | "Producción",
     fechaIngreso: emp.fecha_ingreso,
     estado: emp.estado as "Activo" | "Licencia" | "Inactivo",
-    permisos: [],
+    permisos: (emp.permisos || []) as Permiso[],
   };
 }
 
@@ -280,6 +280,7 @@ export function EmpleadosProvider({ children }: { children: ReactNode }) {
       if (data.telefono !== undefined) updateData.telefono = data.telefono;
       if (data.rol !== undefined) updateData.rol = data.rol;
       if (data.estado !== undefined) updateData.estado = data.estado;
+      if (data.permisos !== undefined) updateData.permisos = data.permisos;
 
       const { error: updateError } = await supabase
         .from("empleados")

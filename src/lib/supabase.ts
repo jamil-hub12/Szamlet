@@ -30,6 +30,7 @@ export type Database = {
           estado: "Activo" | "Licencia" | "Inactivo";
           created_at: string;
           updated_at: string;
+          permisos: string[] | null;
         };
         Insert: {
           id?: string;
@@ -42,6 +43,7 @@ export type Database = {
           estado?: "Activo" | "Licencia" | "Inactivo";
           created_at?: string;
           updated_at?: string;
+          permisos?: string[] | null;
         };
         Update: {
           id?: string;
@@ -54,6 +56,7 @@ export type Database = {
           estado?: "Activo" | "Licencia" | "Inactivo";
           created_at?: string;
           updated_at?: string;
+          permisos?: string[] | null;
         };
       };
       clientes: {
