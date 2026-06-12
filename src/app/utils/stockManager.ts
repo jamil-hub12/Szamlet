@@ -58,33 +58,12 @@ export async function actualizarStockPedidoCreado(
       );
     }
 
-    // 2. Actualizar stock solo de items normales (especiales no tocan inventario)
-    const itemsNormales = items.filter((i) => !i.esEspecial);
-    for (const item of itemsNormales) {
-      console.log(
-        `   ⬇️ Restando ${item.cantidad} unidades de ${item.modelo} - Talla ${item.talla} - ${item.color}`,
-      );
-
-      const resultado = await supabase.rpc("actualizar_stock_pedido", {
-        p_producto_codigo: item.productoCodigo,
-        p_talla: item.talla,
-        p_color: item.color,
-        p_cantidad: item.cantidad,
-        p_tipo: "restar",
-        p_pedido_codigo: pedidoCodigo,
-        p_usuario_codigo: usuarioCodigo,
-        p_usuario_nombre: usuarioNombre,
-      });
-
-      if (resultado.error) {
-        console.error(`❌ Error al actualizar stock:`, resultado.error);
-        throw new Error(
-          `Error al actualizar stock de ${item.modelo} - ${item.talla} - ${item.color}: ${resultado.error.message}`,
-        );
-      }
-
-      console.log(`   ✅ Stock actualizado correctamente`);
-    }
+    // 2. Stock NO se resta al crear el pedido.
+    // Producción confirma cada ítem fabricado desde "Solicitudes de fabricación"
+    // y ahí se actualiza el stock por ítem individual.
+    console.log(
+      `⏳ ${items.length} ítem(s) registrados como solicitudes de fabricación pendientes`,
+    );
 
     console.log(
       `✅ Stock actualizado para todos los items del pedido ${pedidoCodigo}`,
@@ -127,16 +106,25 @@ export async function restaurarStockPedidoCancelado(
       };
     }
 
-    console.log(`   📦 Restaurando ${items.length} items`);
+    console.log(`   📦 Revisando ${items.length} items`);
 
     for (const item of items) {
-      // No restaurar stock de items especiales (nunca afectaron inventario)
+      // Solo restaurar stock de ítems normales confirmados por Producción.
+      // Si estaba pendiente, nunca afectó el stock → nada que restaurar.
       if (item.es_especial) {
         console.log(
-          `   ⏭️ Item especial ${item.modelo} - omitiendo restauración de stock`,
+          `   ⏭️ Item especial ${item.modelo} - omitiendo restauración`,
         );
         continue;
       }
+
+      if (item.estado_fabricacion !== "confirmado") {
+        console.log(
+          `   ⏭️ Item pendiente ${item.modelo} - nunca afectó stock, omitiendo`,
+        );
+        continue;
+      }
+
       console.log(
         `   ⬆️ Sumando ${item.cantidad} unidades de ${item.modelo} - Talla ${item.talla} - ${item.color}`,
       );

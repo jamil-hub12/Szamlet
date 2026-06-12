@@ -30,6 +30,8 @@ type PedidoItem = {
   color: string;
   cantidad: number;
   precioUnitario?: number;
+  descuentoPorcentaje?: number; // 0, 5 o 10
+  esEspecial?: boolean;
 };
 
 type EditarPedidoForm = {
@@ -65,6 +67,8 @@ export function EditarPedidoModal({
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [mostrarAgregarItem, setMostrarAgregarItem] = useState(false);
+  const [mostrarAgregarItemLibre, setMostrarAgregarItemLibre] = useState(false);
+  const esEspecial = pedido.tieneEspeciales === true;
 
   useEffect(() => {
     let isMounted = true;
@@ -130,6 +134,11 @@ export function EditarPedidoModal({
     setMostrarAgregarItem(false);
   };
 
+  const handleAgregarItemLibre = (item: PedidoItem) => {
+    setForm((prev) => ({ ...prev, items: [...prev.items, item] }));
+    setMostrarAgregarItemLibre(false);
+  };
+
   const handleEliminarItem = (index: number) => {
     setForm((prev) => ({
       ...prev,
@@ -154,20 +163,25 @@ export function EditarPedidoModal({
     setErrorMessage(null);
 
     try {
-      const itemsInsert = form.items.map((item) => ({
-        pedido_codigo: pedido.codigo,
-        producto_codigo: item.productoCodigo,
-        modelo: item.modelo,
-        tela: item.tela,
-        disenio: item.disenio,
-        talla: item.talla,
-        color: item.color,
-        cantidad: item.cantidad,
-        precio_unitario: item.precioUnitario || null,
-        subtotal: item.precioUnitario
-          ? item.precioUnitario * item.cantidad
-          : null,
-      }));
+      const itemsInsert = form.items.map((item) => {
+        const descuento = item.descuentoPorcentaje ?? 0;
+        const precioBase = item.precioUnitario ?? 0;
+        const precioFinal =
+          precioBase > 0 ? precioBase * (1 - descuento / 100) : 0;
+        return {
+          pedido_codigo: pedido.codigo,
+          producto_codigo: item.productoCodigo,
+          modelo: item.modelo,
+          tela: item.tela,
+          disenio: item.disenio,
+          talla: item.talla,
+          color: item.color,
+          cantidad: item.cantidad,
+          precio_unitario: precioFinal > 0 ? precioFinal : null,
+          subtotal: precioFinal > 0 ? precioFinal * item.cantidad : null,
+          es_especial: item.esEspecial ?? false,
+        };
+      });
 
       const exito = await actualizarPedidoConItems(
         pedido.codigo,
@@ -353,14 +367,26 @@ export function EditarPedidoModal({
                     <ShoppingBag className="w-4 h-4" />
                     Productos del pedido <span className="text-red-500">*</span>
                   </label>
-                  <button
-                    type="button"
-                    onClick={() => setMostrarAgregarItem(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-foreground text-xs hover:bg-accent transition"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    Agregar
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setMostrarAgregarItem(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-foreground text-xs hover:bg-accent transition"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Del catálogo
+                    </button>
+                    {esEspecial && (
+                      <button
+                        type="button"
+                        onClick={() => setMostrarAgregarItemLibre(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-dashed border-primary/60 text-primary text-xs hover:bg-primary/5 transition"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Ítem libre
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="border border-border rounded-xl overflow-hidden">
@@ -403,8 +429,13 @@ export function EditarPedidoModal({
                             className="grid grid-cols-[1fr_auto_auto] gap-2 px-3 py-2.5 border-b border-border last:border-0 items-center hover:bg-accent/20 transition"
                           >
                             <div>
-                              <p className="text-sm font-medium text-foreground">
+                              <p className="text-sm font-medium text-foreground flex items-center gap-1.5">
                                 {item.modelo}
+                                {(item as any).esEspecial && (
+                                  <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-normal">
+                                    Especial
+                                  </span>
+                                )}
                               </p>
                               <div className="flex gap-1 mt-1 flex-wrap">
                                 <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
@@ -595,6 +626,266 @@ export function EditarPedidoModal({
           productos={productos}
         />
       )}
+
+      {mostrarAgregarItemLibre && (
+        <AgregarItemLibreModal
+          onClose={() => setMostrarAgregarItemLibre(false)}
+          onAgregar={handleAgregarItemLibre}
+        />
+      )}
+    </div>
+  );
+}
+
+// Regex para bloquear caracteres especiales (solo letras, números, espacios, guión y punto)
+const SOLO_ALFANUMERICO = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9\s\-\.]*$/;
+
+function validarSinEspeciales(valor: string): boolean {
+  return SOLO_ALFANUMERICO.test(valor);
+}
+
+function AgregarItemLibreModal({
+  onClose,
+  onAgregar,
+}: {
+  onClose: () => void;
+  onAgregar: (item: PedidoItem) => void;
+}) {
+  const [form, setForm] = useState({
+    modelo: "",
+    tela: "",
+    disenio: "",
+    talla: "",
+    color: "",
+    cantidad: 1,
+  });
+  const [descuento, setDescuento] = useState(0);
+  const [showErrors, setShowErrors] = useState(false);
+  const [erroresEspeciales, setErroresEspeciales] = useState<
+    Record<string, string>
+  >({});
+
+  const handleChange = (campo: string, valor: string) => {
+    if (!validarSinEspeciales(valor)) {
+      setErroresEspeciales((prev) => ({
+        ...prev,
+        [campo]: "No se permiten caracteres especiales",
+      }));
+      return;
+    }
+    setErroresEspeciales((prev) => {
+      const next = { ...prev };
+      delete next[campo];
+      return next;
+    });
+    setForm((prev) => ({ ...prev, [campo]: valor }));
+  };
+
+  const handleAgregar = () => {
+    if (
+      !form.modelo.trim() ||
+      !form.tela.trim() ||
+      !form.talla.trim() ||
+      !form.color.trim() ||
+      form.cantidad < 1 ||
+      Object.keys(erroresEspeciales).length > 0
+    ) {
+      setShowErrors(true);
+      return;
+    }
+
+    onAgregar({
+      productoCodigo: "LIBRE",
+      modelo: form.modelo.trim(),
+      tela: form.tela.trim(),
+      disenio: form.disenio.trim() || "-",
+      talla: form.talla.trim(),
+      color: form.color.trim(),
+      cantidad: form.cantidad,
+      precioUnitario: undefined,
+      descuentoPorcentaje: descuento,
+      esEspecial: true,
+    } as PedidoItem);
+  };
+
+  const campos: Array<{
+    key: keyof typeof form;
+    label: string;
+    placeholder: string;
+    requerido: boolean;
+  }> = [
+    {
+      key: "modelo",
+      label: "Modelo / Prenda",
+      placeholder: "Ej: Casaca bordada",
+      requerido: true,
+    },
+    {
+      key: "tela",
+      label: "Tela / Material",
+      placeholder: "Ej: Algodón",
+      requerido: true,
+    },
+    {
+      key: "disenio",
+      label: "Diseño / Detalle",
+      placeholder: "Ej: Bordado personalizado",
+      requerido: false,
+    },
+    {
+      key: "talla",
+      label: "Talla",
+      placeholder: "Ej: M, L, XL, 38...",
+      requerido: true,
+    },
+    {
+      key: "color",
+      label: "Color",
+      placeholder: "Ej: Azul marino",
+      requerido: true,
+    },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div className="relative z-10 bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <div>
+            <h3 className="text-foreground">Ítem especial libre</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Prenda fuera del catálogo
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-accent transition"
+          >
+            <X className="w-4 h-4 text-muted-foreground" />
+          </button>
+        </div>
+
+        <div className="px-6 py-5 space-y-4">
+          {campos.map(({ key, label, placeholder, requerido }) => (
+            <div key={key} className="space-y-1.5">
+              <label className="text-sm text-foreground">
+                {label} {requerido && <span className="text-red-500">*</span>}
+              </label>
+              <input
+                type="text"
+                value={form[key] as string}
+                onChange={(e) => handleChange(key, e.target.value)}
+                placeholder={placeholder}
+                className={`w-full px-3 py-2.5 rounded-lg bg-input-background border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20 ${
+                  (showErrors && requerido && !form[key].toString().trim()) ||
+                  erroresEspeciales[key]
+                    ? "border-red-400"
+                    : "border-border"
+                }`}
+              />
+              {erroresEspeciales[key] && (
+                <p className="text-xs text-red-500 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" /> {erroresEspeciales[key]}
+                </p>
+              )}
+              {showErrors &&
+                requerido &&
+                !form[key].toString().trim() &&
+                !erroresEspeciales[key] && (
+                  <p className="text-xs text-red-500 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" /> Campo requerido
+                  </p>
+                )}
+            </div>
+          ))}
+
+          {/* Cantidad */}
+          <div className="space-y-1.5">
+            <label className="text-sm text-foreground">
+              Cantidad <span className="text-red-500">*</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  setForm((p) => ({
+                    ...p,
+                    cantidad: Math.max(1, p.cantidad - 1),
+                  }))
+                }
+                className="w-10 h-10 flex items-center justify-center rounded-lg border border-border bg-input-background text-foreground hover:bg-accent transition"
+              >
+                -
+              </button>
+              <input
+                type="number"
+                min="1"
+                value={form.cantidad}
+                onChange={(e) =>
+                  setForm((p) => ({
+                    ...p,
+                    cantidad: Math.max(1, parseInt(e.target.value) || 1),
+                  }))
+                }
+                className="flex-1 px-3 py-2.5 rounded-lg bg-input-background border border-border text-foreground text-sm text-center focus:outline-none focus:ring-2 focus:ring-foreground/20"
+              />
+              <button
+                type="button"
+                onClick={() =>
+                  setForm((p) => ({ ...p, cantidad: p.cantidad + 1 }))
+                }
+                className="w-10 h-10 flex items-center justify-center rounded-lg border border-border bg-input-background text-foreground hover:bg-accent transition"
+              >
+                +
+              </button>
+            </div>
+          </div>
+
+          {/* Descuento */}
+          <div className="space-y-2 px-4 py-3 rounded-lg border border-blue-200 bg-blue-50">
+            <label className="text-sm font-medium text-foreground flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">
+                %
+              </span>
+              Descuento en precio
+            </label>
+            <div className="flex gap-2">
+              {[0, 5, 10].map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setDescuento(d)}
+                  className={`flex-1 px-3 py-2 rounded-lg text-sm border transition ${
+                    descuento === d
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "bg-white text-foreground border-border hover:border-blue-400"
+                  }`}
+                >
+                  {d === 0 ? "Sin descuento" : `${d}% off`}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="px-6 py-4 border-t border-border flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 rounded-lg border border-border text-foreground text-sm hover:bg-accent transition"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleAgregar}
+            className="flex-1 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm hover:bg-primary/90 transition"
+          >
+            Agregar
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -612,6 +903,7 @@ function AgregarItemModal({
   const [tallaSeleccionada, setTallaSeleccionada] = useState<string>("");
   const [colorSeleccionado, setColorSeleccionado] = useState<string>("");
   const [cantidad, setCantidad] = useState(1);
+  const [descuento, setDescuento] = useState(0);
   const [showErrors, setShowErrors] = useState(false);
 
   const producto = productos?.find((p) => p.codigo === productoSeleccionado);
@@ -642,7 +934,9 @@ function AgregarItemModal({
       talla: talla.talla,
       color: color.color,
       cantidad,
-      precioUnitario: undefined,
+      precioUnitario: color.precio ?? undefined,
+      descuentoPorcentaje: descuento,
+      esEspecial: false,
     });
   };
 
@@ -808,6 +1102,34 @@ function AgregarItemModal({
                   {color.stock}
                 </p>
               )}
+            </div>
+          )}
+
+          {/* Descuento */}
+          {colorSeleccionado && (
+            <div className="space-y-2 px-4 py-3 rounded-lg border border-blue-200 bg-blue-50">
+              <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">
+                  %
+                </span>
+                Descuento en precio
+              </label>
+              <div className="flex gap-2">
+                {[0, 5, 10].map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setDescuento(d)}
+                    className={`flex-1 px-3 py-2 rounded-lg text-sm border transition ${
+                      descuento === d
+                        ? "bg-blue-600 text-white border-blue-600"
+                        : "bg-white text-foreground border-border hover:border-blue-400"
+                    }`}
+                  >
+                    {d === 0 ? "Sin descuento" : `${d}% off`}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>
