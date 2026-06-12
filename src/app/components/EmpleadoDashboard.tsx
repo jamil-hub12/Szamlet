@@ -641,6 +641,9 @@ export function EmpleadoDashboard() {
   const [filtroEstado, setFiltroEstado] = useState("Todos");
   const [filtroPrioridad, setFiltroPrioridad] = useState("Todas");
   const [ordenFecha, setOrdenFecha] = useState<"desc" | "asc">("desc");
+  const [tabPedidos, setTabPedidos] = useState<"normales" | "especiales">(
+    "normales",
+  );
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState<Pedido | null>(
     null,
   );
@@ -750,6 +753,7 @@ export function EmpleadoDashboard() {
       urgente: output.urgente,
       notas: output.notas,
       fechaEntrega: output.fechaEntrega,
+      tipoPedido: output.tipoPedido,
       items: output.items.map((item) => ({
         productoCodigo: item.productoCodigo,
         modelo: item.modelo,
@@ -799,34 +803,45 @@ export function EmpleadoDashboard() {
       // Extraer datos del primer item (si existe)
       const primerItem = pedidoSeleccionado.items?.[0];
 
-      const emailEnviado = await enviarEmailCambioEstado({
-        clienteNombre: pedidoSeleccionado.cliente,
-        clienteEmail: pedidoSeleccionado.email,
-        pedidoCodigo: pedidoSeleccionado.codigo,
-        pedidoNombre: pedidoSeleccionado.articulo,
-        pedidoDescripcion: pedidoSeleccionado.items
-          ? pedidoSeleccionado.items
-              .map((i) => `${i.cantidad}x ${i.modelo}`)
-              .join(", ")
-          : pedidoSeleccionado.articulo,
-        color: primerItem?.color ?? "—",
-        talla: primerItem?.talla ?? "—",
-        precio: pedidoSeleccionado.montoTotal
-          ? `S/ ${pedidoSeleccionado.montoTotal.toFixed(2)}`
-          : "—",
-        fechaEntrega: pedidoSeleccionado.fechaEntrega
-          ? new Date(
-              pedidoSeleccionado.fechaEntrega + "T12:00:00",
-            ).toLocaleDateString("es-PE", {
-              day: "numeric",
-              month: "long",
-              year: "numeric",
-            })
-          : "Por confirmar",
-        articulo: pedidoSeleccionado.articulo,
-        estadoAnterior: estadoAnterior,
-        estadoNuevo: siguiente,
-      });
+      // Determinar si este estado dispara notificación según tipo de pedido
+      const estadosNotificables =
+        pedidoSeleccionado.notificarEstados ??
+        (pedidoSeleccionado.tipoPedido === "venta_directa"
+          ? ["Entregado"]
+          : ["Listo para entrega", "Entregado"]);
+      const debeNotificar = estadosNotificables.includes(siguiente);
+
+      let emailEnviado = false;
+      if (debeNotificar) {
+        emailEnviado = await enviarEmailCambioEstado({
+          clienteNombre: pedidoSeleccionado.cliente,
+          clienteEmail: pedidoSeleccionado.email,
+          pedidoCodigo: pedidoSeleccionado.codigo,
+          pedidoNombre: pedidoSeleccionado.articulo,
+          pedidoDescripcion: pedidoSeleccionado.items
+            ? pedidoSeleccionado.items
+                .map((i) => `${i.cantidad}x ${i.modelo}`)
+                .join(", ")
+            : pedidoSeleccionado.articulo,
+          color: primerItem?.color ?? "—",
+          talla: primerItem?.talla ?? "—",
+          precio: pedidoSeleccionado.montoTotal
+            ? `S/ ${pedidoSeleccionado.montoTotal.toFixed(2)}`
+            : "—",
+          fechaEntrega: pedidoSeleccionado.fechaEntrega
+            ? new Date(
+                pedidoSeleccionado.fechaEntrega + "T12:00:00",
+              ).toLocaleDateString("es-PE", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })
+            : "Por confirmar",
+          articulo: pedidoSeleccionado.articulo,
+          estadoAnterior: estadoAnterior,
+          estadoNuevo: siguiente,
+        });
+      }
 
       agregarNotificacion({
         tipo: "exito",
@@ -905,6 +920,17 @@ export function EmpleadoDashboard() {
       const nb = parseInt(b.id.replace("PED-", ""), 10);
       return ordenFecha === "desc" ? nb - na : na - nb;
     });
+
+  const pedidosNormalesFiltrados = pedidosFiltrados.filter(
+    (p) => !p.tieneEspeciales,
+  );
+  const pedidosEspecialesFiltrados = pedidosFiltrados.filter(
+    (p) => p.tieneEspeciales === true,
+  );
+  const pedidosTabActual =
+    tabPedidos === "normales"
+      ? pedidosNormalesFiltrados
+      : pedidosEspecialesFiltrados;
   const clientesFiltrados = clientes.filter(
     (c) =>
       c.nombre.toLowerCase().includes(busquedaCliente.toLowerCase()) ||
@@ -1499,6 +1525,48 @@ export function EmpleadoDashboard() {
               )}
             </div>
 
+            {/* Pestañas Normales / Especiales */}
+            <div className="flex gap-1 p-1 bg-muted/40 rounded-xl border border-border w-fit">
+              <button
+                onClick={() => setTabPedidos("normales")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition ${
+                  tabPedidos === "normales"
+                    ? "bg-card text-foreground shadow-sm border border-border"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Normales
+                <span
+                  className={`text-xs px-1.5 py-0.5 rounded-full ${
+                    tabPedidos === "normales"
+                      ? "bg-foreground text-background"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {pedidosNormalesFiltrados.length}
+                </span>
+              </button>
+              <button
+                onClick={() => setTabPedidos("especiales")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition ${
+                  tabPedidos === "especiales"
+                    ? "bg-card text-foreground shadow-sm border border-amber-200"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Especiales
+                <span
+                  className={`text-xs px-1.5 py-0.5 rounded-full ${
+                    tabPedidos === "especiales"
+                      ? "bg-amber-500 text-white"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {pedidosEspecialesFiltrados.length}
+                </span>
+              </button>
+            </div>
+
             <div className="bg-card border border-border rounded-xl overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -1523,7 +1591,7 @@ export function EmpleadoDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {pedidosFiltrados.map((p, i) => (
+                    {pedidosTabActual.map((p, i) => (
                       <tr
                         key={p.id}
                         className={`border-b border-border last:border-0 hover:bg-accent/50 transition cursor-pointer ${esPedidoVencido(p.fechaEntrega, p.estado) ? "bg-red-50/50" : i % 2 === 0 ? "" : "bg-muted/20"}`}
