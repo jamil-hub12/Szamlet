@@ -618,6 +618,7 @@ export function EmpleadoDashboard() {
     loading: loadingProductos,
     agregarProducto,
     actualizarProducto,
+    refetch: refetchProductos,
   } = useProductos();
   const { agregarNotificacion, enviarEmailCambioEstado } = useNotificaciones();
   const { obtenerInfoPagoPedido } = usePagos();
@@ -760,6 +761,8 @@ export function EmpleadoDashboard() {
     if (resultado) {
       setModalPedidoAbierto(false);
       toast.success(`Pedido ${resultado.codigo} creado exitosamente`);
+      // Refrescar stock de productos inmediatamente tras crear el pedido
+      await refetchProductos();
     } else {
       setErrorAlerta(
         "No se pudo crear el pedido. Verifica los datos e intenta nuevamente.",

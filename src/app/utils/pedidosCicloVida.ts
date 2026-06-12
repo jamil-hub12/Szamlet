@@ -14,19 +14,25 @@ export type EstadoPedido =
   | "En confección"
   | "Listo para entrega"
   | "Entregado"
-  | "Cancelado";
+  | "Cancelado"
+  | "Vencido";
 
 // Transiciones permitidas según el ciclo de vida
 const TRANSICIONES_PERMITIDAS: Record<EstadoPedido, EstadoPedido[]> = {
-  "Recibido": ["En confección", "Cancelado"],
+  Recibido: ["En confección", "Cancelado"],
   "En confección": ["Listo para entrega", "Cancelado"],
   "Listo para entrega": ["Entregado", "Cancelado"],
-  "Entregado": [], // Estado final, no permite transiciones
-  "Cancelado": [], // Estado final, no permite transiciones
+  Entregado: [],
+  Cancelado: [],
+  Vencido: [], // Estado final automático, solo admin puede reactivar manualmente
 };
 
 // Estados finales que no permiten más cambios
-export const ESTADOS_FINALES: EstadoPedido[] = ["Entregado", "Cancelado"];
+export const ESTADOS_FINALES: EstadoPedido[] = [
+  "Entregado",
+  "Cancelado",
+  "Vencido",
+];
 
 // Estados que permiten cancelación
 export const ESTADOS_CANCELABLES: EstadoPedido[] = [
@@ -40,7 +46,7 @@ export const ESTADOS_CANCELABLES: EstadoPedido[] = [
  */
 export function validarTransicion(
   estadoActual: EstadoPedido,
-  estadoNuevo: EstadoPedido
+  estadoNuevo: EstadoPedido,
 ): { valido: boolean; mensaje: string } {
   // No se puede cambiar desde estados finales
   if (ESTADOS_FINALES.includes(estadoActual)) {
@@ -78,7 +84,7 @@ export function validarTransicion(
  * Obtiene el siguiente estado válido en el flujo normal
  */
 export function obtenerSiguienteEstado(
-  estadoActual: EstadoPedido
+  estadoActual: EstadoPedido,
 ): EstadoPedido | null {
   const transiciones = TRANSICIONES_PERMITIDAS[estadoActual] || [];
 
@@ -146,7 +152,7 @@ export function puedeCancelarPedido(estado: EstadoPedido): {
  * Obtiene todas las transiciones válidas desde un estado
  */
 export function obtenerTransicionesValidas(
-  estadoActual: EstadoPedido
+  estadoActual: EstadoPedido,
 ): EstadoPedido[] {
   return TRANSICIONES_PERMITIDAS[estadoActual] || [];
 }
@@ -166,8 +172,11 @@ export function obtenerEstiloEstado(estado: EstadoPedido): {
   bgColor: string;
   borderColor: string;
 } {
-  const estilos: Record<EstadoPedido, { color: string; bgColor: string; borderColor: string }> = {
-    "Recibido": {
+  const estilos: Record<
+    EstadoPedido,
+    { color: string; bgColor: string; borderColor: string }
+  > = {
+    Recibido: {
       color: "text-indigo-700",
       bgColor: "bg-indigo-100",
       borderColor: "border-indigo-200",
@@ -182,15 +191,20 @@ export function obtenerEstiloEstado(estado: EstadoPedido): {
       bgColor: "bg-emerald-100",
       borderColor: "border-emerald-200",
     },
-    "Entregado": {
+    Entregado: {
       color: "text-gray-500",
       bgColor: "bg-gray-100",
       borderColor: "border-gray-200",
     },
-    "Cancelado": {
+    Cancelado: {
       color: "text-red-700",
       bgColor: "bg-red-100",
       borderColor: "border-red-200",
+    },
+    Vencido: {
+      color: "text-red-800",
+      bgColor: "bg-red-200",
+      borderColor: "border-red-300",
     },
   };
 
@@ -203,7 +217,7 @@ export function obtenerEstiloEstado(estado: EstadoPedido): {
 export function generarMensajeCambioEstado(
   estadoAnterior: EstadoPedido,
   estadoNuevo: EstadoPedido,
-  codigoPedido: string
+  codigoPedido: string,
 ): string {
   const mensajes: Record<string, string> = {
     "Recibido->En confección": `El pedido ${codigoPedido} ha iniciado su producción.`,
@@ -215,5 +229,8 @@ export function generarMensajeCambioEstado(
   };
 
   const clave = `${estadoAnterior}->${estadoNuevo}`;
-  return mensajes[clave] || `El pedido ${codigoPedido} cambió de "${estadoAnterior}" a "${estadoNuevo}".`;
+  return (
+    mensajes[clave] ||
+    `El pedido ${codigoPedido} cambió de "${estadoAnterior}" a "${estadoNuevo}".`
+  );
 }

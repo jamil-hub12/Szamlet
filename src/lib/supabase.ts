@@ -108,7 +108,8 @@ export type Database = {
             | "En confección"
             | "Listo para entrega"
             | "Entregado"
-            | "Cancelado";
+            | "Cancelado"
+            | "Vencido";
           fecha: string;
           fecha_entrega: string | null;
           urgente: boolean;
@@ -122,6 +123,7 @@ export type Database = {
           referencia_pago: string | null;
           fecha_pago: string | null;
           notas_pago: string | null;
+          tiene_especiales: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -135,7 +137,8 @@ export type Database = {
             | "En confección"
             | "Listo para entrega"
             | "Entregado"
-            | "Cancelado";
+            | "Cancelado"
+            | "Vencido";
           fecha?: string;
           fecha_entrega?: string | null;
           urgente?: boolean;
@@ -149,6 +152,7 @@ export type Database = {
           referencia_pago?: string | null;
           fecha_pago?: string | null;
           notas_pago?: string | null;
+          tiene_especiales?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -162,7 +166,8 @@ export type Database = {
             | "En confección"
             | "Listo para entrega"
             | "Entregado"
-            | "Cancelado";
+            | "Cancelado"
+            | "Vencido";
           fecha?: string;
           fecha_entrega?: string | null;
           urgente?: boolean;
@@ -176,6 +181,7 @@ export type Database = {
           referencia_pago?: string | null;
           fecha_pago?: string | null;
           notas_pago?: string | null;
+          tiene_especiales?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -315,6 +321,7 @@ export type Database = {
           cantidad: number;
           precio_unitario: number | null;
           subtotal: number | null;
+          es_especial: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -330,6 +337,7 @@ export type Database = {
           cantidad: number;
           precio_unitario?: number | null;
           subtotal?: number | null;
+          es_especial?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -345,6 +353,7 @@ export type Database = {
           cantidad?: number;
           precio_unitario?: number | null;
           subtotal?: number | null;
+          es_especial?: boolean;
           created_at?: string;
           updated_at?: string;
         };

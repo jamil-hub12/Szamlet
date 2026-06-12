@@ -67,6 +67,7 @@ export function RegistrarPagoModal({
     "Efectivo",
   );
   const [notas, setNotas] = useState("");
+  const [referencia, setReferencia] = useState("");
   const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
@@ -135,6 +136,10 @@ export function RegistrarPagoModal({
       pedidoCodigo,
       monto: montoNumerico,
       metodoPago,
+      referencia:
+        metodoPago === "QR/Transferencia"
+          ? referencia.trim() || undefined
+          : undefined,
       usuarioCodigo,
       usuarioNombre,
       fechaPago: obtenerFechaHoraPeruISO(),
@@ -359,7 +364,24 @@ export function RegistrarPagoModal({
                   </button>
                 </div>
               </div>
-
+              {/* Referencia (solo QR/Transferencia) */}
+              {metodoPago === "QR/Transferencia" && (
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    N° de operación / Referencia
+                  </label>
+                  <input
+                    type="text"
+                    value={referencia}
+                    onChange={(e) => setReferencia(e.target.value)}
+                    className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Ej. 123456789"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Número de operación del comprobante
+                  </p>
+                </div>
+              )}
               {/* Notas */}
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">

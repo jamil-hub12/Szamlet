@@ -35,6 +35,7 @@ export type { EstadoPedido };
 export type PedidoItem = {
   id: string;
   productoId: string;
+  productoCodigo?: string;
   productoNombre?: string;
   modelo: string;
   tela: string;
@@ -44,6 +45,7 @@ export type PedidoItem = {
   cantidad: number;
   precioUnitario?: number;
   subtotal?: number;
+  esEspecial?: boolean;
 };
 
 export type Pedido = {
@@ -68,6 +70,7 @@ export type Pedido = {
   referenciaPago?: string;
   fechaPago?: string;
   notasPago?: string;
+  tieneEspeciales?: boolean;
   items?: PedidoItem[];
 };
 
@@ -157,6 +160,7 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
             .map((item: any) => ({
               id: item.id,
               productoId: item.producto_codigo,
+              productoCodigo: item.producto_codigo,
               productoNombre: `${item.modelo} - ${item.tela} - ${item.disenio}`,
               modelo: item.modelo,
               tela: item.tela,
@@ -168,6 +172,7 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
                 ? parseFloat(item.precio_unitario)
                 : undefined,
               subtotal: item.subtotal ? parseFloat(item.subtotal) : undefined,
+              esEspecial: item.es_especial ?? false,
             }));
 
           return {
@@ -197,12 +202,45 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
             referenciaPago: pedido.referencia_pago || undefined,
             fechaPago: pedido.fecha_pago || undefined,
             notasPago: pedido.notas_pago || undefined,
+            tieneEspeciales: pedido.tiene_especiales ?? false,
             items: itemsPedido.length > 0 ? itemsPedido : undefined,
           };
         },
       );
 
       setPedidos(pedidosConvertidos);
+
+      // Auto-marcar como Vencido los pedidos que pasaron su fecha de entrega
+      const hoy = obtenerFechaPeruHoy();
+      const estadosActivos: EstadoPedido[] = [
+        "Recibido",
+        "En confección",
+        "Listo para entrega",
+      ];
+      const aVencer = pedidosConvertidos.filter(
+        (p) =>
+          estadosActivos.includes(p.estado) &&
+          p.fechaEntrega &&
+          p.fechaEntrega < hoy,
+      );
+
+      if (aVencer.length > 0) {
+        const codigos = aVencer.map((p) => p.codigo);
+        await supabase
+          .from("pedidos")
+          .update({
+            estado: "Vencido",
+            estado_anterior_cancelacion: undefined, // no sobrescribir
+          })
+          .in("codigo", codigos);
+
+        // Actualizar estado local sin refetch completo
+        setPedidos((prev) =>
+          prev.map((p) =>
+            codigos.includes(p.codigo) ? { ...p, estado: "Vencido" } : p,
+          ),
+        );
+      }
     } catch (err) {
       console.error("Error al cargar pedidos:", err);
       setError(err instanceof Error ? err.message : "Error desconocido");
@@ -246,6 +284,8 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
     try {
       isModifyingRef.current = true;
 
+      const tieneEspeciales = data.items?.some((i) => i.esEspecial) ?? false;
+
       const insertData: PedidoInsert = {
         cliente_id: data.clienteId,
         articulo: data.articulo,
@@ -254,6 +294,7 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
         fecha: obtenerFechaPeruHoy(),
         fecha_entrega: data.fechaEntrega || null,
         estado: "Recibido",
+        tiene_especiales: tieneEspeciales,
       };
 
       const { data: nuevoPedido, error: insertError } = await supabase
@@ -299,6 +340,7 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
         montoTotal: montoTotal > 0 ? montoTotal : undefined,
         montoPagado: 0,
         fechaEntrega: data.fechaEntrega || undefined,
+        tieneEspeciales,
       };
 
       if (montoTotal > 0) {

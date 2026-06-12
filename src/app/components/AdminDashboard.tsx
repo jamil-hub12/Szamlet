@@ -42,6 +42,7 @@ import {
   Activity,
   CreditCard,
   Shield,
+  Sparkles,
 } from "lucide-react";
 import { NuevoProductoModal } from "./NuevoProductoModal";
 import { EditarProductoModal } from "./EditarProductoModal";
@@ -76,6 +77,7 @@ const estadoColor: Record<string, string> = {
   "Listo para entrega": "bg-emerald-100 text-emerald-700 border-emerald-200",
   Entregado: "bg-gray-100 text-gray-500 border-gray-200",
   Cancelado: "bg-red-100 text-red-700 border-red-200",
+  Vencido: "bg-red-200 text-red-800 border-red-300",
 };
 
 type NavItem = { label: string; icon: React.ReactNode; section: string };
@@ -356,6 +358,9 @@ export function AdminDashboard() {
     "desc",
   );
   const [mostrarFiltrosPedidos, setMostrarFiltrosPedidos] = useState(false);
+  const [tabPedidos, setTabPedidos] = useState<"normales" | "especiales">(
+    "normales",
+  );
 
   // Estados para filtros de auditoría
   const [filtroFechaDesde, setFiltroFechaDesde] = useState("");
@@ -939,6 +944,7 @@ export function AdminDashboard() {
   // Filtrado de pedidos
   const pedidosFiltrados = pedidos
     .filter((p) => {
+      if (p.tieneEspeciales) return false;
       const matchEstado =
         filtroEstadoPedidos === "Todos" || p.estado === filtroEstadoPedidos;
       const matchPrioridad =
@@ -956,6 +962,11 @@ export function AdminDashboard() {
       const dateB = new Date(b.fecha).getTime();
       return ordenFechaPedidos === "desc" ? dateB - dateA : dateA - dateB;
     });
+
+  // Pedidos con productos especiales (fuera de catálogo) — filtrado por columna BD
+  const pedidosEspeciales = pedidos
+    .filter((p) => p.tieneEspeciales)
+    .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
 
   // Filtrado de clientes
   const clientesFiltrados = clientes
@@ -1720,8 +1731,44 @@ export function AdminDashboard() {
                 </div>
               </div>
 
+              {/* Tabs: Pedidos normales / Pedidos especiales */}
+              <div className="flex gap-1 p-1 bg-muted rounded-xl w-fit">
+                <button
+                  onClick={() => setTabPedidos("normales")}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition ${
+                    tabPedidos === "normales"
+                      ? "bg-card text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <ClipboardList className="w-4 h-4" />
+                  Pedidos del catálogo
+                  <span className="text-xs bg-muted-foreground/20 px-1.5 py-0.5 rounded-full">
+                    {pedidosFiltrados.length}
+                  </span>
+                </button>
+                <button
+                  onClick={() => setTabPedidos("especiales")}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition ${
+                    tabPedidos === "especiales"
+                      ? "bg-amber-100 text-amber-800 shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Pedidos especiales
+                  {pedidosEspeciales.length > 0 && (
+                    <span className="text-xs bg-amber-500 text-white px-1.5 py-0.5 rounded-full">
+                      {pedidosEspeciales.length}
+                    </span>
+                  )}
+                </button>
+              </div>
+
               {/* Filtros y acciones */}
-              <div className="flex flex-col sm:flex-row gap-3">
+              <div
+                className={`flex flex-col sm:flex-row gap-3 ${tabPedidos === "especiales" ? "hidden" : ""}`}
+              >
                 <button
                   onClick={() =>
                     setMostrarFiltrosPedidos(!mostrarFiltrosPedidos)
@@ -1747,7 +1794,7 @@ export function AdminDashboard() {
               </div>
 
               {/* Panel de filtros */}
-              {mostrarFiltrosPedidos && (
+              {tabPedidos === "normales" && mostrarFiltrosPedidos && (
                 <div className="bg-card border border-border rounded-xl p-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div>
@@ -1767,6 +1814,7 @@ export function AdminDashboard() {
                         </option>
                         <option value="Entregado">Entregado</option>
                         <option value="Cancelado">Cancelado</option>
+                        <option value="Vencido">Vencido</option>
                       </select>
                     </div>
                     <div>
@@ -1842,179 +1890,380 @@ export function AdminDashboard() {
                 </div>
               )}
 
-              <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-                  <h4 className="text-foreground">Todos los pedidos</h4>
-                  <div className="text-sm text-muted-foreground">
-                    {pedidosFiltrados.length}{" "}
-                    {pedidosFiltrados.length === 1 ? "pedido" : "pedidos"}
+              {tabPedidos === "normales" && (
+                <div className="bg-card border border-border rounded-xl overflow-hidden">
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+                    <h4 className="text-foreground">Todos los pedidos</h4>
+                    <div className="text-sm text-muted-foreground">
+                      {pedidosFiltrados.length}{" "}
+                      {pedidosFiltrados.length === 1 ? "pedido" : "pedidos"}
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border bg-muted/30">
+                          {[
+                            "N° Pedido",
+                            "Cliente",
+                            "Artículo",
+                            "Fecha de Entrega",
+                            "Estado",
+                            "Pago",
+                            "Acciones",
+                          ].map((h) => (
+                            <th
+                              key={h}
+                              className="text-left px-4 py-3 text-muted-foreground font-normal"
+                            >
+                              {h}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pedidosFiltrados.length > 0 ? (
+                          pedidosFiltrados.map((p, i) => {
+                            const cliente = clientes.find(
+                              (c) => c.id === p.clienteId,
+                            );
+                            return (
+                              <tr
+                                key={p.id}
+                                className={`border-b border-border last:border-0 hover:bg-accent/40 transition ${esPedidoVencido(p.fechaEntrega, p.estado) ? "bg-red-50/50" : i % 2 === 0 ? "" : "bg-muted/20"}`}
+                              >
+                                <td className="px-4 py-3 font-mono text-foreground">
+                                  <span className="flex items-center gap-1.5">
+                                    {p.urgente && (
+                                      <span
+                                        className="w-1.5 h-1.5 rounded-full bg-red-500"
+                                        title="Urgente"
+                                      />
+                                    )}
+                                    {esPedidoVencido(
+                                      p.fechaEntrega,
+                                      p.estado,
+                                    ) && (
+                                      <span
+                                        className="w-1.5 h-1.5 rounded-full bg-orange-500"
+                                        title="Vencido"
+                                      />
+                                    )}
+                                    {p.id}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-foreground">
+                                  {p.cliente}
+                                </td>
+                                <td className="px-4 py-3 text-muted-foreground">
+                                  {p.articulo}
+                                </td>
+                                <td className="px-4 py-3 text-muted-foreground">
+                                  {p.fechaEntrega
+                                    ? formatearFechaCorta(p.fechaEntrega)
+                                    : "-"}
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span
+                                    className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs border ${estadoColor[p.estado]}`}
+                                  >
+                                    {p.estado === "Recibido" && (
+                                      <Clock className="w-3 h-3" />
+                                    )}
+                                    {p.estado === "En confección" && (
+                                      <Loader2 className="w-3 h-3 animate-spin" />
+                                    )}
+                                    {p.estado === "Listo para entrega" && (
+                                      <Package className="w-3 h-3" />
+                                    )}
+                                    {p.estado === "Entregado" && (
+                                      <CheckCircle2 className="w-3 h-3" />
+                                    )}
+                                    {p.estado === "Cancelado" && (
+                                      <AlertCircle className="w-3 h-3" />
+                                    )}
+                                    {p.estado}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3">
+                                  {(() => {
+                                    // Si el pedido está cancelado, no mostrar estado de pago
+                                    if (p.estado === "Cancelado") {
+                                      return (
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-600 border border-gray-200">
+                                          —
+                                        </span>
+                                      );
+                                    }
+
+                                    const montoTotal = p.montoTotal || 0;
+                                    const montoPagado = p.montoPagado || 0;
+                                    const pendiente = montoTotal - montoPagado;
+
+                                    if (pendiente <= 0 && montoTotal > 0) {
+                                      return (
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-green-50 text-green-700 border border-green-200">
+                                          <CheckCircle className="w-3 h-3" />
+                                          Pagado
+                                        </span>
+                                      );
+                                    }
+                                    if (montoPagado > 0 && pendiente > 0) {
+                                      return (
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-yellow-50 text-yellow-700 border border-yellow-200">
+                                          <Clock className="w-3 h-3" />
+                                          Parcial
+                                        </span>
+                                      );
+                                    }
+                                    return (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-red-50 text-red-700 border border-red-200">
+                                        <XCircle className="w-3 h-3" />
+                                        Pendiente
+                                      </span>
+                                    );
+                                  })()}
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      onClick={() => setPedidoSeleccionado(p)}
+                                      className="p-1.5 rounded hover:bg-accent transition text-blue-600"
+                                      title="Ver detalles del pedido"
+                                    >
+                                      <FileText className="w-4 h-4" />
+                                    </button>
+                                    {cliente && (
+                                      <button
+                                        onClick={() =>
+                                          setClienteHistorial(cliente)
+                                        }
+                                        className="p-1.5 rounded hover:bg-accent transition text-purple-600"
+                                        title="Ver historial del cliente"
+                                      >
+                                        <User className="w-4 h-4" />
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        ) : (
+                          <tr>
+                            <td
+                              colSpan={7}
+                              className="px-4 py-10 text-center text-muted-foreground text-sm"
+                            >
+                              No hay pedidos registrados aún. Los pedidos que se
+                              registren en el sistema aparecerán aquí.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border bg-muted/30">
-                        {[
-                          "N° Pedido",
-                          "Cliente",
-                          "Artículo",
-                          "Fecha de Entrega",
-                          "Estado",
-                          "Pago",
-                          "Acciones",
-                        ].map((h) => (
-                          <th
-                            key={h}
-                            className="text-left px-4 py-3 text-muted-foreground font-normal"
+              )}
+
+              {/* Vista pedidos especiales */}
+              {tabPedidos === "especiales" && (
+                <div className="space-y-4">
+                  {/* Banner informativo */}
+                  <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-sm text-amber-800">
+                    <Sparkles className="w-5 h-5 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium">
+                        Pedidos con productos especiales
+                      </p>
+                      <p className="text-xs text-amber-700 mt-0.5">
+                        Estos pedidos contienen productos fuera del catálogo
+                        (tallas, colores o modelos personalizados).{" "}
+                        <strong>No afectan el inventario.</strong> Requieren
+                        coordinación manual con producción.
+                      </p>
+                    </div>
+                  </div>
+
+                  {pedidosEspeciales.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-400 flex items-center justify-center mb-4">
+                        <Sparkles className="w-7 h-7" />
+                      </div>
+                      <p className="text-foreground font-medium mb-1">
+                        Sin pedidos especiales
+                      </p>
+                      <p className="text-sm text-muted-foreground max-w-xs">
+                        Cuando se registre un pedido con productos fuera del
+                        catálogo, aparecerá aquí.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {pedidosEspeciales.map((pedido) => {
+                        const cliente = clientes.find(
+                          (c) => c.id === pedido.clienteId,
+                        );
+                        const itemsEspeciales =
+                          pedido.items?.filter(
+                            (i) =>
+                              i.esEspecial || i.productoCodigo === "ESPECIAL",
+                          ) ?? [];
+                        // Agrupar items por modelo-tela-disenio
+                        const productos_uniq = [
+                          ...new Map(
+                            itemsEspeciales.map((i) => [
+                              `${i.modelo}|${i.tela}|${i.disenio}`,
+                              {
+                                modelo: i.modelo,
+                                tela: i.tela,
+                                disenio: i.disenio,
+                              },
+                            ]),
+                          ).values(),
+                        ];
+                        const totalUnidades = itemsEspeciales.reduce(
+                          (s, i) => s + i.cantidad,
+                          0,
+                        );
+
+                        return (
+                          <div
+                            key={pedido.id}
+                            className="bg-card border border-amber-200 rounded-xl overflow-hidden"
                           >
-                            {h}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pedidosFiltrados.length > 0 ? (
-                        pedidosFiltrados.map((p, i) => {
-                          const cliente = clientes.find(
-                            (c) => c.id === p.clienteId,
-                          );
-                          return (
-                            <tr
-                              key={p.id}
-                              className={`border-b border-border last:border-0 hover:bg-accent/40 transition ${esPedidoVencido(p.fechaEntrega, p.estado) ? "bg-red-50/50" : i % 2 === 0 ? "" : "bg-muted/20"}`}
-                            >
-                              <td className="px-4 py-3 font-mono text-foreground">
-                                <span className="flex items-center gap-1.5">
-                                  {p.urgente && (
-                                    <span
-                                      className="w-1.5 h-1.5 rounded-full bg-red-500"
-                                      title="Urgente"
-                                    />
-                                  )}
-                                  {esPedidoVencido(
-                                    p.fechaEntrega,
-                                    p.estado,
-                                  ) && (
-                                    <span
-                                      className="w-1.5 h-1.5 rounded-full bg-orange-500"
-                                      title="Vencido"
-                                    />
-                                  )}
-                                  {p.id}
+                            {/* Header de la tarjeta */}
+                            <div className="flex items-center justify-between px-4 py-3 bg-amber-50 border-b border-amber-200">
+                              <div className="flex items-center gap-3">
+                                <span className="text-xs font-mono text-amber-700 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full">
+                                  {pedido.codigo}
                                 </span>
-                              </td>
-                              <td className="px-4 py-3 text-foreground">
-                                {p.cliente}
-                              </td>
-                              <td className="px-4 py-3 text-muted-foreground">
-                                {p.articulo}
-                              </td>
-                              <td className="px-4 py-3 text-muted-foreground">
-                                {p.fechaEntrega
-                                  ? formatearFechaCorta(p.fechaEntrega)
-                                  : "-"}
-                              </td>
-                              <td className="px-4 py-3">
+                                <span className="font-medium text-sm text-foreground">
+                                  {pedido.cliente}
+                                </span>
+                                {pedido.urgente && (
+                                  <span className="text-xs bg-red-100 text-red-700 border border-red-200 px-2 py-0.5 rounded-full">
+                                    ⚡ Urgente
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2">
                                 <span
-                                  className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs border ${estadoColor[p.estado]}`}
+                                  className={`text-xs px-2.5 py-1 rounded-full border ${
+                                    pedido.estado === "Recibido"
+                                      ? "bg-blue-50 text-blue-700 border-blue-200"
+                                      : pedido.estado === "En confección"
+                                        ? "bg-violet-50 text-violet-700 border-violet-200"
+                                        : pedido.estado === "Listo para entrega"
+                                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                          : pedido.estado === "Entregado"
+                                            ? "bg-gray-50 text-gray-600 border-gray-200"
+                                            : "bg-red-50 text-red-700 border-red-200"
+                                  }`}
                                 >
-                                  {p.estado === "Recibido" && (
-                                    <Clock className="w-3 h-3" />
-                                  )}
-                                  {p.estado === "En confección" && (
-                                    <Loader2 className="w-3 h-3 animate-spin" />
-                                  )}
-                                  {p.estado === "Listo para entrega" && (
-                                    <Package className="w-3 h-3" />
-                                  )}
-                                  {p.estado === "Entregado" && (
-                                    <CheckCircle2 className="w-3 h-3" />
-                                  )}
-                                  {p.estado === "Cancelado" && (
-                                    <AlertCircle className="w-3 h-3" />
-                                  )}
-                                  {p.estado}
+                                  {pedido.estado}
                                 </span>
-                              </td>
-                              <td className="px-4 py-3">
-                                {(() => {
-                                  // Si el pedido está cancelado, no mostrar estado de pago
-                                  if (p.estado === "Cancelado") {
-                                    return (
-                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-600 border border-gray-200">
-                                        —
-                                      </span>
-                                    );
-                                  }
+                                <button
+                                  onClick={() => setPedidoSeleccionado(pedido)}
+                                  className="p-1.5 rounded hover:bg-amber-100 transition text-amber-700"
+                                  title="Ver detalles"
+                                >
+                                  <FileText className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
 
-                                  const montoTotal = p.montoTotal || 0;
-                                  const montoPagado = p.montoPagado || 0;
-                                  const pendiente = montoTotal - montoPagado;
+                            {/* Cuerpo */}
+                            <div className="px-4 py-3 space-y-3">
+                              {/* Fechas y cliente */}
+                              <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
+                                <span>
+                                  <span className="font-medium text-foreground/70">
+                                    Registrado:
+                                  </span>{" "}
+                                  {formatearFechaCorta(pedido.fecha)}
+                                </span>
+                                {pedido.fechaEntrega && (
+                                  <span>
+                                    <span className="font-medium text-foreground/70">
+                                      Entrega:
+                                    </span>{" "}
+                                    {formatearFechaCorta(pedido.fechaEntrega)}
+                                  </span>
+                                )}
+                                {cliente && (
+                                  <span>
+                                    <span className="font-medium text-foreground/70">
+                                      Tel:
+                                    </span>{" "}
+                                    {cliente.celular}
+                                  </span>
+                                )}
+                              </div>
 
-                                  if (pendiente <= 0 && montoTotal > 0) {
-                                    return (
-                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-green-50 text-green-700 border border-green-200">
-                                        <CheckCircle className="w-3 h-3" />
-                                        Pagado
-                                      </span>
+                              {/* Productos especiales */}
+                              <div>
+                                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">
+                                  Productos especiales ({totalUnidades}{" "}
+                                  unidades)
+                                </p>
+                                <div className="space-y-1.5">
+                                  {productos_uniq.map((prod, pi) => {
+                                    const itemsDeProd = itemsEspeciales.filter(
+                                      (i) =>
+                                        i.modelo === prod.modelo &&
+                                        i.tela === prod.tela &&
+                                        i.disenio === prod.disenio,
                                     );
-                                  }
-                                  if (montoPagado > 0 && pendiente > 0) {
-                                    return (
-                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-yellow-50 text-yellow-700 border border-yellow-200">
-                                        <Clock className="w-3 h-3" />
-                                        Parcial
-                                      </span>
+                                    const unidadesProd = itemsDeProd.reduce(
+                                      (s, i) => s + i.cantidad,
+                                      0,
                                     );
-                                  }
-                                  return (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-red-50 text-red-700 border border-red-200">
-                                      <XCircle className="w-3 h-3" />
-                                      Pendiente
-                                    </span>
-                                  );
-                                })()}
-                              </td>
-                              <td className="px-4 py-3">
-                                <div className="flex items-center gap-1">
-                                  <button
-                                    onClick={() => setPedidoSeleccionado(p)}
-                                    className="p-1.5 rounded hover:bg-accent transition text-blue-600"
-                                    title="Ver detalles del pedido"
-                                  >
-                                    <FileText className="w-4 h-4" />
-                                  </button>
-                                  {cliente && (
-                                    <button
-                                      onClick={() =>
-                                        setClienteHistorial(cliente)
-                                      }
-                                      className="p-1.5 rounded hover:bg-accent transition text-purple-600"
-                                      title="Ver historial del cliente"
-                                    >
-                                      <User className="w-4 h-4" />
-                                    </button>
-                                  )}
+                                    return (
+                                      <div
+                                        key={pi}
+                                        className="flex items-start justify-between px-3 py-2.5 rounded-lg bg-amber-50/60 border border-amber-100"
+                                      >
+                                        <div>
+                                          <p className="text-sm font-medium text-foreground">
+                                            {prod.modelo} · {prod.tela} ·{" "}
+                                            {prod.disenio}
+                                          </p>
+                                          <div className="flex flex-wrap gap-1.5 mt-1">
+                                            {itemsDeProd.map((item, ii) => (
+                                              <span
+                                                key={ii}
+                                                className="text-xs bg-background border border-amber-200 text-amber-800 px-2 py-0.5 rounded-full"
+                                              >
+                                                {item.talla} · {item.color} ×
+                                                {item.cantidad}
+                                              </span>
+                                            ))}
+                                          </div>
+                                        </div>
+                                        <span className="text-xs text-muted-foreground shrink-0 mt-1">
+                                          {unidadesProd} ud.
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
-                              </td>
-                            </tr>
-                          );
-                        })
-                      ) : (
-                        <tr>
-                          <td
-                            colSpan={7}
-                            className="px-4 py-10 text-center text-muted-foreground text-sm"
-                          >
-                            No hay pedidos registrados aún. Los pedidos que se
-                            registren en el sistema aparecerán aquí.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                              </div>
+
+                              {/* Notas del cliente */}
+                              {pedido.notas && (
+                                <p className="text-xs text-muted-foreground italic border-t border-border pt-2">
+                                  {pedido.notas}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -2883,7 +3132,7 @@ export function AdminDashboard() {
                           Método
                         </th>
                         <th className="text-left px-4 py-3 text-muted-foreground font-normal">
-                          Referencia
+                          N° operación / Referencia
                         </th>
                         <th className="text-left px-4 py-3 text-muted-foreground font-normal">
                           Registrado por
@@ -2944,7 +3193,10 @@ export function AdminDashboard() {
                                 {pago.metodoPago}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-muted-foreground text-xs">
+                            <td
+                              className="px-4 py-3 text-muted-foreground text-xs"
+                              title="Para pagos QR o transferencia: número de operación bancaria o código de confirmación"
+                            >
                               {pago.referencia || (
                                 <span className="text-muted-foreground/40">
                                   —
@@ -2999,7 +3251,11 @@ export function AdminDashboard() {
                     <tbody>
                       {(() => {
                         const pedidosPendientes = pedidos.filter((p) => {
-                          if (p.estado === "Cancelado") return false;
+                          if (
+                            p.estado === "Cancelado" ||
+                            p.estado === "Vencido"
+                          )
+                            return false;
                           const montoTotal = p.montoTotal || 0;
                           const montoPagado = p.montoPagado || 0;
                           const pendiente = montoTotal - montoPagado;
@@ -3768,19 +4024,120 @@ export function AdminDashboard() {
                 <X className="w-4 h-4 text-muted-foreground" />
               </button>
             </div>
-            <div className="px-6 py-4 space-y-2 max-h-[60vh] overflow-y-auto">
-              {Object.entries(detalleAuditoria).map(([key, value]) => (
-                <div key={key} className="flex flex-col gap-0.5">
-                  <span className="text-xs text-muted-foreground uppercase tracking-wider">
-                    {key}
-                  </span>
-                  <span className="text-sm text-foreground bg-muted rounded px-2 py-1 font-mono break-all">
-                    {typeof value === "object"
-                      ? JSON.stringify(value, null, 2)
-                      : String(value)}
-                  </span>
-                </div>
-              ))}
+            <div className="px-6 py-4 space-y-3 max-h-[60vh] overflow-y-auto">
+              {(() => {
+                const etiquetas: Record<string, string> = {
+                  estadoAnterior: "Estado anterior",
+                  estadoNuevo: "Estado nuevo",
+                  motivo: "Motivo",
+                  mensaje: "Mensaje",
+                  urgente: "Urgente",
+                  notas: "Notas",
+                  articulo: "Artículo",
+                  modelo: "Modelo",
+                  tela: "Tela",
+                  disenio: "Diseño",
+                  talla: "Talla",
+                  color: "Color",
+                  stock: "Stock",
+                  precio: "Precio",
+                  fecha_entrega: "Fecha de entrega",
+                  itemsCount: "Productos en el pedido",
+                  stockActualizado: "Stock actualizado",
+                  cambios: "Cambios realizados",
+                  articuloAnterior: "Artículo anterior",
+                  urgenteAnterior: "Urgente (anterior)",
+                  notasAnteriores: "Notas anteriores",
+                  fechaEntregaAnterior: "Fecha de entrega anterior",
+                  itemsEliminados: "Ítems eliminados",
+                  itemsInsertados: "Ítems insertados",
+                  stockRestaurado: "Stock restaurado",
+                  email: "Correo electrónico",
+                  nombre: "Nombre",
+                  rol: "Rol",
+                  estado: "Estado",
+                  tallasCount: "Cantidad de tallas",
+                  coloresCount: "Cantidad de colores",
+                  TALLASCOUNT: "Cantidad de tallas",
+                  COLORESCOUNT: "Cantidad de colores",
+                };
+
+                const formatearValorSimple = (val: unknown): string => {
+                  if (typeof val === "boolean") return val ? "Sí" : "No";
+                  if (val === null || val === undefined) return "—";
+                  return String(val);
+                };
+
+                // Renderiza un objeto plano como lista de pares clave:valor
+                const renderObjeto = (
+                  obj: Record<string, unknown>,
+                  nivel = 0,
+                ) => (
+                  <div
+                    className={`space-y-1.5 ${nivel > 0 ? "pl-3 border-l-2 border-border" : ""}`}
+                  >
+                    {Object.entries(obj).map(([k, v]) => {
+                      const label = etiquetas[k] ?? k.replace(/_/g, " ");
+                      const esObjeto =
+                        v !== null &&
+                        typeof v === "object" &&
+                        !Array.isArray(v);
+                      const esArray = Array.isArray(v);
+                      return (
+                        <div key={k} className="flex flex-col gap-0.5">
+                          <span className="text-xs text-muted-foreground capitalize">
+                            {label}
+                          </span>
+                          {esObjeto ? (
+                            renderObjeto(
+                              v as Record<string, unknown>,
+                              nivel + 1,
+                            )
+                          ) : esArray ? (
+                            <span className="text-sm text-foreground bg-muted rounded px-2 py-1">
+                              {(v as unknown[]).length} elemento
+                              {(v as unknown[]).length !== 1 ? "s" : ""}
+                            </span>
+                          ) : (
+                            <span className="text-sm text-foreground bg-muted rounded px-2 py-1 break-all">
+                              {formatearValorSimple(v)}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+
+                return Object.entries(detalleAuditoria).map(([key, value]) => {
+                  const label = etiquetas[key] ?? key.replace(/_/g, " ");
+                  const esObjeto =
+                    value !== null &&
+                    typeof value === "object" &&
+                    !Array.isArray(value);
+
+                  return (
+                    <div key={key} className="flex flex-col gap-1">
+                      <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+                        {label}
+                      </span>
+                      {esObjeto ? (
+                        <div className="bg-muted rounded-lg px-3 py-2">
+                          {renderObjeto(value as Record<string, unknown>)}
+                        </div>
+                      ) : (
+                        <span className="text-sm text-foreground bg-muted rounded px-2 py-1 break-all">
+                          {typeof value === "boolean"
+                            ? value
+                              ? "Sí"
+                              : "No"
+                            : String(value ?? "—")}
+                        </span>
+                      )}
+                    </div>
+                  );
+                });
+              })()}
             </div>
             <div className="px-6 py-4 border-t border-border">
               <button
