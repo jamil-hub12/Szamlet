@@ -759,6 +759,7 @@ export function EmpleadoDashboard() {
         color: item.color,
         cantidad: item.cantidad,
         precioUnitario: item.precioUnitario,
+        esEspecial: item.esEspecial ?? false, // ← agregar esto
       })),
     });
 
@@ -795,17 +796,38 @@ export function EmpleadoDashboard() {
           : prev,
       );
 
-      // Enviar email al cliente
+      // Extraer datos del primer item (si existe)
+      const primerItem = pedidoSeleccionado.items?.[0];
+
       const emailEnviado = await enviarEmailCambioEstado({
         clienteNombre: pedidoSeleccionado.cliente,
         clienteEmail: pedidoSeleccionado.email,
         pedidoCodigo: pedidoSeleccionado.codigo,
+        pedidoNombre: pedidoSeleccionado.articulo,
+        pedidoDescripcion: pedidoSeleccionado.items
+          ? pedidoSeleccionado.items
+              .map((i) => `${i.cantidad}x ${i.modelo}`)
+              .join(", ")
+          : pedidoSeleccionado.articulo,
+        color: primerItem?.color ?? "—",
+        talla: primerItem?.talla ?? "—",
+        precio: pedidoSeleccionado.montoTotal
+          ? `S/ ${pedidoSeleccionado.montoTotal.toFixed(2)}`
+          : "—",
+        fechaEntrega: pedidoSeleccionado.fechaEntrega
+          ? new Date(
+              pedidoSeleccionado.fechaEntrega + "T12:00:00",
+            ).toLocaleDateString("es-PE", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })
+          : "Por confirmar",
         articulo: pedidoSeleccionado.articulo,
         estadoAnterior: estadoAnterior,
         estadoNuevo: siguiente,
       });
 
-      // Agregar notificación
       agregarNotificacion({
         tipo: "exito",
         titulo: "Estado actualizado",
