@@ -7,6 +7,7 @@
  * 3. Listo para entrega - Producción finalizada
  * 4. Entregado - Cliente recibió su pedido (FINAL)
  * 5. Cancelado - Pedido anulado con motivo (FINAL)
+ * 6. Vencido - Plazo superado sin entrega; cancelable si hay deuda pendiente
  */
 
 export type EstadoPedido =
@@ -24,21 +25,22 @@ const TRANSICIONES_PERMITIDAS: Record<EstadoPedido, EstadoPedido[]> = {
   "Listo para entrega": ["Entregado", "Cancelado"],
   Entregado: [],
   Cancelado: [],
-  Vencido: [], // Estado final automático, solo admin puede reactivar manualmente
+  // Vencido permite cancelación formal para cerrar pedidos con deuda pendiente
+  Vencido: ["Cancelado"],
 };
 
-// Estados finales que no permiten más cambios
-export const ESTADOS_FINALES: EstadoPedido[] = [
-  "Entregado",
-  "Cancelado",
-  "Vencido",
-];
+// Estados finales que no permiten más cambios.
+// NOTA: "Vencido" NO está aquí porque admite transición a "Cancelado".
+// Un pedido vencido con estadoPago "Pendiente" o "Parcial" debe poder
+// cancelarse formalmente para dejar el ciclo de vida en un estado terminal limpio.
+export const ESTADOS_FINALES: EstadoPedido[] = ["Entregado", "Cancelado"];
 
 // Estados que permiten cancelación
 export const ESTADOS_CANCELABLES: EstadoPedido[] = [
   "Recibido",
   "En confección",
   "Listo para entrega",
+  "Vencido",
 ];
 
 /**
@@ -48,7 +50,7 @@ export function validarTransicion(
   estadoActual: EstadoPedido,
   estadoNuevo: EstadoPedido,
 ): { valido: boolean; mensaje: string } {
-  // No se puede cambiar desde estados finales
+  // No se puede cambiar desde estados verdaderamente finales
   if (ESTADOS_FINALES.includes(estadoActual)) {
     return {
       valido: false,
@@ -138,7 +140,10 @@ export function puedeCancelarPedido(estado: EstadoPedido): {
   if (ESTADOS_CANCELABLES.includes(estado)) {
     return {
       puede: true,
-      mensaje: "El pedido puede ser cancelado",
+      mensaje:
+        estado === "Vencido"
+          ? "El pedido vencido puede cancelarse formalmente. Verifique si tiene pagos pendientes antes de confirmar."
+          : "El pedido puede ser cancelado",
     };
   }
 
@@ -226,6 +231,7 @@ export function generarMensajeCambioEstado(
     "Recibido->Cancelado": `El pedido ${codigoPedido} fue cancelado antes de iniciar la producción.`,
     "En confección->Cancelado": `El pedido ${codigoPedido} fue cancelado durante la producción.`,
     "Listo para entrega->Cancelado": `El pedido ${codigoPedido} fue cancelado antes de la entrega.`,
+    "Vencido->Cancelado": `El pedido ${codigoPedido} fue cancelado formalmente tras vencer su plazo. Verifique los pagos pendientes en el módulo de Pagos.`,
   };
 
   const clave = `${estadoAnterior}->${estadoNuevo}`;

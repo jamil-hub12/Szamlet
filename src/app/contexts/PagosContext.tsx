@@ -64,6 +64,9 @@ export function PagosProvider({ children }: { children: ReactNode }) {
   const [cargando, setCargando] = useState(true);
   const { registrarAccion } = useAuditoria();
   const skipNextSubscriptionUpdate = useRef(false);
+  // Timeout de seguridad: solo fallback en caso de que el evento Realtime
+  // nunca llegue (error de red, canal caído, etc.)
+  const safetyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchPagos = async () => {
     try {
@@ -110,7 +113,6 @@ export function PagosProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     fetchPagos();
 
-    // Suscripción en tiempo real
     const subscription = supabase
       .channel("pagos-changes")
       .on(
@@ -118,10 +120,18 @@ export function PagosProvider({ children }: { children: ReactNode }) {
         { event: "*", schema: "public", table: "pagos" },
         () => {
           console.log("🔔 Cambio en pagos detectado");
-          if (!skipNextSubscriptionUpdate.current) {
-            fetchPagos();
-          } else {
+          if (skipNextSubscriptionUpdate.current) {
+            // El evento de nuestro propio INSERT llegó → apagar flag aquí,
+            // no en un timer. El fetchPagos() ya fue llamado manualmente
+            // en registrarPago() antes de llegar a este punto.
             skipNextSubscriptionUpdate.current = false;
+            if (safetyTimerRef.current) {
+              clearTimeout(safetyTimerRef.current);
+              safetyTimerRef.current = null;
+            }
+          } else {
+            // Cambio externo (otro usuario, trigger de BD, etc.) → refetch
+            fetchPagos();
           }
         },
       )
@@ -129,6 +139,10 @@ export function PagosProvider({ children }: { children: ReactNode }) {
 
     return () => {
       subscription.unsubscribe();
+      // Limpiar timer de seguridad al desmontar
+      if (safetyTimerRef.current) {
+        clearTimeout(safetyTimerRef.current);
+      }
     };
   }, []);
 
@@ -173,11 +187,24 @@ export function PagosProvider({ children }: { children: ReactNode }) {
     pago: Omit<Pago, "id" | "createdAt">,
   ): Promise<boolean> => {
     try {
-      // Establecer flag ANTES de insertar
+      // Activar flag ANTES de insertar para que el handler de la suscripción
+      // ignore el evento que va a generar este INSERT.
+      // El flag se apaga en el handler cuando llega el evento, NO con un timer.
       skipNextSubscriptionUpdate.current = true;
-      setTimeout(() => {
-        skipNextSubscriptionUpdate.current = false;
-      }, 1000);
+
+      // Timeout de seguridad: si el evento Realtime nunca llega
+      // (canal caído, reconexión lenta, etc.), el flag no queda trabado
+      // indefinidamente bloqueando actualizaciones externas.
+      if (safetyTimerRef.current) clearTimeout(safetyTimerRef.current);
+      safetyTimerRef.current = setTimeout(() => {
+        if (skipNextSubscriptionUpdate.current) {
+          console.warn(
+            "⚠️ Safety timer: reseteo de skipNextSubscriptionUpdate por timeout",
+          );
+          skipNextSubscriptionUpdate.current = false;
+        }
+        safetyTimerRef.current = null;
+      }, 10_000); // 10s como fallback, no como mecanismo principal
 
       // 1. Insertar registro en tabla pagos
       const { error: errorPago } = await supabase.from("pagos").insert({
@@ -191,7 +218,15 @@ export function PagosProvider({ children }: { children: ReactNode }) {
         notas: pago.notas,
       });
 
-      if (errorPago) throw errorPago;
+      if (errorPago) {
+        // Si el INSERT falla, apagar el flag inmediatamente
+        skipNextSubscriptionUpdate.current = false;
+        if (safetyTimerRef.current) {
+          clearTimeout(safetyTimerRef.current);
+          safetyTimerRef.current = null;
+        }
+        throw errorPago;
+      }
 
       // 2. Actualizar totales en pedidos
       const { data: pedidoActual } = await supabase
@@ -249,10 +284,18 @@ export function PagosProvider({ children }: { children: ReactNode }) {
 
       console.log("✅ Pago registrado correctamente");
 
+      // 4. Refetch manual y único — el handler de suscripción lo ignorará
+      //    gracias al flag activo, evitando el doble fetch.
       await fetchPagos();
       return true;
     } catch (error) {
       console.error("❌ Error al registrar pago:", error);
+      // Asegurarse de resetear el flag si algo falla después del INSERT
+      skipNextSubscriptionUpdate.current = false;
+      if (safetyTimerRef.current) {
+        clearTimeout(safetyTimerRef.current);
+        safetyTimerRef.current = null;
+      }
       return false;
     }
   };
