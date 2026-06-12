@@ -786,27 +786,8 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
       const usuario = await obtenerUsuarioActual();
       const usuarioFinal = usuario || { codigo: "SISTEMA", nombre: "Sistema" };
 
-      // FIX: soloStock=true para no reinsertar items que ya existen en pedido_items
-      const resultadoStock = await actualizarStockPedidoCreado(
-        codigo,
-        pedidoActual.items?.map((item) => ({
-          productoCodigo: item.productoId,
-          modelo: item.modelo,
-          tela: item.tela,
-          disenio: item.disenio,
-          talla: item.talla,
-          color: item.color,
-          cantidad: item.cantidad,
-        })) || [],
-        usuarioFinal.codigo,
-        usuarioFinal.nombre,
-        true, // soloStock: solo actualiza stock, NO inserta en pedido_items
-      );
-
-      if (!resultadoStock.exito) {
-        setError(`Error al actualizar stock: ${resultadoStock.mensaje}`);
-        return false;
-      }
+      // Stock no se toca al reactivar: Producción gestiona el stock
+      // por ítem individual desde "Solicitudes de fabricación".
 
       const { error: updateError } = await supabase
         .from("pedidos")

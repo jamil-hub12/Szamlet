@@ -325,6 +325,9 @@ export type Database = {
           precio_unitario: number | null;
           subtotal: number | null;
           es_especial: boolean;
+          estado_fabricacion: "pendiente" | "confirmado";
+          fecha_confirmacion: string | null;
+          confirmado_por: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -341,6 +344,9 @@ export type Database = {
           precio_unitario?: number | null;
           subtotal?: number | null;
           es_especial?: boolean;
+          estado_fabricacion?: "pendiente" | "confirmado";
+          fecha_confirmacion?: string | null;
+          confirmado_por?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -357,6 +363,9 @@ export type Database = {
           precio_unitario?: number | null;
           subtotal?: number | null;
           es_especial?: boolean;
+          estado_fabricacion?: "pendiente" | "confirmado";
+          fecha_confirmacion?: string | null;
+          confirmado_por?: string | null;
           created_at?: string;
           updated_at?: string;
         };
