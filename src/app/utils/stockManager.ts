@@ -9,6 +9,7 @@ export type PedidoItemData = {
   color: string;
   cantidad: number;
   precioUnitario?: number;
+  esEspecial?: boolean;
 };
 
 /**
@@ -42,6 +43,7 @@ export async function actualizarStockPedidoCreado(
         subtotal: item.precioUnitario
           ? item.precioUnitario * item.cantidad
           : null,
+        es_especial: item.esEspecial ?? false,
       }));
 
       const { error: insertError } = await supabase
@@ -56,8 +58,9 @@ export async function actualizarStockPedidoCreado(
       );
     }
 
-    // 2. Actualizar stock de cada producto (siempre)
-    for (const item of items) {
+    // 2. Actualizar stock solo de items normales (especiales no tocan inventario)
+    const itemsNormales = items.filter((i) => !i.esEspecial);
+    for (const item of itemsNormales) {
       console.log(
         `   ⬇️ Restando ${item.cantidad} unidades de ${item.modelo} - Talla ${item.talla} - ${item.color}`,
       );
@@ -127,6 +130,13 @@ export async function restaurarStockPedidoCancelado(
     console.log(`   📦 Restaurando ${items.length} items`);
 
     for (const item of items) {
+      // No restaurar stock de items especiales (nunca afectaron inventario)
+      if (item.es_especial) {
+        console.log(
+          `   ⏭️ Item especial ${item.modelo} - omitiendo restauración de stock`,
+        );
+        continue;
+      }
       console.log(
         `   ⬆️ Sumando ${item.cantidad} unidades de ${item.modelo} - Talla ${item.talla} - ${item.color}`,
       );

@@ -72,9 +72,10 @@ type ProductoForm = {
   disenio: string;
   tallasSeleccionadas: string[];
   detallesTallas: Record<string, ColorCantidad[]>;
-  preciosPorTalla: Record<string, number>; // precio unitario por talla (del catálogo)
+  preciosPorTalla: Record<string, number>;
   descuentoPorcentaje: number; // 0, 5, o 10
   observaciones: string;
+  esEspecial: boolean; // producto fuera de catálogo
 };
 
 type PedidoForm = {
@@ -94,6 +95,7 @@ export type PedidoItemOutput = {
   color: string;
   cantidad: number;
   precioUnitario?: number;
+  esEspecial?: boolean;
 };
 
 export type NuevoPedidoOutput = {
@@ -138,6 +140,7 @@ function nuevoProducto(): ProductoForm {
     preciosPorTalla: {},
     descuentoPorcentaje: 0,
     observaciones: "",
+    esEspecial: false,
   };
 }
 function nextPedidoCode(pedidos: { id: string }[]) {
@@ -148,7 +151,46 @@ function nextPedidoCode(pedidos: { id: string }[]) {
   return `PED-${String(max + 1).padStart(4, "0")}`;
 }
 
+// ─── Sanitización de texto ────────────────────────────────────────────────────
+// Solo letras (incluye acentos/ñ), espacios, guión, apóstrofe — para nombres/modelos
+const REGEX_SOLO_LETRAS = /[^a-zA-ZáéíóúñÁÉÍÓÚÑüÜ\s\-']/g;
+// Para observaciones: letras, números, espacios y puntuación básica (.,;:!?-)
+const REGEX_OBSERVACIONES = /[^a-zA-ZáéíóúñÁÉÍÓÚÑüÜ0-9\s\-.,;:!?¿¡'()]/g;
+
+function sanitizarLetras(v: string) {
+  return v.replace(REGEX_SOLO_LETRAS, "");
+}
+function sanitizarObservaciones(v: string) {
+  return v.replace(REGEX_OBSERVACIONES, "");
+}
+
 // ─── ProductoCard ─────────────────────────────────────────────────────────────
+
+// Input libre con opción "otro" para modo especial
+function FreeInput({
+  value,
+  placeholder,
+  onChange,
+  hasError = false,
+}: {
+  value: string;
+  placeholder: string;
+  onChange: (v: string) => void;
+  hasError?: boolean;
+}) {
+  return (
+    <input
+      type="text"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className={`w-full px-3 py-2 rounded-lg bg-input-background border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20 ${hasError ? "border-red-400" : "border-amber-300"}`}
+    />
+  );
+}
+
+// Tallas estándar disponibles para pedidos especiales
+const TALLAS_ESTANDAR = ["XS", "S", "M", "L", "XL", "XXL", "Única"];
 
 function ProductoCard({
   producto,
@@ -167,7 +209,11 @@ function ProductoCard({
   showErrors: boolean;
   catalogoProductos: ProductoCatalogo[];
 }) {
-  // Opciones derivadas estrictamente del catálogo
+  // Estado local para agregar talla/color personalizado en modo especial
+  const [nuevaTalla, setNuevaTalla] = useState("");
+  const [nuevoColor, setNuevoColor] = useState<Record<string, string>>({});
+
+  // ── Modo catálogo: opciones derivadas del catálogo ──
   const modelosUnicos = [...new Set(catalogoProductos.map((p) => p.modelo))];
   const telasParaModelo = producto.modelo
     ? [
@@ -191,7 +237,6 @@ function ProductoCard({
         ]
       : [];
 
-  // Producto exacto del catálogo que coincide con la selección actual
   const prodCatalogo = catalogoProductos.find(
     (p) =>
       p.modelo === producto.modelo &&
@@ -199,27 +244,43 @@ function ProductoCard({
       p.disenio === producto.disenio,
   );
 
-  // Tallas disponibles = SOLO las del producto registrado
-  const tallasDisp = prodCatalogo
-    ? prodCatalogo.tallas.map((t) => t.talla)
-    : [];
+  // ── Tallas y colores según modo ──
+  const tallasDisp = producto.esEspecial
+    ? TALLAS_ESTANDAR
+    : prodCatalogo
+      ? prodCatalogo.tallas.map((t) => t.talla)
+      : [];
 
-  // Colores disponibles para una talla = SOLO los del producto registrado
   const coloresParaTalla = (talla: string): string[] => {
+    if (producto.esEspecial) {
+      // En modo especial, los colores son los que el usuario fue agregando
+      return (producto.detallesTallas[talla] ?? []).map((cc) => cc.color);
+    }
     const tallaData = prodCatalogo?.tallas.find((t) => t.talla === talla);
     return tallaData ? tallaData.colores.map((c) => c.color) : [];
   };
 
-  // Stock disponible por color (para mostrar como referencia)
   const stockColor = (talla: string, color: string): number => {
+    if (producto.esEspecial) return 0; // especial siempre sin stock previo
     const tallaData = prodCatalogo?.tallas.find((t) => t.talla === talla);
     return tallaData?.colores.find((c) => c.color === color)?.stock ?? 0;
   };
 
-  const mostrarTallas = !!prodCatalogo;
+  const mostrarTallas = producto.esEspecial
+    ? !!(producto.modelo && producto.tela && producto.disenio)
+    : !!prodCatalogo;
+
   const st = calcSub(producto);
 
-  // Handlers — cada nivel resetea los niveles dependientes
+  // ── Handlers ──
+  const toggleModoEspecial = () => {
+    onChange({
+      ...nuevoProducto(),
+      uid: producto.uid,
+      esEspecial: !producto.esEspecial,
+    });
+  };
+
   const setModelo = (v: string) =>
     onChange({
       ...producto,
@@ -242,7 +303,6 @@ function ProductoCard({
       descuentoPorcentaje: 0,
     });
   const setDisenio = (v: string) => {
-    // Buscar el producto en el catálogo para cargar precios automáticamente
     const prod = catalogoProductos.find(
       (p) =>
         p.modelo === producto.modelo &&
@@ -271,8 +331,10 @@ function ProductoCard({
       delete prec[t];
     } else {
       det[t] = [];
-      // Cargar precio del catálogo para esta talla (incluso si es 0)
-      if (prodCatalogo && prodCatalogo.preciosPorTalla[t] !== undefined) {
+      if (
+        !producto.esEspecial &&
+        prodCatalogo?.preciosPorTalla[t] !== undefined
+      ) {
         prec[t] = prodCatalogo.preciosPorTalla[t];
       }
     }
@@ -284,12 +346,43 @@ function ProductoCard({
     });
   };
 
-  const setDescuento = (descuento: number) => {
+  // Agregar talla personalizada (modo especial)
+  const agregarTallaEspecial = (t: string) => {
+    const tNorm = t.trim().toUpperCase();
+    if (!tNorm || producto.tallasSeleccionadas.includes(tNorm)) return;
     onChange({
       ...producto,
-      descuentoPorcentaje: descuento,
+      tallasSeleccionadas: [...producto.tallasSeleccionadas, tNorm],
+      detallesTallas: { ...producto.detallesTallas, [tNorm]: [] },
+    });
+    setNuevaTalla("");
+  };
+
+  // Agregar color personalizado a una talla (modo especial)
+  const agregarColorEspecial = (talla: string, color: string) => {
+    const cNorm = color.trim();
+    if (!cNorm) return;
+    const cur = producto.detallesTallas[talla] ?? [];
+    if (cur.some((cc) => cc.color === cNorm)) return;
+    onChange({
+      ...producto,
+      detallesTallas: {
+        ...producto.detallesTallas,
+        [talla]: [...cur, { color: cNorm, cantidad: 1 }],
+      },
+    });
+    setNuevoColor((prev) => ({ ...prev, [talla]: "" }));
+  };
+
+  const setPrecioTalla = (t: string, precio: number) => {
+    onChange({
+      ...producto,
+      preciosPorTalla: { ...producto.preciosPorTalla, [t]: precio },
     });
   };
+
+  const setDescuento = (descuento: number) =>
+    onChange({ ...producto, descuentoPorcentaje: descuento });
 
   const toggleColor = (t: string, color: string) => {
     const cur = producto.detallesTallas[t] ?? [];
@@ -305,10 +398,12 @@ function ProductoCard({
 
   const setCantColor = (t: string, color: string, n: number) => {
     const stockDisp = stockColor(t, color);
+    const cantFinal =
+      stockDisp > 0
+        ? Math.min(Math.max(1, n || 1), stockDisp)
+        : Math.max(1, n || 1);
     const upd = (producto.detallesTallas[t] ?? []).map((cc) =>
-      cc.color === color
-        ? { ...cc, cantidad: Math.min(Math.max(1, n || 1), stockDisp) }
-        : cc,
+      cc.color === color ? { ...cc, cantidad: cantFinal } : cc,
     );
     onChange({
       ...producto,
@@ -325,33 +420,86 @@ function ProductoCard({
 
   return (
     <div
-      className={`border rounded-xl overflow-hidden ${showErrors && (errModelo || errTallas) ? "border-red-300" : "border-border"}`}
+      className={`border rounded-xl overflow-hidden ${
+        producto.esEspecial
+          ? "border-amber-300"
+          : showErrors && (errModelo || errTallas)
+            ? "border-red-300"
+            : "border-border"
+      }`}
     >
       {/* Cabecera */}
-      <div className="flex items-center justify-between px-4 py-3 bg-muted/40 border-b border-border">
+      <div
+        className={`flex items-center justify-between px-4 py-3 border-b ${
+          producto.esEspecial
+            ? "bg-amber-50 border-amber-200"
+            : "bg-muted/40 border-border"
+        }`}
+      >
         <div className="flex items-center gap-2">
           <Package className="w-4 h-4 text-muted-foreground" />
           <span className="text-sm text-foreground">Producto #{index + 1}</span>
+          {producto.esEspecial && (
+            <span className="text-xs bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.5 rounded-full">
+              ⚠ Especial
+            </span>
+          )}
           {st > 0 && (
             <span className="text-xs text-muted-foreground">
               · {formatearSoles(st)}
             </span>
           )}
         </div>
-        {canRemove && (
+        <div className="flex items-center gap-2">
+          {/* Toggle catálogo / especial */}
           <button
             type="button"
-            onClick={onRemove}
-            className="p-1 rounded hover:bg-red-50 text-muted-foreground hover:text-red-500 transition"
+            onClick={toggleModoEspecial}
+            className={`text-xs px-2.5 py-1 rounded-lg border transition ${
+              producto.esEspecial
+                ? "bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200"
+                : "bg-input-background text-muted-foreground border-border hover:border-foreground/30"
+            }`}
+            title={
+              producto.esEspecial
+                ? "Cambiar a producto del catálogo"
+                : "Registrar producto especial (fuera de catálogo)"
+            }
           >
-            <Trash2 className="w-4 h-4" />
+            {producto.esEspecial ? "Usar catálogo" : "Producto especial"}
           </button>
-        )}
+          {canRemove && (
+            <button
+              type="button"
+              onClick={onRemove}
+              className="p-1 rounded hover:bg-red-50 text-muted-foreground hover:text-red-500 transition"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="p-4 space-y-4">
-        {/* Sin productos registrados */}
-        {catalogoProductos.length === 0 && (
+        {/* Banner modo especial */}
+        {producto.esEspecial && (
+          <div className="flex items-start gap-2 px-3 py-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-800">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium">
+                Producto especial (fuera de catálogo)
+              </p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                Este pedido <strong>no afectará el inventario</strong>. El
+                equipo de producción recibirá una alerta con las características
+                específicas.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Sin productos registrados — solo en modo catálogo */}
+        {!producto.esEspecial && catalogoProductos.length === 0 && (
           <div className="flex items-center gap-2 px-3 py-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-800">
             <AlertCircle className="w-4 h-4 shrink-0" />
             No hay productos registrados. Ve a <strong>Productos</strong> para
@@ -359,61 +507,89 @@ function ProductoCard({
           </div>
         )}
 
-        {/* Modelo / Tela / Diseño — solo opciones del catálogo */}
+        {/* Modelo / Tela / Diseño */}
         <div className="grid grid-cols-3 gap-3">
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground">
               Modelo <span className="text-red-500">*</span>
             </p>
-            <CatalogSelect
-              value={producto.modelo}
-              options={modelosUnicos}
-              placeholder="Seleccionar"
-              onChange={setModelo}
-              hasError={errModelo}
-              disabled={catalogoProductos.length === 0}
-            />
+            {producto.esEspecial ? (
+              <FreeInput
+                value={producto.modelo}
+                placeholder="Ej. Polera Slim"
+                onChange={(v) => setModelo(sanitizarLetras(v))}
+                hasError={errModelo}
+              />
+            ) : (
+              <CatalogSelect
+                value={producto.modelo}
+                options={modelosUnicos}
+                placeholder="Seleccionar"
+                onChange={setModelo}
+                hasError={errModelo}
+                disabled={catalogoProductos.length === 0}
+              />
+            )}
             {errModelo && <p className="text-xs text-red-500">Obligatorio</p>}
           </div>
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground">
               Tela <span className="text-red-500">*</span>
             </p>
-            <CatalogSelect
-              value={producto.tela}
-              options={telasParaModelo}
-              placeholder="Seleccionar"
-              onChange={setTela}
-              disabled={!producto.modelo}
-              hasError={errTela}
-            />
+            {producto.esEspecial ? (
+              <FreeInput
+                value={producto.tela}
+                placeholder="Ej. Algodón"
+                onChange={(v) => setTela(sanitizarLetras(v))}
+                hasError={errTela}
+              />
+            ) : (
+              <CatalogSelect
+                value={producto.tela}
+                options={telasParaModelo}
+                placeholder="Seleccionar"
+                onChange={setTela}
+                disabled={!producto.modelo}
+                hasError={errTela}
+              />
+            )}
             {errTela && <p className="text-xs text-red-500">Obligatorio</p>}
           </div>
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground">
               Diseño <span className="text-red-500">*</span>
             </p>
-            <CatalogSelect
-              value={producto.disenio}
-              options={diseniosParaCombo}
-              placeholder="Seleccionar"
-              onChange={setDisenio}
-              disabled={!producto.tela}
-              hasError={errDisenio}
-            />
+            {producto.esEspecial ? (
+              <FreeInput
+                value={producto.disenio}
+                placeholder="Ej. Bordado"
+                onChange={(v) => setDisenio(sanitizarLetras(v))}
+                hasError={errDisenio}
+              />
+            ) : (
+              <CatalogSelect
+                value={producto.disenio}
+                options={diseniosParaCombo}
+                placeholder="Seleccionar"
+                onChange={setDisenio}
+                disabled={!producto.tela}
+                hasError={errDisenio}
+              />
+            )}
             {errDisenio && <p className="text-xs text-red-500">Obligatorio</p>}
           </div>
         </div>
 
-        {prodCatalogo && (
+        {/* Indicador de estado — solo modo catálogo */}
+        {!producto.esEspecial && prodCatalogo && (
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200 text-sm text-emerald-700">
             <CheckCircle2 className="w-4 h-4 shrink-0" /> Producto registrado en
             catálogo
           </div>
         )}
 
-        {/* Selector de descuento */}
-        {prodCatalogo && (
+        {/* Selector de descuento — catálogo con precio */}
+        {!producto.esEspecial && prodCatalogo && (
           <div className="space-y-2 px-4 py-3 rounded-lg border border-blue-200 bg-blue-50">
             <label className="text-sm font-medium text-foreground flex items-center gap-2">
               <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs">
@@ -440,11 +616,11 @@ function ProductoCard({
           </div>
         )}
 
-        {/* Tallas — solo las registradas en el producto del catálogo */}
+        {/* Tallas */}
         {mostrarTallas && (
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground uppercase tracking-wider">
-              Tallas disponibles <span className="text-red-500">*</span>
+              Tallas <span className="text-red-500">*</span>
             </p>
             <div className="flex flex-wrap gap-2">
               {tallasDisp.map((t) => (
@@ -454,18 +630,51 @@ function ProductoCard({
                   onClick={() => toggleTalla(t)}
                   className={`min-w-[44px] px-3 py-1.5 rounded-lg text-sm border transition ${
                     producto.tallasSeleccionadas.includes(t)
-                      ? "bg-foreground text-background border-foreground"
+                      ? producto.esEspecial
+                        ? "bg-amber-500 text-white border-amber-500"
+                        : "bg-foreground text-background border-foreground"
                       : "bg-input-background text-muted-foreground border-border hover:border-foreground/30"
                   }`}
                 >
                   {t}
                 </button>
               ))}
+              {/* Agregar talla personalizada en modo especial */}
+              {producto.esEspecial && (
+                <div className="flex items-center gap-1">
+                  <input
+                    type="text"
+                    value={nuevaTalla}
+                    onChange={(e) => setNuevaTalla(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        agregarTallaEspecial(nuevaTalla);
+                      }
+                    }}
+                    placeholder="Otra…"
+                    className="w-20 px-2 py-1.5 rounded-lg text-sm bg-input-background border border-amber-300 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-amber-300"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => agregarTallaEspecial(nuevaTalla)}
+                    className="p-1.5 rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200 border border-amber-300 transition"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
             </div>
+            {errTallas && (
+              <p className="text-xs text-red-500 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" /> Selecciona al menos una
+                talla.
+              </p>
+            )}
           </div>
         )}
 
-        {/* Detalle por talla: precio + colores registrados + cantidades */}
+        {/* Detalle por talla */}
         {producto.tallasSeleccionadas.length > 0 && (
           <div className="space-y-3">
             <p className="text-xs text-muted-foreground uppercase tracking-wider">
@@ -480,7 +689,8 @@ function ProductoCard({
                 : 0;
               const cant = cantTalla(sel);
               const subTalla = precioConDescuento * cant;
-              const errCol = showErrors && sel.length === 0;
+              const errCol =
+                showErrors && !producto.esEspecial && sel.length === 0;
               const esXL = t === "XL";
               const coloresDisp = coloresParaTalla(t);
 
@@ -490,39 +700,61 @@ function ProductoCard({
                   className={`border rounded-xl overflow-hidden ${
                     errCol
                       ? "border-red-300"
-                      : esXL
+                      : producto.esEspecial
                         ? "border-amber-200"
-                        : "border-border"
+                        : esXL
+                          ? "border-amber-200"
+                          : "border-border"
                   }`}
                 >
-                  {/* Header de talla con precio */}
+                  {/* Header talla */}
                   <div
                     className={`flex items-center justify-between px-3 py-2.5 border-b ${
-                      esXL
+                      producto.esEspecial
                         ? "bg-amber-50 border-amber-200"
-                        : "bg-muted/30 border-border"
+                        : esXL
+                          ? "bg-amber-50 border-amber-200"
+                          : "bg-muted/30 border-border"
                     }`}
                   >
                     <div className="flex items-center gap-2">
                       <span
                         className={`text-sm px-2.5 py-0.5 rounded-full border ${
-                          esXL
+                          producto.esEspecial
                             ? "bg-amber-100 text-amber-800 border-amber-300"
-                            : "bg-foreground text-background border-foreground"
+                            : esXL
+                              ? "bg-amber-100 text-amber-800 border-amber-300"
+                              : "bg-foreground text-background border-foreground"
                         }`}
                       >
                         {t}
                       </span>
-                      {esXL && (
-                        <span className="text-xs text-amber-700">
-                          precio diferenciado
-                        </span>
-                      )}
                     </div>
-                    {/* Precio del catálogo (con descuento si aplica) */}
-                    <div className="flex items-center gap-2.5 text-sm">
-                      {!precioOriginal || precioOriginal <= 0 ? (
-                        <span className="text-red-600 font-semibold">
+
+                    {/* Precio — editable en modo especial, del catálogo en modo normal */}
+                    <div className="flex items-center gap-2 text-sm">
+                      {producto.esEspecial ? (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs text-muted-foreground">
+                            S/
+                          </span>
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.50"
+                            value={precioOriginal ?? ""}
+                            onChange={(e) =>
+                              setPrecioTalla(t, parseFloat(e.target.value) || 0)
+                            }
+                            placeholder="0.00"
+                            className="w-20 px-2 py-0.5 text-xs text-center rounded bg-background border border-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-300"
+                          />
+                          <span className="text-xs text-muted-foreground">
+                            / ud.
+                          </span>
+                        </div>
+                      ) : !precioOriginal || precioOriginal <= 0 ? (
+                        <span className="text-red-600 font-semibold text-xs">
                           Sin precio definido
                         </span>
                       ) : producto.descuentoPorcentaje > 0 ? (
@@ -542,45 +774,120 @@ function ProductoCard({
                           S/ {precioOriginal.toFixed(2)}
                         </span>
                       )}
-                      {precioOriginal && precioOriginal > 0 && (
-                        <span className="text-muted-foreground">/ ud.</span>
-                      )}
+                      {!producto.esEspecial &&
+                        precioOriginal &&
+                        precioOriginal > 0 && (
+                          <span className="text-muted-foreground">/ ud.</span>
+                        )}
                     </div>
                   </div>
 
                   <div className="p-3 space-y-2.5">
-                    {/* Colores del producto registrado para esta talla */}
-                    <div className="flex flex-wrap gap-1.5">
-                      {coloresDisp.map((color) => {
-                        const on = sel.some((cc) => cc.color === color);
-                        const stock = stockColor(t, color);
-                        return (
-                          <button
-                            key={color}
-                            type="button"
-                            onClick={() => toggleColor(t, color)}
-                            className={`px-2.5 py-0.5 rounded-full text-xs border transition flex items-center gap-1 ${
-                              on
-                                ? "bg-foreground text-background border-foreground"
-                                : "bg-input-background text-muted-foreground border-border hover:border-foreground/30"
-                            }`}
-                          >
-                            {color}
-                            <span
-                              className={`text-xs ${on ? "opacity-70" : "opacity-50"}`}
+                    {/* Colores */}
+                    {!producto.esEspecial && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {coloresDisp.map((color) => {
+                          const on = sel.some((cc) => cc.color === color);
+                          const stock = stockColor(t, color);
+                          const sinStock = stock === 0;
+                          return (
+                            <button
+                              key={color}
+                              type="button"
+                              onClick={() => toggleColor(t, color)}
+                              className={`px-2.5 py-0.5 rounded-full text-xs border transition flex items-center gap-1 ${
+                                on
+                                  ? sinStock
+                                    ? "bg-amber-500 text-white border-amber-500"
+                                    : "bg-foreground text-background border-foreground"
+                                  : sinStock
+                                    ? "bg-amber-50 text-amber-700 border-amber-300 hover:border-amber-500"
+                                    : "bg-input-background text-muted-foreground border-border hover:border-foreground/30"
+                              }`}
                             >
-                              ({stock})
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {coloresDisp.length === 0 && (
-                      <p className="text-xs text-muted-foreground">
-                        Sin colores en stock para esta talla.
-                      </p>
+                              {color}
+                              <span
+                                className={`text-xs ${on ? "opacity-70" : "opacity-50"}`}
+                              >
+                                ({stock})
+                              </span>
+                              {sinStock && (
+                                <span className="text-[10px] font-semibold">
+                                  ⚠
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                        {coloresDisp.length === 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            Sin colores registrados para esta talla.
+                          </p>
+                        )}
+                      </div>
                     )}
+
+                    {/* Modo especial: colores libres */}
+                    {producto.esEspecial && (
+                      <div className="space-y-2">
+                        {/* Colores ya agregados */}
+                        {sel.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {sel.map((cc) => (
+                              <span
+                                key={cc.color}
+                                className="px-2.5 py-0.5 rounded-full text-xs bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1"
+                              >
+                                {cc.color}
+                                <button
+                                  type="button"
+                                  onClick={() => toggleColor(t, cc.color)}
+                                  className="hover:text-red-600 transition"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {/* Agregar color */}
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={nuevoColor[t] ?? ""}
+                            onChange={(e) =>
+                              setNuevoColor((prev) => ({
+                                ...prev,
+                                [t]: e.target.value,
+                              }))
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                agregarColorEspecial(t, nuevoColor[t] ?? "");
+                              }
+                            }}
+                            placeholder="Agregar color…"
+                            className="flex-1 px-2.5 py-1.5 rounded-lg text-sm bg-input-background border border-amber-300 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-amber-300"
+                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              agregarColorEspecial(t, nuevoColor[t] ?? "")
+                            }
+                            className="p-1.5 rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200 border border-amber-300 transition"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        {sel.length === 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            Agrega los colores requeridos para esta talla.
+                          </p>
+                        )}
+                      </div>
+                    )}
+
                     {errCol && (
                       <p className="text-xs text-red-500 flex items-center gap-1">
                         <AlertCircle className="w-3 h-3" /> Selecciona al menos
@@ -588,7 +895,7 @@ function ProductoCard({
                       </p>
                     )}
 
-                    {/* Cantidades por color seleccionado */}
+                    {/* Cantidades */}
                     {sel.length > 0 && (
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {sel.map((cc) => (
@@ -620,7 +927,7 @@ function ProductoCard({
                       </div>
                     )}
 
-                    {/* Subtotal de esta talla */}
+                    {/* Subtotal talla */}
                     {cant > 0 && !!precioOriginal && precioConDescuento > 0 && (
                       <div className="flex justify-between items-center pt-1.5 border-t border-border/50 text-xs">
                         <span className="text-muted-foreground">
@@ -642,19 +949,31 @@ function ProductoCard({
         <div className="space-y-1.5">
           <p className="text-xs text-muted-foreground">
             Observaciones / especificaciones
+            {producto.esEspecial && (
+              <span className="ml-1 text-amber-600">
+                (describe el producto con detalle)
+              </span>
+            )}
           </p>
           <textarea
             rows={2}
             value={producto.observaciones}
             onChange={(e) =>
-              onChange({ ...producto, observaciones: e.target.value })
+              onChange({
+                ...producto,
+                observaciones: sanitizarObservaciones(e.target.value),
+              })
             }
-            placeholder="Ej. bordado en bolsillo, botones especiales, ajuste slim…"
+            placeholder={
+              producto.esEspecial
+                ? "Ej. corte especial, tela importada, medidas exactas del cliente…"
+                : "Ej. bordado en bolsillo, botones especiales, ajuste slim…"
+            }
             className="w-full px-3 py-2 rounded-lg bg-input-background border border-border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20 resize-none"
           />
         </div>
 
-        {/* Subtotal del producto */}
+        {/* Subtotal producto */}
         {calcSub(producto) > 0 && (
           <div className="flex justify-between items-center pt-2 border-t border-border text-sm">
             <span className="text-muted-foreground text-xs">
@@ -769,13 +1088,15 @@ export function NuevoPedidoModal({
       if (p.tallasSeleccionadas.length === 0) return false;
       for (const t of p.tallasSeleccionadas) {
         if ((p.detallesTallas[t] ?? []).length === 0) return false;
-        // Permitir precio 0 o mayor, pero no undefined/null o negativos
-        if (
-          p.preciosPorTalla[t] === undefined ||
-          p.preciosPorTalla[t] === null ||
-          p.preciosPorTalla[t] < 0
-        )
-          return false;
+        // Precio obligatorio solo en productos del catálogo
+        if (!p.esEspecial) {
+          if (
+            p.preciosPorTalla[t] === undefined ||
+            p.preciosPorTalla[t] === null ||
+            p.preciosPorTalla[t] < 0
+          )
+            return false;
+        }
       }
     }
     return true;
@@ -794,45 +1115,66 @@ export function NuevoPedidoModal({
         const codigo = nextPedidoCode(pedidosExistentes);
         setCodigo(codigo);
 
-        // Construir items detallados de productos
         const items: PedidoItemOutput[] = [];
         for (const producto of form.productos) {
-          // Buscar el producto en el catálogo para obtener su código
-          const prodCatalogo = productos.find(
-            (p) =>
-              p.modelo === producto.modelo &&
-              p.tela === producto.tela &&
-              p.disenio === producto.disenio,
-          );
+          if (producto.esEspecial) {
+            // Producto especial: usar código "ESPECIAL", no tocar stock
+            for (const talla of producto.tallasSeleccionadas) {
+              const colores = producto.detallesTallas[talla] || [];
+              const precioOriginal = producto.preciosPorTalla[talla];
+              for (const colorCantidad of colores) {
+                if (colorCantidad.cantidad > 0) {
+                  items.push({
+                    productoCodigo: "ESPECIAL",
+                    modelo: producto.modelo,
+                    tela: producto.tela,
+                    disenio: producto.disenio,
+                    talla,
+                    color: colorCantidad.color,
+                    cantidad: colorCantidad.cantidad,
+                    precioUnitario: precioOriginal || undefined,
+                    esEspecial: true,
+                  });
+                }
+              }
+            }
+          } else {
+            // Producto del catálogo
+            const prodCatalogo = productos.find(
+              (p) =>
+                p.modelo === producto.modelo &&
+                p.tela === producto.tela &&
+                p.disenio === producto.disenio,
+            );
 
-          if (!prodCatalogo) continue;
+            if (!prodCatalogo) continue;
 
-          // Iterar por cada talla seleccionada
-          for (const talla of producto.tallasSeleccionadas) {
-            const colores = producto.detallesTallas[talla] || [];
-            const precioOriginal = producto.preciosPorTalla[talla];
-            const precioConDescuento = precioOriginal
-              ? precioOriginal * (1 - producto.descuentoPorcentaje / 100)
-              : undefined;
+            for (const talla of producto.tallasSeleccionadas) {
+              const colores = producto.detallesTallas[talla] || [];
+              const precioOriginal = producto.preciosPorTalla[talla];
+              const precioConDescuento = precioOriginal
+                ? precioOriginal * (1 - producto.descuentoPorcentaje / 100)
+                : undefined;
 
-            // Iterar por cada color en la talla
-            for (const colorCantidad of colores) {
-              if (colorCantidad.cantidad > 0) {
-                items.push({
-                  productoCodigo: prodCatalogo.codigo,
-                  modelo: producto.modelo,
-                  tela: producto.tela,
-                  disenio: producto.disenio,
-                  talla: talla,
-                  color: colorCantidad.color,
-                  cantidad: colorCantidad.cantidad,
-                  precioUnitario: precioConDescuento,
-                });
+              for (const colorCantidad of colores) {
+                if (colorCantidad.cantidad > 0) {
+                  items.push({
+                    productoCodigo: prodCatalogo.codigo,
+                    modelo: producto.modelo,
+                    tela: producto.tela,
+                    disenio: producto.disenio,
+                    talla,
+                    color: colorCantidad.color,
+                    cantidad: colorCantidad.cantidad,
+                    precioUnitario: precioConDescuento,
+                  });
+                }
               }
             }
           }
         }
 
+        // tiene_especiales se guarda en la BD directamente desde PedidosContext
         onGuardar({
           id: codigo,
           cliente: clienteSel!.nombre,
@@ -845,7 +1187,7 @@ export function NuevoPedidoModal({
           telefono: clienteSel!.celular,
           email: clienteSel!.email,
           notas: form.observacionesGenerales || undefined,
-          items: items,
+          items,
         });
         setStep("exito");
       } catch (err) {
@@ -1051,7 +1393,9 @@ export function NuevoPedidoModal({
                     onChange={(e) =>
                       setForm((f) => ({
                         ...f,
-                        observacionesGenerales: e.target.value,
+                        observacionesGenerales: sanitizarObservaciones(
+                          e.target.value,
+                        ),
                       }))
                     }
                     placeholder="Ej. retira en local, entrega a domicilio, evento el 15 de julio…"
@@ -1301,9 +1645,17 @@ export function NuevoPedidoModal({
               <p className="text-xs font-mono text-emerald-700">
                 Código: <strong className="text-base">{codigoPedido}</strong>
               </p>
-              <p className="text-xs text-emerald-600">
-                Stock de productos actualizado.
-              </p>
+              {form.productos.some((p) => !p.esEspecial) && (
+                <p className="text-xs text-emerald-600">
+                  Stock de productos del catálogo actualizado.
+                </p>
+              )}
+              {form.productos.some((p) => p.esEspecial) && (
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                  ⚠ Contiene productos especiales (fuera de catálogo). El
+                  inventario no fue afectado. Producción recibirá la alerta.
+                </p>
+              )}
             </div>
             <button
               onClick={onClose}
