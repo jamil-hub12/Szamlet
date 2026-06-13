@@ -439,11 +439,22 @@ export function ProductosProvider({ children }: { children: ReactNode }) {
     colorIds: { id: string; stock: number }[],
   ): Promise<boolean> => {
     try {
-      // Actualizar stock para múltiples colores
+      // Sumar stock a los colores existentes
       for (const { id, stock } of colorIds) {
+        // Obtener el stock actual para sumar correctamente
+        const { data: colorActual, error: fetchError } = await supabase
+          .from("producto_colores")
+          .select("stock")
+          .eq("id", id)
+          .single();
+
+        if (fetchError) throw fetchError;
+
+        const stockActual = colorActual?.stock ?? 0;
+
         const { error: updateError } = await supabase
           .from("producto_colores")
-          .update({ stock })
+          .update({ stock: stockActual + stock })
           .eq("id", id);
 
         if (updateError) throw updateError;
