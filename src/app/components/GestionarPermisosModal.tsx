@@ -223,6 +223,60 @@ export function GestionarPermisosModal({
     );
   }
 
+  // Si es Producción, no hay permisos individuales que editar
+  if (empleado.rol === "Producción") {
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="bg-card border border-border rounded-xl w-full max-w-md shadow-xl">
+          <div className="flex items-center justify-between p-4 border-b border-border">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                <Shield className="w-5 h-5 text-blue-500" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">
+                  Permisos de Producción
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  {empleado.nombre}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-accent rounded-lg transition"
+            >
+              <X className="w-5 h-5 text-muted-foreground" />
+            </button>
+          </div>
+
+          <div className="p-6 text-center">
+            <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-4">
+              <Shield className="w-8 h-8 text-blue-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              Acceso fijo de Producción
+            </h3>
+            <p className="text-muted-foreground text-sm">
+              El rol Producción tiene acceso predefinido a su panel de
+              fabricación. No hay permisos individuales que configurar para este
+              rol.
+            </p>
+          </div>
+
+          <div className="flex gap-3 p-4 border-t border-border">
+            <button
+              onClick={onClose}
+              className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition"
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-card border border-border rounded-xl w-full max-w-3xl shadow-xl max-h-[90vh] flex flex-col">

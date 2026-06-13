@@ -63,6 +63,7 @@ import { formatearSoles } from "../utils/formatoMoneda";
 import { esPedidoVencido, diasHastaVencimiento } from "../utils/validaciones";
 import { HistorialClienteModal } from "./HistorialClienteModal";
 import { EditarPedidoModal } from "./EditarPedidoModal";
+import { DetallePedidoModal } from "./DetallePedidoModal";
 import { useClientes } from "../contexts/ClientesContext";
 import {
   obtenerFechaPeruHoy,
@@ -342,10 +343,14 @@ export function AdminDashboard() {
     null,
   );
   const [filtroEstadoPedidos, setFiltroEstadoPedidos] = useState("Todos");
+  const [filtroUltimosPedidos, setFiltroUltimosPedidos] = useState<
+    "5" | "10" | "20" | "semana"
+  >("5");
   const [filtroPrioridadPedidos, setFiltroPrioridadPedidos] = useState("Todas");
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState<Pedido | null>(
     null,
   );
+  const [pedidoDetalle, setPedidoDetalle] = useState<Pedido | null>(null);
   const [modalEditarPedidoAbierto, setModalEditarPedidoAbierto] =
     useState(false);
   const [clienteHistorial, setClienteHistorial] = useState<any>(null);
@@ -376,6 +381,8 @@ export function AdminDashboard() {
   const [fechaHastaPagos, setFechaHastaPagos] = useState("");
   const [filtroMetodoPago, setFiltroMetodoPago] = useState("Todos");
   const [filtroPresetPagos, setFiltroPresetPagos] = useState("Todos");
+  const [filtroEstadoPagoPendientes, setFiltroEstadoPagoPendientes] =
+    useState("Todos"); // "Todos" | "Pendiente" | "Parcial"
   const [reportTypeModalOpen, setReportTypeModalOpen] = useState(false);
   const [selectedReportType, setSelectedReportType] = useState<
     "historial" | "pendientes"
@@ -496,6 +503,86 @@ export function AdminDashboard() {
       console.log("✅ PDF de pedidos generado correctamente:", nombreArchivo);
     } catch (error) {
       console.error("❌ Error al generar PDF de pedidos:", error);
+      alert("Error al generar el PDF. Por favor, intenta de nuevo.");
+    }
+  };
+
+  // Función para exportar el detalle de un pedido individual a PDF
+  const handleExportarPedidoIndividualPDF = async (pedido: Pedido) => {
+    try {
+      const { default: jsPDF } = await import("jspdf");
+      const { default: autoTable } = await import("jspdf-autotable");
+
+      const doc = new jsPDF();
+      const clienteDelPedido = clientes.find((c) => c.id === pedido.clienteId);
+
+      doc.setFontSize(18);
+      doc.setFont("", "bold");
+      doc.text("Detalle del Pedido", 14, 20);
+
+      doc.setFontSize(10);
+      doc.setFont("", "normal");
+      doc.text(`Código: ${pedido.codigo}`, 14, 28);
+      doc.text(`Generado: ${formatearFechaHoraPeru(new Date())}`, 14, 34);
+
+      doc.setFontSize(11);
+      doc.setFont("", "bold");
+      doc.text("Información del Cliente", 14, 44);
+
+      doc.setFontSize(9);
+      doc.setFont("", "normal");
+      doc.text(`Nombre: ${clienteDelPedido?.nombre ?? pedido.cliente}`, 14, 50);
+      doc.text(`Código: ${clienteDelPedido?.codigo ?? "-"}`, 14, 56);
+      doc.text(`DNI: ${clienteDelPedido?.dni ?? "-"}`, 14, 62);
+      doc.text(`Celular: ${clienteDelPedido?.celular ?? "-"}`, 14, 68);
+
+      doc.setFontSize(11);
+      doc.setFont("", "bold");
+      doc.text("Información del Pedido", 14, 78);
+
+      doc.setFontSize(9);
+      doc.setFont("", "normal");
+      doc.text(`Artículo: ${pedido.articulo}`, 14, 84);
+      doc.text(`Fecha: ${formatearFechaCorta(pedido.fecha)}`, 14, 90);
+      doc.text(`Estado: ${pedido.estado}`, 14, 96);
+      if (pedido.fechaEntrega) {
+        doc.text(
+          `Fecha de entrega: ${formatearFechaCorta(pedido.fechaEntrega)}`,
+          14,
+          102,
+        );
+      }
+
+      let startY = 112;
+      if (pedido.items && pedido.items.length > 0) {
+        autoTable(doc, {
+          head: [["Producto", "Talla", "Color", "Cantidad"]],
+          body: pedido.items.map((item) => [
+            item.productoNombre || item.productoId,
+            item.talla,
+            item.color,
+            String(item.cantidad),
+          ]),
+          startY,
+          theme: "striped",
+          headStyles: {
+            fillColor: [37, 99, 235],
+            textColor: 255,
+            fontStyle: "bold",
+            fontSize: 9,
+          },
+          bodyStyles: {
+            fontSize: 8,
+            textColor: 50,
+          },
+          margin: { left: 14, right: 14 },
+        });
+      }
+
+      const nombreArchivo = `pedido_${pedido.codigo}_${obtenerFechaPeruHoy()}.pdf`;
+      doc.save(nombreArchivo);
+    } catch (error) {
+      console.error("❌ Error al generar PDF del pedido:", error);
       alert("Error al generar el PDF. Por favor, intenta de nuevo.");
     }
   };
@@ -964,8 +1051,18 @@ export function AdminDashboard() {
     });
 
   // Pedidos con productos especiales (fuera de catálogo) — filtrado por columna BD
+  const [busquedaEspeciales, setBusquedaEspeciales] = useState("");
   const pedidosEspeciales = pedidos
-    .filter((p) => p.tieneEspeciales)
+    .filter((p) => {
+      if (!p.tieneEspeciales) return false;
+      if (!busquedaEspeciales.trim()) return true;
+      const q = busquedaEspeciales.toLowerCase();
+      return (
+        p.codigo.toLowerCase().includes(q) ||
+        p.cliente.toLowerCase().includes(q) ||
+        p.articulo.toLowerCase().includes(q)
+      );
+    })
     .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
 
   // Filtrado de clientes
@@ -1024,9 +1121,19 @@ export function AdminDashboard() {
   });
 
   // Datos dinámicos del panel general
-  const pedidosRecientes = pedidos
-    .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
-    .slice(0, 5);
+  const pedidosOrdenadosPorFecha = [...pedidos].sort(
+    (a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime(),
+  );
+  const pedidosRecientes =
+    filtroUltimosPedidos === "semana"
+      ? pedidosOrdenadosPorFecha.filter((p) => {
+          const fechaPedido = new Date(p.fecha);
+          const hoy = new Date(obtenerFechaPeruHoy());
+          const diffDias =
+            (hoy.getTime() - fechaPedido.getTime()) / (1000 * 60 * 60 * 24);
+          return diffDias >= 0 && diffDias <= 7;
+        })
+      : pedidosOrdenadosPorFecha.slice(0, parseInt(filtroUltimosPedidos, 10));
   const pedidosActivos = pedidos.filter(
     (p) => p.estado !== "Entregado" && p.estado !== "Cancelado",
   );
@@ -1185,9 +1292,9 @@ export function AdminDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="h-screen bg-background flex overflow-hidden">
       {/* Sidebar */}
-      <aside className="hidden md:flex flex-col w-56 border-r border-border bg-card px-4 py-6 gap-1 shrink-0">
+      <aside className="hidden md:flex flex-col w-56 border-r border-border bg-card px-4 py-6 gap-1 shrink-0 h-screen overflow-y-auto">
         <div className="flex items-center gap-2.5 px-2 mb-6">
           <div className="w-8 h-8 rounded-lg bg-foreground flex items-center justify-center shrink-0">
             <Scissors className="w-4 h-4 text-background" />
@@ -1229,7 +1336,7 @@ export function AdminDashboard() {
       </aside>
 
       {/* Contenido */}
-      <main className="flex-1 flex flex-col min-w-0">
+      <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         {/* Topbar */}
         <header className="flex items-center justify-between px-6 py-4 border-b border-border bg-card">
           <div>
@@ -1312,12 +1419,28 @@ export function AdminDashboard() {
               <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <div className="flex items-center justify-between px-5 py-4 border-b border-border">
                   <h4 className="text-foreground">Últimos pedidos</h4>
-                  <button
-                    onClick={() => setSeccion("pedidos")}
-                    className="text-sm text-muted-foreground hover:text-foreground transition"
-                  >
-                    Ver todos
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <select
+                      value={filtroUltimosPedidos}
+                      onChange={(e) =>
+                        setFiltroUltimosPedidos(
+                          e.target.value as "5" | "10" | "20" | "semana",
+                        )
+                      }
+                      className="text-sm bg-input-background border border-border rounded-lg px-2.5 py-1.5 text-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                    >
+                      <option value="5">Últimos 5</option>
+                      <option value="10">Últimos 10</option>
+                      <option value="20">Últimos 20</option>
+                      <option value="semana">Última semana</option>
+                    </select>
+                    <button
+                      onClick={() => setSeccion("pedidos")}
+                      className="text-sm text-muted-foreground hover:text-foreground transition"
+                    >
+                      Ver todos
+                    </button>
+                  </div>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -2085,6 +2208,26 @@ export function AdminDashboard() {
                     </div>
                   </div>
 
+                  {/* Barra de búsqueda */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Buscar por código, cliente o artículo..."
+                      value={busquedaEspeciales}
+                      onChange={(e) => setBusquedaEspeciales(e.target.value)}
+                      className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-background border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                    />
+                    {busquedaEspeciales && (
+                      <button
+                        onClick={() => setBusquedaEspeciales("")}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
                   {pedidosEspeciales.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 text-center">
                       <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-400 flex items-center justify-center mb-4">
@@ -2248,6 +2391,44 @@ export function AdminDashboard() {
                                     );
                                   })}
                                 </div>
+                              </div>
+
+                              {/* Estado de pago y tipo de pedido */}
+                              <div className="flex flex-wrap items-center gap-2 border-t border-amber-100 pt-2">
+                                {/* Estado de pago */}
+                                <span
+                                  className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border font-medium ${
+                                    pedido.estadoPago === "Pagado"
+                                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                      : pedido.estadoPago === "Parcial"
+                                        ? "bg-yellow-50 text-yellow-700 border-yellow-200"
+                                        : "bg-red-50 text-red-600 border-red-200"
+                                  }`}
+                                >
+                                  {pedido.estadoPago === "Pagado"
+                                    ? "✓ Pagado"
+                                    : pedido.estadoPago === "Parcial"
+                                      ? "½ Parcial"
+                                      : "✕ Pendiente"}
+                                  {pedido.montoTotal &&
+                                    pedido.montoTotal > 0 && (
+                                      <span className="ml-1 opacity-80">
+                                        S/ {pedido.montoTotal.toFixed(2)}
+                                      </span>
+                                    )}
+                                </span>
+                                {/* Tipo de pedido */}
+                                <span
+                                  className={`inline-flex items-center text-xs px-2 py-0.5 rounded-full border ${
+                                    pedido.tipoPedido === "venta_directa"
+                                      ? "bg-blue-50 text-blue-700 border-blue-200"
+                                      : "bg-violet-50 text-violet-700 border-violet-200"
+                                  }`}
+                                >
+                                  {pedido.tipoPedido === "venta_directa"
+                                    ? "🛍 Venta directa"
+                                    : "🧵 Fabricar"}
+                                </span>
                               </div>
 
                               {/* Notas del cliente */}
@@ -2957,6 +3138,7 @@ export function AdminDashboard() {
                         setFechaHastaPagos("");
                         setFiltroMetodoPago("Todos");
                         setFiltroPresetPagos("Todos");
+                        setFiltroEstadoPagoPendientes("Todos");
                       }}
                       className="text-xs text-primary hover:underline"
                     >
@@ -3112,7 +3294,7 @@ export function AdminDashboard() {
                     Historial de Pagos Recientes
                   </h4>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {pagos.length} pagos registrados
+                    {pagosFiltrados.length} pagos registrados
                   </p>
                 </div>
                 <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
@@ -3146,17 +3328,19 @@ export function AdminDashboard() {
                             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground mx-auto" />
                           </td>
                         </tr>
-                      ) : pagos.length === 0 ? (
+                      ) : pagosFiltrados.length === 0 ? (
                         <tr>
                           <td
                             colSpan={6}
                             className="px-4 py-10 text-center text-muted-foreground text-sm"
                           >
-                            No hay pagos registrados aún
+                            {pagos.length === 0
+                              ? "No hay pagos registrados aún"
+                              : "No hay pagos que coincidan con los filtros seleccionados"}
                           </td>
                         </tr>
                       ) : (
-                        pagos.map((pago, i) => (
+                        pagosFiltrados.map((pago, i) => (
                           <tr
                             key={pago.id}
                             className={`border-b border-border last:border-0 hover:bg-accent/50 transition ${i % 2 === 0 ? "" : "bg-muted/20"}`}
@@ -3216,13 +3400,27 @@ export function AdminDashboard() {
 
               {/* Tabla de Pagos Pendientes */}
               <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="px-5 py-4 border-b border-border bg-muted/20">
-                  <h4 className="text-foreground font-semibold">
-                    Pagos Pendientes
-                  </h4>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Pedidos con saldos pendientes de pago
-                  </p>
+                <div className="px-5 py-4 border-b border-border bg-muted/20 flex items-center justify-between gap-4">
+                  <div>
+                    <h4 className="text-foreground font-semibold">
+                      Pagos Pendientes
+                    </h4>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Pedidos con saldos pendientes de pago
+                    </p>
+                  </div>
+                  {/* Filtro de estado de pago */}
+                  <select
+                    value={filtroEstadoPagoPendientes}
+                    onChange={(e) =>
+                      setFiltroEstadoPagoPendientes(e.target.value)
+                    }
+                    className="px-3 py-1.5 rounded-lg bg-background border border-input text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary shrink-0"
+                  >
+                    <option value="Todos">Todos</option>
+                    <option value="Pendiente">Solo Pendiente</option>
+                    <option value="Parcial">Solo Parcial</option>
+                  </select>
                 </div>
                 <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
                   <table className="w-full text-sm">
@@ -3259,7 +3457,14 @@ export function AdminDashboard() {
                           const montoTotal = p.montoTotal || 0;
                           const montoPagado = p.montoPagado || 0;
                           const pendiente = montoTotal - montoPagado;
-                          return pendiente > 0 && montoTotal > 0;
+                          if (!(pendiente > 0 && montoTotal > 0)) return false;
+                          // Aplicar filtro de estado de pago
+                          if (
+                            filtroEstadoPagoPendientes !== "Todos" &&
+                            p.estadoPago !== filtroEstadoPagoPendientes
+                          )
+                            return false;
+                          return true;
                         });
 
                         if (pedidosPendientes.length === 0) {
@@ -3970,6 +4175,15 @@ export function AdminDashboard() {
                 </div>
               </div>
 
+              {/* Botón para ver el detalle completo del pedido (PDF) */}
+              <button
+                onClick={() => setPedidoDetalle(pedidoSeleccionado)}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-border text-foreground rounded-lg hover:bg-accent transition"
+              >
+                <FileText className="w-4 h-4" />
+                Ver detalle del pedido
+              </button>
+
               {/* Botón para editar el pedido */}
               <button
                 onClick={() => setModalEditarPedidoAbierto(true)}
@@ -4009,15 +4223,39 @@ export function AdminDashboard() {
           esAdmin={true}
         />
       )}
+
+      {/* Modal de detalle completo del pedido */}
+      {pedidoDetalle &&
+        (() => {
+          const clienteDelPedido = clientes.find(
+            (c) => c.id === pedidoDetalle.clienteId,
+          );
+          if (!clienteDelPedido) return null;
+          return (
+            <DetallePedidoModal
+              pedido={pedidoDetalle}
+              cliente={clienteDelPedido}
+              onClose={() => setPedidoDetalle(null)}
+              onExportar={() =>
+                handleExportarPedidoIndividualPDF(pedidoDetalle)
+              }
+            />
+          );
+        })()}
       {detalleAuditoria && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setDetalleAuditoria(null)}
           />
-          <div className="relative z-10 bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md">
+          <div className="relative z-10 bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg">
             <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-              <h3 className="text-foreground">Detalles de auditoría</h3>
+              <div>
+                <h3 className="text-foreground">Detalles del registro</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Información completa de la acción registrada
+                </p>
+              </div>
               <button
                 onClick={() => setDetalleAuditoria(null)}
                 className="p-1.5 rounded-lg hover:bg-accent transition"
@@ -4031,7 +4269,7 @@ export function AdminDashboard() {
                   estadoAnterior: "Estado anterior",
                   estadoNuevo: "Estado nuevo",
                   motivo: "Motivo",
-                  mensaje: "Mensaje",
+                  mensaje: "Mensaje generado",
                   urgente: "Urgente",
                   notas: "Notas",
                   articulo: "Artículo",
@@ -4062,6 +4300,21 @@ export function AdminDashboard() {
                   TALLASCOUNT: "Cantidad de tallas",
                   COLORESCOUNT: "Cantidad de colores",
                 };
+
+                // Grupos semánticos para mejor organización visual
+                const gruposEstado = [
+                  "estadoAnterior",
+                  "estadoNuevo",
+                  "mensaje",
+                  "motivo",
+                ];
+                const gruposConteo = [
+                  "itemsCount",
+                  "itemsEliminados",
+                  "itemsInsertados",
+                  "stockActualizado",
+                  "stockRestaurado",
+                ];
 
                 const formatearValorSimple = (val: unknown): string => {
                   if (typeof val === "boolean") return val ? "Sí" : "No";
@@ -4110,12 +4363,27 @@ export function AdminDashboard() {
                   </div>
                 );
 
-                return Object.entries(detalleAuditoria).map(([key, value]) => {
+                // Separar entradas en grupo "estado/transición" y el resto
+                const entradas = Object.entries(detalleAuditoria);
+                const entradasEstado = entradas.filter(([k]) =>
+                  gruposEstado.includes(k),
+                );
+                const entradasConteo = entradas.filter(([k]) =>
+                  gruposConteo.includes(k),
+                );
+                const entradasResto = entradas.filter(
+                  ([k]) =>
+                    !gruposEstado.includes(k) && !gruposConteo.includes(k),
+                );
+
+                const renderEntrada = ([key, value]: [string, unknown]) => {
                   const label = etiquetas[key] ?? key.replace(/_/g, " ");
                   const esObjeto =
                     value !== null &&
                     typeof value === "object" &&
                     !Array.isArray(value);
+                  const esEstado =
+                    key === "estadoAnterior" || key === "estadoNuevo";
 
                   return (
                     <div key={key} className="flex flex-col gap-1">
@@ -4126,6 +4394,16 @@ export function AdminDashboard() {
                         <div className="bg-muted rounded-lg px-3 py-2">
                           {renderObjeto(value as Record<string, unknown>)}
                         </div>
+                      ) : esEstado ? (
+                        <span
+                          className={`inline-flex items-center self-start text-xs px-2.5 py-1 rounded-full border font-medium ${
+                            key === "estadoNuevo"
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : "bg-muted text-muted-foreground border-border"
+                          }`}
+                        >
+                          {String(value ?? "—")}
+                        </span>
                       ) : (
                         <span className="text-sm text-foreground bg-muted rounded px-2 py-1 break-all">
                           {typeof value === "boolean"
@@ -4137,7 +4415,86 @@ export function AdminDashboard() {
                       )}
                     </div>
                   );
-                });
+                };
+
+                return (
+                  <div className="space-y-4">
+                    {/* Bloque de transición de estado */}
+                    {entradasEstado.length > 0 && (
+                      <div className="bg-muted/40 rounded-xl p-4 space-y-3">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                          Cambio de estado
+                        </p>
+                        <div className="flex items-center gap-3 flex-wrap">
+                          {entradasEstado.find(
+                            ([k]) => k === "estadoAnterior",
+                          ) && (
+                            <span className="text-xs px-2.5 py-1 rounded-full bg-muted border border-border text-foreground">
+                              {String(
+                                entradasEstado.find(
+                                  ([k]) => k === "estadoAnterior",
+                                )?.[1] ?? "—",
+                              )}
+                            </span>
+                          )}
+                          {entradasEstado.find(
+                            ([k]) => k === "estadoAnterior",
+                          ) &&
+                            entradasEstado.find(
+                              ([k]) => k === "estadoNuevo",
+                            ) && (
+                              <span className="text-muted-foreground text-xs">
+                                →
+                              </span>
+                            )}
+                          {entradasEstado.find(
+                            ([k]) => k === "estadoNuevo",
+                          ) && (
+                            <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 font-medium">
+                              {String(
+                                entradasEstado.find(
+                                  ([k]) => k === "estadoNuevo",
+                                )?.[1] ?? "—",
+                              )}
+                            </span>
+                          )}
+                        </div>
+                        {entradasEstado
+                          .filter(
+                            ([k]) =>
+                              k !== "estadoAnterior" && k !== "estadoNuevo",
+                          )
+                          .map(renderEntrada)}
+                      </div>
+                    )}
+
+                    {/* Contadores */}
+                    {entradasConteo.length > 0 && (
+                      <div className="grid grid-cols-2 gap-2">
+                        {entradasConteo.map(([k, v]) => (
+                          <div
+                            key={k}
+                            className="bg-muted/40 rounded-lg px-3 py-2"
+                          >
+                            <p className="text-xs text-muted-foreground">
+                              {etiquetas[k] ?? k.replace(/_/g, " ")}
+                            </p>
+                            <p className="text-sm font-semibold text-foreground mt-0.5">
+                              {typeof v === "boolean"
+                                ? v
+                                  ? "Sí"
+                                  : "No"
+                                : String(v ?? "—")}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Resto de campos */}
+                    {entradasResto.map(renderEntrada)}
+                  </div>
+                );
               })()}
             </div>
             <div className="px-6 py-4 border-t border-border">
