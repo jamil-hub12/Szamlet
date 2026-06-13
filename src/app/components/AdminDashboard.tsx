@@ -2151,10 +2151,11 @@ export function AdminDashboard() {
                                   <div className="flex items-center gap-1">
                                     <button
                                       onClick={() => setPedidoSeleccionado(p)}
-                                      className="p-1.5 rounded hover:bg-accent transition text-blue-600"
+                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 transition text-blue-700 text-xs font-medium border border-blue-200"
                                       title="Ver detalles del pedido"
                                     >
-                                      <FileText className="w-4 h-4" />
+                                      <FileText className="w-3.5 h-3.5" />
+                                      Ver detalles
                                     </button>
                                     {cliente && (
                                       <button
@@ -2308,10 +2309,11 @@ export function AdminDashboard() {
                                 </span>
                                 <button
                                   onClick={() => setPedidoSeleccionado(pedido)}
-                                  className="p-1.5 rounded hover:bg-amber-100 transition text-amber-700"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 transition text-amber-700 text-xs font-medium border border-amber-200"
                                   title="Ver detalles"
                                 >
-                                  <FileText className="w-4 h-4" />
+                                  <FileText className="w-3.5 h-3.5" />
+                                  Ver detalles
                                 </button>
                               </div>
                             </div>

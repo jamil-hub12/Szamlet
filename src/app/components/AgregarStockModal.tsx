@@ -16,13 +16,13 @@ export function AgregarStockModal({
   const [step, setStep] = useState<Step>("form");
   const [showErrors, setShowErrors] = useState(false);
 
-  // Construir mapa de colores con stock a editar
+  // Construir mapa de colores con cantidad a AGREGAR (siempre inicia en 0)
   const [stockPorColor, setStockPorColor] = useState<Record<string, number>>(
     () => {
       const map: Record<string, number> = {};
       for (const talla of producto.tallas) {
         for (const color of talla.colores) {
-          map[color.id] = color.stock;
+          map[color.id] = 0;
         }
       }
       return map;

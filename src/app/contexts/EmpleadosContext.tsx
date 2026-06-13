@@ -201,6 +201,8 @@ export function EmpleadosProvider({ children }: { children: ReactNode }) {
       const nuevoCodigo = `EMP-${String(maxCodigo + 1).padStart(4, "0")}`;
 
       // Paso 3: Crear registro en la tabla empleados
+      const permisosDefault = obtenerPermisosDefault(data.rol);
+
       const insertData: EmpleadoInsert = {
         codigo: nuevoCodigo,
         nombre: data.nombre,
@@ -209,6 +211,7 @@ export function EmpleadosProvider({ children }: { children: ReactNode }) {
         rol: data.rol,
         estado: data.estado,
         fecha_ingreso: new Date().toISOString().split("T")[0],
+        permisos: permisosDefault,
       };
 
       // Establecer flag ANTES de insertar
