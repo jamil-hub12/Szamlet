@@ -746,17 +746,7 @@ export function NuevoProductoModal({
     setForm((f) => ({ ...f, variantes: [...f.variantes, emptyVariante()] }));
 
   // Sincronizar color personalizado a todas las variantes
-  const handleColorPersonalizadoAgregado = (colorNuevo: string) => {
-    setForm((f) => ({
-      ...f,
-      variantes: f.variantes.map((v) => ({
-        ...v,
-        coloresSeleccionados: !v.coloresSeleccionados.includes(colorNuevo)
-          ? [...v.coloresSeleccionados, colorNuevo]
-          : v.coloresSeleccionados,
-      })),
-    }));
-  };
+  const handleColorPersonalizadoAgregado = (_colorNuevo: string) => {};
 
   // Validación
   const validate = (): boolean => {
