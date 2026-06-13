@@ -8,7 +8,9 @@ const PERU_TIMEZONE = "America/Lima";
  * Obtiene la fecha y hora actual en zona horaria de Perú
  */
 export function obtenerFechaHoraPeruActual(): Date {
-  return new Date(new Date().toLocaleString("en-US", { timeZone: PERU_TIMEZONE }));
+  return new Date(
+    new Date().toLocaleString("en-US", { timeZone: PERU_TIMEZONE }),
+  );
 }
 
 /**
@@ -16,7 +18,9 @@ export function obtenerFechaHoraPeruActual(): Date {
  */
 export function convertirAZonaHorariaPeru(fecha: Date | string): Date {
   const fechaObj = typeof fecha === "string" ? new Date(fecha) : fecha;
-  return new Date(fechaObj.toLocaleString("en-US", { timeZone: PERU_TIMEZONE }));
+  return new Date(
+    fechaObj.toLocaleString("en-US", { timeZone: PERU_TIMEZONE }),
+  );
 }
 
 /**
@@ -66,6 +70,14 @@ export function formatearFechaHoraPeru(fecha: Date | string): string {
  * Ejemplo: "06/06/2026"
  */
 export function formatearFechaCorta(fecha: Date | string): string {
+  // Si es un string de solo fecha (YYYY-MM-DD), agregar mediodía para evitar
+  // que new Date() lo interprete como UTC medianoche y retroceda un día en Lima (UTC-5)
+  if (typeof fecha === "string" && /^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+    const [year, month, day] = fecha.split("-").map(Number);
+    return new Date(year, month - 1, day).toLocaleDateString("es-PE", {
+      timeZone: PERU_TIMEZONE,
+    });
+  }
   const fechaObj = typeof fecha === "string" ? new Date(fecha) : fecha;
   return fechaObj.toLocaleDateString("es-PE", {
     timeZone: PERU_TIMEZONE,

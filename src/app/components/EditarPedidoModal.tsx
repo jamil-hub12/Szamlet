@@ -122,7 +122,6 @@ export function EditarPedidoModal({
   }, [pedido.codigo, validacionEdicion.puede]);
 
   const validate = () => {
-    if (!form.articulo.trim()) return false;
     if (form.items.length === 0) return false;
     if (form.items.some((item) => item.cantidad <= 0)) return false;
     if (form.fechaEntrega && !esValidaFechaMinimaHoy(form.fechaEntrega)) {
@@ -188,10 +187,15 @@ export function EditarPedidoModal({
         };
       });
 
+      const articuloDerivado =
+        form.items.length > 0
+          ? [...new Set(form.items.map((item) => item.modelo))].join(", ")
+          : form.articulo;
+
       // Si es admin y puso un monto total, lo incluimos en los datos básicos
       const montoNumerico = parseFloat(montoTotalAdmin);
       const datosBasicos: Parameters<typeof actualizarPedidoConItems>[1] = {
-        articulo: form.articulo.trim(),
+        articulo: articuloDerivado.trim(),
         urgente: form.urgente,
         notas: form.notas.trim() || undefined,
         fechaEntrega: form.fechaEntrega || undefined,
@@ -350,26 +354,24 @@ export function EditarPedidoModal({
               {/* Artículo */}
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-foreground">
-                  Artículo <span className="text-red-500">*</span>
+                  Artículo
                 </label>
                 <input
                   type="text"
-                  value={form.articulo}
-                  onChange={(e) =>
-                    setForm({ ...form, articulo: e.target.value })
+                  value={
+                    form.items.length > 0
+                      ? [
+                          ...new Set(form.items.map((item) => item.modelo)),
+                        ].join(", ")
+                      : form.articulo
                   }
-                  className={`w-full px-3 py-2 rounded-lg bg-input-background border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20 ${
-                    showErrors && !form.articulo.trim()
-                      ? "border-red-400"
-                      : "border-border"
-                  }`}
-                  placeholder="Descripción del artículo..."
+                  readOnly
+                  className="w-full px-3 py-2 rounded-lg bg-muted/50 border border-border text-foreground text-sm cursor-not-allowed"
                 />
-                {showErrors && !form.articulo.trim() && (
-                  <p className="text-xs text-red-500 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" /> Campo requerido
-                  </p>
-                )}
+                <p className="text-xs text-muted-foreground">
+                  Se genera automáticamente a partir de los productos del
+                  pedido.
+                </p>
               </div>
 
               {/* Productos */}

@@ -48,6 +48,7 @@ type NotificacionesContextType = {
     articulo: string;
     estadoAnterior: string;
     estadoNuevo: string;
+    noticeMensaje?: string;
   }) => Promise<boolean>;
 };
 
@@ -281,6 +282,7 @@ export function NotificacionesProvider({ children }: { children: ReactNode }) {
     articulo: string;
     estadoAnterior: string;
     estadoNuevo: string;
+    noticeMensaje?: string;
   }): Promise<boolean> => {
     if (!isEmailJSConfigured()) {
       console.warn("⚠️ EmailJS no está configurado.");
@@ -301,6 +303,9 @@ export function NotificacionesProvider({ children }: { children: ReactNode }) {
         articulo: data.articulo,
         estado_anterior: data.estadoAnterior,
         estado_nuevo: data.estadoNuevo,
+        notice_mensaje:
+          data.noticeMensaje ??
+          "Tu pedido está progresando según lo planificado. El equipo de Taller Szamlet está trabajando con dedicación en tu encargo.",
       };
 
       const response = await emailjs.send(

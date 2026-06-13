@@ -462,10 +462,10 @@ function ProductoCard({
             <button
               type="button"
               onClick={toggleModoEspecial}
-              className={`text-xs px-2.5 py-1 rounded-lg border transition ${
+              className={`text-xs px-3 py-1.5 rounded-lg border font-medium transition ${
                 producto.esEspecial
                   ? "bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200"
-                  : "bg-input-background text-muted-foreground border-border hover:border-foreground/30"
+                  : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 hover:border-amber-300"
               }`}
               title={
                 producto.esEspecial
@@ -597,33 +597,32 @@ function ProductoCard({
         )}
 
         {/* Selector de descuento — visible para todos, en cualquier tipo de producto */}
-        {!esVentaDirecta &&
-          (producto.esEspecial || (!producto.esEspecial && prodCatalogo)) && (
-            <div className="space-y-2 px-4 py-3 rounded-lg border border-blue-200 bg-blue-50">
-              <label className="text-sm font-medium text-foreground flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs">
-                  %
-                </span>
-                Descuento en precio
-              </label>
-              <div className="flex gap-2">
-                {[0, 5, 10].map((descuento) => (
-                  <button
-                    key={descuento}
-                    type="button"
-                    onClick={() => setDescuento(descuento)}
-                    className={`flex-1 px-3 py-2 rounded-lg text-sm border transition ${
-                      producto.descuentoPorcentaje === descuento
-                        ? "bg-blue-600 text-white border-blue-600"
-                        : "bg-white text-foreground border-border hover:border-blue-400"
-                    }`}
-                  >
-                    {descuento === 0 ? "Sin descuento" : `${descuento}% off`}
-                  </button>
-                ))}
-              </div>
+        {(producto.esEspecial || (!producto.esEspecial && prodCatalogo)) && (
+          <div className="space-y-2 px-4 py-3 rounded-lg border border-blue-200 bg-blue-50">
+            <label className="text-sm font-medium text-foreground flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs">
+                %
+              </span>
+              Descuento en precio
+            </label>
+            <div className="flex gap-2">
+              {[0, 5, 10].map((descuento) => (
+                <button
+                  key={descuento}
+                  type="button"
+                  onClick={() => setDescuento(descuento)}
+                  className={`flex-1 px-3 py-2 rounded-lg text-sm border transition ${
+                    producto.descuentoPorcentaje === descuento
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "bg-white text-foreground border-border hover:border-blue-400"
+                  }`}
+                >
+                  {descuento === 0 ? "Sin descuento" : `${descuento}% off`}
+                </button>
+              ))}
             </div>
-          )}
+          </div>
+        )}
 
         {/* Tallas */}
         {mostrarTallas && (
@@ -1202,7 +1201,7 @@ export function NuevoPedidoModal({
           clienteId: clienteSel!.id,
           articulo: form.productos.map((p) => p.modelo).join(", "),
           estado: "Recibido",
-          fecha: new Date().toISOString().split("T")[0],
+          fecha: obtenerFechaPeruHoy(),
           fechaEntrega: form.fechaEntrega,
           urgente: form.prioridad === "Urgente",
           telefono: clienteSel!.celular,
@@ -1528,7 +1527,15 @@ export function NuevoPedidoModal({
                       }
                       canRemove={form.productos.length > 1}
                       showErrors={showErrors}
-                      catalogoProductos={productos}
+                      catalogoProductos={
+                        form.tipoPedido === "venta_directa"
+                          ? productos.filter((prod) =>
+                              prod.tallas.some((t) =>
+                                t.colores.some((c) => c.stock > 0),
+                              ),
+                            )
+                          : productos
+                      }
                       esAdmin={esAdmin}
                       esVentaDirecta={form.tipoPedido === "venta_directa"}
                     />
