@@ -20,6 +20,7 @@ import {
   formatearFechaCorta,
 } from "../../utils/fechas";
 import { esPedidoVencido, diasHastaVencimiento } from "../utils/validaciones";
+import { tieneNotasParaMostrar } from "../utils/notasPedido";
 
 type Cliente = {
   id: string;
@@ -244,7 +245,7 @@ export function DetallePedidoModal({
                     </p>
                   </div>
                 )}
-                {pedido.notas && (
+                {tieneNotasParaMostrar(pedido.notas) && (
                   <div>
                     <p className="text-xs text-muted-foreground">Notas</p>
                     <p className="text-sm text-foreground">{pedido.notas}</p>
