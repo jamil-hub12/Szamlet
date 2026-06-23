@@ -153,6 +153,31 @@ export function puedeCancelarPedido(estado: EstadoPedido): {
   };
 }
 
+export function puedeReactivarPedido(
+  estado: EstadoPedido,
+  estadoAnteriorCancelacion?: EstadoPedido,
+): { puede: boolean; mensaje: string; estadoDestino?: EstadoPedido } {
+  if (estado !== "Cancelado") {
+    return {
+      puede: false,
+      mensaje: "Solo se pueden reactivar pedidos cancelados",
+    };
+  }
+
+  if (!estadoAnteriorCancelacion) {
+    return {
+      puede: false,
+      mensaje:
+        "No se puede reactivar este pedido (no tiene estado anterior guardado)",
+    };
+  }
+
+  return {
+    puede: true,
+    mensaje: "El pedido puede ser reactivado",
+    estadoDestino: estadoAnteriorCancelacion,
+  };
+}
 /**
  * Obtiene todas las transiciones válidas desde un estado
  */

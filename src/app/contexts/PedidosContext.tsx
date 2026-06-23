@@ -12,6 +12,7 @@ import {
   validarTransicion,
   puedeCancelarPedido,
   puedeEditarPedido,
+  puedeReactivarPedido,
   generarMensajeCambioEstado,
   type EstadoPedido,
 } from "../utils/pedidosCicloVida";
@@ -793,15 +794,12 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
-      if (pedidoActual.estado !== "Cancelado") {
-        setError("Solo se pueden reactivar pedidos cancelados");
-        return false;
-      }
-
-      if (!pedidoActual.estadoAnteriorCancelacion) {
-        setError(
-          "No se puede reactivar este pedido (no tiene estado anterior guardado)",
-        );
+      const validacionReactivacion = puedeReactivarPedido(
+        pedidoActual.estado,
+        pedidoActual.estadoAnteriorCancelacion,
+      );
+      if (!validacionReactivacion.puede) {
+        setError(validacionReactivacion.mensaje);
         return false;
       }
 
@@ -814,7 +812,7 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
       const { error: updateError } = await supabase
         .from("pedidos")
         .update({
-          estado: pedidoActual.estadoAnteriorCancelacion,
+          estado: validacionReactivacion.estadoDestino,
           motivo_cancelacion: null,
           estado_anterior_cancelacion: null,
         })
@@ -831,7 +829,7 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
         entidadNombre: `${pedidoActual.cliente} - ${pedidoActual.articulo}`,
         detalles: {
           estadoAnterior: "Cancelado",
-          estadoNuevo: pedidoActual.estadoAnteriorCancelacion,
+          estadoNuevo: validacionReactivacion.estadoDestino,
           stockActualizado: true,
         },
       });
@@ -841,7 +839,7 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
           p.codigo === codigo
             ? {
                 ...p,
-                estado: pedidoActual.estadoAnteriorCancelacion as EstadoPedido,
+                estado: validacionReactivacion.estadoDestino as EstadoPedido,
                 motivoCancelacion: undefined,
                 estadoAnteriorCancelacion: undefined,
               }
