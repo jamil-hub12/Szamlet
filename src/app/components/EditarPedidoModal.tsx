@@ -19,6 +19,7 @@ import { obtenerItemsPedido } from "../utils/stockManager";
 import { useProductos } from "../contexts/ProductosContext";
 import { obtenerFechaPeruHoy } from "../../utils/fechas";
 import { esValidaFechaMinimaHoy } from "../utils/validaciones";
+import { prepararNotaParaGuardar } from "../utils/notasPedido";
 
 type PedidoItem = {
   id?: string;
@@ -197,7 +198,7 @@ export function EditarPedidoModal({
       const datosBasicos: Parameters<typeof actualizarPedidoConItems>[1] = {
         articulo: articuloDerivado.trim(),
         urgente: form.urgente,
-        notas: form.notas.trim() || undefined,
+        notas: prepararNotaParaGuardar(form.notas),
         fechaEntrega: form.fechaEntrega || undefined,
         ...(esAdmin && !isNaN(montoNumerico) && montoNumerico >= 0
           ? { montoTotal: montoNumerico }
