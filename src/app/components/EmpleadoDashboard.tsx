@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useSearchParams } from "react-router";
+import { filtrarPedidos } from "../utils/pedidosFiltros";
 
 import {
   Scissors,
@@ -1069,25 +1070,12 @@ export function EmpleadoDashboard() {
     }
   };
 
-  const pedidosFiltrados = pedidos
-    .filter((p) => {
-      const matchBusqueda =
-        p.cliente.toLowerCase().includes(busqueda.toLowerCase()) ||
-        p.id.toLowerCase().includes(busqueda.toLowerCase()) ||
-        p.articulo.toLowerCase().includes(busqueda.toLowerCase());
-      const matchEstado = filtroEstado === "Todos" || p.estado === filtroEstado;
-      const matchPrioridad =
-        filtroPrioridad === "Todas" ||
-        (filtroPrioridad === "Urgente" && p.urgente) ||
-        (filtroPrioridad === "Normal" && !p.urgente);
-
-      return matchBusqueda && matchEstado && matchPrioridad;
-    })
-    .sort((a, b) => {
-      const na = parseInt(a.id.replace("PED-", ""), 10);
-      const nb = parseInt(b.id.replace("PED-", ""), 10);
-      return ordenFecha === "desc" ? nb - na : na - nb;
-    });
+  const pedidosFiltrados = filtrarPedidos(pedidos, {
+    busqueda,
+    filtroEstado,
+    filtroPrioridad: filtroPrioridad as "Todas" | "Urgente" | "Normal",
+    ordenFecha,
+  });
 
   const pedidosNormalesFiltrados = pedidosFiltrados.filter(
     (p) => !p.tieneEspeciales,
