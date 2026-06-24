@@ -2,6 +2,10 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useSearchParams } from "react-router";
 import { filtrarPedidos } from "../utils/pedidosFiltros";
+import {
+  filtrarCatalogo,
+  obtenerMensajeCatalogoVacio,
+} from "../utils/catalogoFiltros";
 
 import {
   Scissors,
@@ -1374,21 +1378,9 @@ export function EmpleadoDashboard() {
                       </thead>
                       <tbody>
                         {(() => {
-                          const filtrados = productos.filter(
-                            (p) =>
-                              !busquedaProducto ||
-                              p.modelo
-                                .toLowerCase()
-                                .includes(busquedaProducto.toLowerCase()) ||
-                              p.tela
-                                .toLowerCase()
-                                .includes(busquedaProducto.toLowerCase()) ||
-                              p.disenio
-                                .toLowerCase()
-                                .includes(busquedaProducto.toLowerCase()) ||
-                              p.id
-                                .toLowerCase()
-                                .includes(busquedaProducto.toLowerCase()),
+                          const filtrados = filtrarCatalogo(
+                            productos,
+                            busquedaProducto,
                           );
                           if (filtrados.length === 0)
                             return (
@@ -1397,9 +1389,9 @@ export function EmpleadoDashboard() {
                                   colSpan={7}
                                   className="px-4 py-10 text-center text-muted-foreground text-sm"
                                 >
-                                  {productos.length === 0
-                                    ? "No hay productos registrados aún. Agrega el primero."
-                                    : "No se encontraron productos con ese criterio."}
+                                  {obtenerMensajeCatalogoVacio(
+                                    productos.length,
+                                  )}
                                 </td>
                               </tr>
                             );
