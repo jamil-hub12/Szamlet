@@ -2,7 +2,14 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router";
 import { useSearchParams } from "react-router";
 import { filtrarPedidosAdmin } from "../utils/pedidosFiltros";
-import { calcularMetricasReporte } from "../utils/reportesPedidos";
+import {
+  calcularMetricasReporte,
+  puedeGenerarReportePedidos,
+} from "../utils/reportesPedidos";
+import {
+  calcularMetricasReporteClientes,
+  puedeGenerarReporteClientes,
+} from "../utils/reportesClientes";
 
 import {
   filtrarCatalogo,
@@ -404,6 +411,11 @@ export function AdminDashboard() {
     });
 
   const handleExportarPedidosPDF = async () => {
+    if (!puedeGenerarReportePedidos(pedidosFiltrados)) {
+      alert("No hay pedidos registrados para generar el reporte.");
+      return;
+    }
+
     try {
       const { default: jsPDF } = await import("jspdf");
       const { default: autoTable } = await import("jspdf-autotable");
@@ -594,6 +606,11 @@ export function AdminDashboard() {
 
   // Función para exportar clientes a PDF
   const handleExportarClientesPDF = async () => {
+    if (!puedeGenerarReporteClientes(clientesFiltrados)) {
+      alert("No se encontraron clientes para generar el reporte.");
+      return;
+    }
+
     try {
       const { default: jsPDF } = await import("jspdf");
       const { default: autoTable } = await import("jspdf-autotable");
@@ -625,11 +642,8 @@ export function AdminDashboard() {
       doc.text(`Generado: ${fechaGeneracion}`, 14, 34);
 
       // Estadísticas resumen
-      const totalClientes = clientesFiltrados.length;
-      const clientesConEmail = clientesFiltrados.filter((c) => c.email).length;
-      const clientesConPedidos = clientesFiltrados.filter((c) =>
-        pedidos.some((p) => p.clienteId === c.id),
-      ).length;
+      const { totalClientes, clientesConEmail, clientesConPedidos } =
+        calcularMetricasReporteClientes(clientesFiltrados, pedidos);
 
       doc.setFontSize(11);
       doc.setFont("", "bold");

@@ -394,18 +394,24 @@ export function EmpleadosProvider({ children }: { children: ReactNode }) {
     try {
       const empleadoTarget = empleados.find((emp) => emp.email === email);
 
-      // Crear usuario de autenticación en Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: email,
-        password: password,
-        options: {
-          emailRedirectTo: undefined, // No enviar email de confirmación
-        },
+      // Crear o actualizar el usuario de autenticación vía función serverless
+      // (usa la Service Role Key del lado servidor; NO usar auth.signUp()
+      // aquí porque reemplaza la sesión activa del Administrador en el
+      // navegador y falla con "User already registered" si el email ya
+      // existe en Auth).
+      const respuesta = await fetch("/api/establecer-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
       });
 
-      if (authError) throw authError;
-      if (!authData.user)
-        throw new Error("No se pudo crear el usuario de autenticación");
+      const resultado = await respuesta.json();
+
+      if (!respuesta.ok) {
+        throw new Error(
+          resultado?.error || "No se pudo establecer la contraseña",
+        );
+      }
 
       // Registrar en auditoría
       const usuario = await obtenerUsuarioActual();

@@ -22,3 +22,11 @@ export function calcularMetricasReporte(
 
   return { totalPedidos, pedidosActivos, pedidosUrgentes };
 }
+
+/**
+ * Determina si hay datos suficientes para generar el reporte general
+ * de pedidos. RF43 - Excepción E1: no existen pedidos registrados.
+ */
+export function puedeGenerarReportePedidos(pedidos: Pedido[]): boolean {
+  return pedidos.length > 0;
+}
