@@ -11,6 +11,7 @@ import {
   isEmailJSConfigured,
 } from "../../config/emailjs.config";
 import { supabase } from "../../lib/supabase";
+import { contarNoLeidas } from "../utils/notificacionesFiltros";
 
 type Notificacion = {
   id: string;
@@ -322,7 +323,7 @@ export function NotificacionesProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const noLeidas = notificaciones.filter((n) => !n.leida).length;
+  const noLeidas = contarNoLeidas(notificaciones);
 
   return (
     <NotificacionesContext.Provider
