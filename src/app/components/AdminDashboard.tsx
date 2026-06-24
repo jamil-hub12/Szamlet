@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router";
 import { useSearchParams } from "react-router";
 import { filtrarPedidosAdmin } from "../utils/pedidosFiltros";
+import { calcularMetricasReporte } from "../utils/reportesPedidos";
+
 import {
   filtrarCatalogo,
   obtenerMensajeCatalogoVacio,
@@ -436,11 +438,8 @@ export function AdminDashboard() {
       doc.text(`Generado: ${fechaGeneracion}`, 14, 34);
 
       // Estadísticas resumen
-      const totalPedidos = pedidosFiltrados.length;
-      const pedidosActivos = pedidosFiltrados.filter(
-        (p) => p.estado !== "Entregado" && p.estado !== "Cancelado",
-      ).length;
-      const pedidosUrgentes = pedidosFiltrados.filter((p) => p.urgente).length;
+      const { totalPedidos, pedidosActivos, pedidosUrgentes } =
+        calcularMetricasReporte(pedidosFiltrados);
 
       doc.setFontSize(11);
       doc.setFont("", "bold");
