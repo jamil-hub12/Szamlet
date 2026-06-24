@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import type { Pedido, EstadoPedido } from "../contexts/PedidosContext";
 import { DetallePedidoModal } from "./DetallePedidoModal";
+import { tieneNotasParaMostrar } from "../utils/notasPedido";
 
 type Cliente = {
   id: string;
@@ -319,7 +320,7 @@ export function HistorialClienteModal({
                       <Calendar className="w-3.5 h-3.5" />
                       <span>{pedido.fecha}</span>
                     </div>
-                    {pedido.notas && (
+                    {tieneNotasParaMostrar(pedido.notas) && (
                       <div className="flex items-center gap-1.5">
                         <span className="text-muted-foreground/50">•</span>
                         <span className="truncate max-w-[200px]">

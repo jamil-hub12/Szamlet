@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useSearchParams } from "react-router";
+import { filtrarPedidos } from "../utils/pedidosFiltros";
+import { obtenerEstadoPagoPedido } from "../utils/estadoPagoPedido";
+import {
+  filtrarCatalogo,
+  obtenerMensajeCatalogoVacio,
+} from "../utils/catalogoFiltros";
 
 import {
   Scissors,
@@ -1069,25 +1075,12 @@ export function EmpleadoDashboard() {
     }
   };
 
-  const pedidosFiltrados = pedidos
-    .filter((p) => {
-      const matchBusqueda =
-        p.cliente.toLowerCase().includes(busqueda.toLowerCase()) ||
-        p.id.toLowerCase().includes(busqueda.toLowerCase()) ||
-        p.articulo.toLowerCase().includes(busqueda.toLowerCase());
-      const matchEstado = filtroEstado === "Todos" || p.estado === filtroEstado;
-      const matchPrioridad =
-        filtroPrioridad === "Todas" ||
-        (filtroPrioridad === "Urgente" && p.urgente) ||
-        (filtroPrioridad === "Normal" && !p.urgente);
-
-      return matchBusqueda && matchEstado && matchPrioridad;
-    })
-    .sort((a, b) => {
-      const na = parseInt(a.id.replace("PED-", ""), 10);
-      const nb = parseInt(b.id.replace("PED-", ""), 10);
-      return ordenFecha === "desc" ? nb - na : na - nb;
-    });
+  const pedidosFiltrados = filtrarPedidos(pedidos, {
+    busqueda,
+    filtroEstado,
+    filtroPrioridad: filtroPrioridad as "Todas" | "Urgente" | "Normal",
+    ordenFecha,
+  });
 
   const pedidosNormalesFiltrados = pedidosFiltrados.filter(
     (p) => !p.tieneEspeciales,
@@ -1386,21 +1379,9 @@ export function EmpleadoDashboard() {
                       </thead>
                       <tbody>
                         {(() => {
-                          const filtrados = productos.filter(
-                            (p) =>
-                              !busquedaProducto ||
-                              p.modelo
-                                .toLowerCase()
-                                .includes(busquedaProducto.toLowerCase()) ||
-                              p.tela
-                                .toLowerCase()
-                                .includes(busquedaProducto.toLowerCase()) ||
-                              p.disenio
-                                .toLowerCase()
-                                .includes(busquedaProducto.toLowerCase()) ||
-                              p.id
-                                .toLowerCase()
-                                .includes(busquedaProducto.toLowerCase()),
+                          const filtrados = filtrarCatalogo(
+                            productos,
+                            busquedaProducto,
                           );
                           if (filtrados.length === 0)
                             return (
@@ -1409,9 +1390,9 @@ export function EmpleadoDashboard() {
                                   colSpan={7}
                                   className="px-4 py-10 text-center text-muted-foreground text-sm"
                                 >
-                                  {productos.length === 0
-                                    ? "No hay productos registrados aún. Agrega el primero."
-                                    : "No se encontraron productos con ese criterio."}
+                                  {obtenerMensajeCatalogoVacio(
+                                    productos.length,
+                                  )}
                                 </td>
                               </tr>
                             );
@@ -1802,11 +1783,14 @@ export function EmpleadoDashboard() {
                           </td>
                           <td className="px-4 py-3">
                             {(() => {
-                              const montoTotal = p.montoTotal || 0;
-                              const montoPagado = p.montoPagado || 0;
-                              const pendiente = montoTotal - montoPagado;
+                              const estadoPagoCalculado =
+                                obtenerEstadoPagoPedido(
+                                  p.estado,
+                                  p.montoTotal,
+                                  p.montoPagado,
+                                );
 
-                              if (p.estado === "Cancelado") {
+                              if (estadoPagoCalculado === "N/A") {
                                 return (
                                   <span className="text-xs text-muted-foreground">
                                     -
@@ -1814,7 +1798,7 @@ export function EmpleadoDashboard() {
                                 );
                               }
 
-                              if (pendiente <= 0 && montoTotal > 0) {
+                              if (estadoPagoCalculado === "Pagado") {
                                 return (
                                   <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs border bg-green-50 text-green-700 border-green-200">
                                     <CheckCircle className="w-3 h-3" />
@@ -1823,7 +1807,7 @@ export function EmpleadoDashboard() {
                                 );
                               }
 
-                              if (montoPagado > 0 && pendiente > 0) {
+                              if (estadoPagoCalculado === "Parcial") {
                                 return (
                                   <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs border bg-yellow-50 text-yellow-700 border-yellow-200">
                                     <Clock className="w-3 h-3" />

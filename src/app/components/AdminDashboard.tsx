@@ -1,6 +1,11 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router";
 import { useSearchParams } from "react-router";
+import { filtrarPedidosAdmin } from "../utils/pedidosFiltros";
+import {
+  filtrarCatalogo,
+  obtenerMensajeCatalogoVacio,
+} from "../utils/catalogoFiltros";
 import {
   Scissors,
   BarChart2,
@@ -71,6 +76,7 @@ import {
   formatearFechaISO,
   formatearFechaCorta,
 } from "../../utils/fechas";
+import { tieneNotasParaMostrar } from "../utils/notasPedido";
 
 const estadoColor: Record<string, string> = {
   Recibido: "bg-indigo-100 text-indigo-700 border-indigo-200",
@@ -1029,26 +1035,13 @@ export function AdminDashboard() {
   });
 
   // Filtrado de pedidos
-  const pedidosFiltrados = pedidos
-    .filter((p) => {
-      if (p.tieneEspeciales) return false;
-      const matchEstado =
-        filtroEstadoPedidos === "Todos" || p.estado === filtroEstadoPedidos;
-      const matchPrioridad =
-        filtroPrioridadPedidos === "Todas" ||
-        (filtroPrioridadPedidos === "Urgente" && p.urgente) ||
-        (filtroPrioridadPedidos === "Normal" && !p.urgente);
-      const fechaPedido = formatearFechaISO(new Date(p.fecha));
-      const matchDesde = !fechaDesdePedidos || fechaPedido >= fechaDesdePedidos;
-      const matchHasta = !fechaHastaPedidos || fechaPedido <= fechaHastaPedidos;
-
-      return matchEstado && matchPrioridad && matchDesde && matchHasta;
-    })
-    .sort((a, b) => {
-      const dateA = new Date(a.fecha).getTime();
-      const dateB = new Date(b.fecha).getTime();
-      return ordenFechaPedidos === "desc" ? dateB - dateA : dateA - dateB;
-    });
+  const pedidosFiltrados = filtrarPedidosAdmin(pedidos, {
+    filtroEstado: filtroEstadoPedidos,
+    filtroPrioridad: filtroPrioridadPedidos as "Todas" | "Urgente" | "Normal",
+    fechaDesde: fechaDesdePedidos,
+    fechaHasta: fechaHastaPedidos,
+    ordenFecha: ordenFechaPedidos,
+  });
 
   // Pedidos con productos especiales (fuera de catálogo) — filtrado por columna BD
   const [busquedaEspeciales, setBusquedaEspeciales] = useState("");
@@ -2434,7 +2427,7 @@ export function AdminDashboard() {
                               </div>
 
                               {/* Notas del cliente */}
-                              {pedido.notas && (
+                              {tieneNotasParaMostrar(pedido.notas) && (
                                 <p className="text-xs text-muted-foreground italic border-t border-border pt-2">
                                   {pedido.notas}
                                 </p>
@@ -2547,21 +2540,9 @@ export function AdminDashboard() {
                     </thead>
                     <tbody>
                       {(() => {
-                        const filtrados = productos.filter(
-                          (p) =>
-                            !busquedaProducto ||
-                            p.modelo
-                              .toLowerCase()
-                              .includes(busquedaProducto.toLowerCase()) ||
-                            p.tela
-                              .toLowerCase()
-                              .includes(busquedaProducto.toLowerCase()) ||
-                            p.disenio
-                              .toLowerCase()
-                              .includes(busquedaProducto.toLowerCase()) ||
-                            p.id
-                              .toLowerCase()
-                              .includes(busquedaProducto.toLowerCase()),
+                        const filtrados = filtrarCatalogo(
+                          productos,
+                          busquedaProducto,
                         );
                         if (filtrados.length === 0)
                           return (
@@ -2570,9 +2551,7 @@ export function AdminDashboard() {
                                 colSpan={7}
                                 className="px-4 py-10 text-center text-muted-foreground text-sm"
                               >
-                                {productos.length === 0
-                                  ? "No hay productos registrados aún. Agrega el primero."
-                                  : "No se encontraron productos con ese criterio."}
+                                {obtenerMensajeCatalogoVacio(productos.length)}
                               </td>
                             </tr>
                           );
