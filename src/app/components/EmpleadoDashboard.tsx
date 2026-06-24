@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useSearchParams } from "react-router";
 import { filtrarPedidos } from "../utils/pedidosFiltros";
+import { obtenerEstadoPagoPedido } from "../utils/estadoPagoPedido";
 import {
   filtrarCatalogo,
   obtenerMensajeCatalogoVacio,
@@ -1782,11 +1783,14 @@ export function EmpleadoDashboard() {
                           </td>
                           <td className="px-4 py-3">
                             {(() => {
-                              const montoTotal = p.montoTotal || 0;
-                              const montoPagado = p.montoPagado || 0;
-                              const pendiente = montoTotal - montoPagado;
+                              const estadoPagoCalculado =
+                                obtenerEstadoPagoPedido(
+                                  p.estado,
+                                  p.montoTotal,
+                                  p.montoPagado,
+                                );
 
-                              if (p.estado === "Cancelado") {
+                              if (estadoPagoCalculado === "N/A") {
                                 return (
                                   <span className="text-xs text-muted-foreground">
                                     -
@@ -1794,7 +1798,7 @@ export function EmpleadoDashboard() {
                                 );
                               }
 
-                              if (pendiente <= 0 && montoTotal > 0) {
+                              if (estadoPagoCalculado === "Pagado") {
                                 return (
                                   <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs border bg-green-50 text-green-700 border-green-200">
                                     <CheckCircle className="w-3 h-3" />
@@ -1803,7 +1807,7 @@ export function EmpleadoDashboard() {
                                 );
                               }
 
-                              if (montoPagado > 0 && pendiente > 0) {
+                              if (estadoPagoCalculado === "Parcial") {
                                 return (
                                   <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs border bg-yellow-50 text-yellow-700 border-yellow-200">
                                     <Clock className="w-3 h-3" />
