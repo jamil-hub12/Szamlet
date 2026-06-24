@@ -10,6 +10,10 @@ import {
   calcularMetricasReporteClientes,
   puedeGenerarReporteClientes,
 } from "../utils/reportesClientes";
+import {
+  filtrarEmpleados,
+  obtenerMensajeEmpleadosVacio,
+} from "../utils/empleadosFiltros";
 
 import {
   filtrarCatalogo,
@@ -1633,21 +1637,8 @@ export function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {empleados
-                      .filter(
-                        (e) =>
-                          !busquedaEmpleado ||
-                          e.nombre
-                            .toLowerCase()
-                            .includes(busquedaEmpleado.toLowerCase()) ||
-                          e.email
-                            .toLowerCase()
-                            .includes(busquedaEmpleado.toLowerCase()) ||
-                          e.id
-                            .toLowerCase()
-                            .includes(busquedaEmpleado.toLowerCase()),
-                      )
-                      .map((e, i) => (
+                    {filtrarEmpleados(empleados, busquedaEmpleado).map(
+                      (e, i) => (
                         <tr
                           key={e.id}
                           className={`border-b border-border last:border-0 hover:bg-accent/40 transition ${i % 2 === 0 ? "" : "bg-muted/20"}`}
@@ -1738,7 +1729,8 @@ export function AdminDashboard() {
                             </div>
                           </td>
                         </tr>
-                      ))}
+                      ),
+                    )}
                     {loadingEmpleados && (
                       <tr>
                         <td
@@ -1750,16 +1742,18 @@ export function AdminDashboard() {
                         </td>
                       </tr>
                     )}
-                    {!loadingEmpleados && empleados.length === 0 && (
-                      <tr>
-                        <td
-                          colSpan={8}
-                          className="px-4 py-10 text-center text-muted-foreground text-sm"
-                        >
-                          No hay empleados registrados. Agrega el primero.
-                        </td>
-                      </tr>
-                    )}
+                    {!loadingEmpleados &&
+                      filtrarEmpleados(empleados, busquedaEmpleado).length ===
+                        0 && (
+                        <tr>
+                          <td
+                            colSpan={8}
+                            className="px-4 py-10 text-center text-muted-foreground text-sm"
+                          >
+                            {obtenerMensajeEmpleadosVacio(empleados.length)}
+                          </td>
+                        </tr>
+                      )}
                   </tbody>
                 </table>
               </div>
