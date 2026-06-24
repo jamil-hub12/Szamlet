@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { validarPago } from "../utils/validacionPago";
 import {
   X,
   Coins,
@@ -103,33 +104,27 @@ export function RegistrarPagoModal({
   };
 
   const handleGuardar = async () => {
+    const montoTotalParaValidar = parseFloat(
+      montoTotalPedido || montoTotal.toString(),
+    );
+    const validacion = validarPago(
+      monto,
+      montoTotalParaValidar,
+      montoPagado,
+      pedidoVencido,
+      esPedidoSinPrecio,
+    );
+
+    if (!validacion.valido) {
+      const mensajeFinal =
+        validacion.montoRestante !== undefined
+          ? `${validacion.mensaje} (${formatearSoles(validacion.montoRestante)})`
+          : validacion.mensaje;
+      alert(`❌ ${mensajeFinal}`);
+      return;
+    }
+
     const montoNumerico = parseFloat(monto);
-
-    if (isNaN(montoNumerico) || montoNumerico <= 0) {
-      alert("❌ El monto del pago debe ser mayor a 0");
-      return;
-    }
-
-    // Validar si el pedido está vencido
-    if (pedidoVencido) {
-      alert(
-        "❌ No se puede registrar pago\n\nEste pedido está vencido (fecha de entrega pasada) y no se pueden registrar pagos sobre pedidos vencidos.",
-      );
-      return;
-    }
-
-    // Validar solo si no es un pedido sin precio
-    if (!esPedidoSinPrecio) {
-      const montoRestanteActual =
-        parseFloat(montoTotalPedido || montoTotal.toString()) - montoPagado;
-      if (montoNumerico > montoRestanteActual) {
-        alert(
-          `❌ El monto no puede ser mayor al saldo pendiente (${formatearSoles(montoRestanteActual)})`,
-        );
-        return;
-      }
-    }
-
     setGuardando(true);
 
     const exito = await registrarPago({
