@@ -265,3 +265,31 @@ export function generarMensajeCambioEstado(
     `El pedido ${codigoPedido} cambió de "${estadoAnterior}" a "${estadoNuevo}".`
   );
 }
+// RF49 — Trazabilidad de Pedidos
+
+/** Secuencia de etapas principales del flujo (excluyendo estados alternativos) */
+export const ETAPAS_PRINCIPALES: EstadoPedido[] = [
+  "Recibido",
+  "En confección",
+  "Listo para entrega",
+  "Entregado",
+];
+
+/**
+ * Dado el estado actual, devuelve las etapas principales ya completadas
+ * (incluyendo la actual si pertenece al flujo normal).
+ */
+export function obtenerEtapasCompletadas(
+  estadoActual: EstadoPedido,
+): EstadoPedido[] {
+  const indexActual = ETAPAS_PRINCIPALES.indexOf(estadoActual);
+  if (indexActual === -1) return [];
+  return ETAPAS_PRINCIPALES.slice(0, indexActual + 1);
+}
+
+/**
+ * Indica si un estado pertenece al flujo principal de trazabilidad
+ */
+export function estaEnFlujoNormal(estado: EstadoPedido): boolean {
+  return ETAPAS_PRINCIPALES.includes(estado);
+}

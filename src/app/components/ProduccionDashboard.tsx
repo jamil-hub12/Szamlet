@@ -25,6 +25,11 @@ import { useCurrentUser } from "../hooks/useCurrentUser";
 import { AgregarStockModal } from "./AgregarStockModal";
 import { supabase } from "../../lib/supabase";
 import { obtenerFechaHoraPeruISO } from "../../utils/fechas";
+import {
+  tieneStockFaltante as tieneStockFaltanteUtil,
+  contarColoresSinStock as contarColoresSinStockUtil,
+  obtenerStockTotal as obtenerStockTotalUtil,
+} from "../utils/inventarioProduccion";
 
 // ─── Tipos ──────────────────────────────────────────────────────────────────
 
@@ -266,20 +271,12 @@ export function ProduccionDashboard() {
   const [confirmando, setConfirmando] = useState<string | null>(null); // itemId en proceso
 
   // --- Catálogo helpers ---
-  const tieneStockFaltante = (p: ProductoCatalogo) =>
-    p.tallas.some((t) => t.colores.some((c) => c.stock === 0));
+  const tieneStockFaltante = (p: ProductoCatalogo) => tieneStockFaltanteUtil(p);
 
   const contarColoresSinStock = (p: ProductoCatalogo) =>
-    p.tallas.reduce(
-      (acc, t) => acc + t.colores.filter((c) => c.stock === 0).length,
-      0,
-    );
+    contarColoresSinStockUtil(p);
 
-  const obtenerStockTotal = (p: ProductoCatalogo) =>
-    p.tallas.reduce(
-      (acc, t) => acc + t.colores.reduce((s, c) => s + c.stock, 0),
-      0,
-    );
+  const obtenerStockTotal = (p: ProductoCatalogo) => obtenerStockTotalUtil(p);
 
   const productosFiltrados = productos.filter((p) => {
     const match =

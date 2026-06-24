@@ -3,6 +3,19 @@ import { useNavigate } from "react-router";
 import { useSearchParams } from "react-router";
 import { filtrarPedidosAdmin } from "../utils/pedidosFiltros";
 import {
+  calcularMetricasReporte,
+  puedeGenerarReportePedidos,
+} from "../utils/reportesPedidos";
+import {
+  calcularMetricasReporteClientes,
+  puedeGenerarReporteClientes,
+} from "../utils/reportesClientes";
+import {
+  filtrarEmpleados,
+  obtenerMensajeEmpleadosVacio,
+} from "../utils/empleadosFiltros";
+
+import {
   filtrarCatalogo,
   obtenerMensajeCatalogoVacio,
 } from "../utils/catalogoFiltros";
@@ -402,6 +415,11 @@ export function AdminDashboard() {
     });
 
   const handleExportarPedidosPDF = async () => {
+    if (!puedeGenerarReportePedidos(pedidosFiltrados)) {
+      alert("No hay pedidos registrados para generar el reporte.");
+      return;
+    }
+
     try {
       const { default: jsPDF } = await import("jspdf");
       const { default: autoTable } = await import("jspdf-autotable");
@@ -436,11 +454,8 @@ export function AdminDashboard() {
       doc.text(`Generado: ${fechaGeneracion}`, 14, 34);
 
       // Estadísticas resumen
-      const totalPedidos = pedidosFiltrados.length;
-      const pedidosActivos = pedidosFiltrados.filter(
-        (p) => p.estado !== "Entregado" && p.estado !== "Cancelado",
-      ).length;
-      const pedidosUrgentes = pedidosFiltrados.filter((p) => p.urgente).length;
+      const { totalPedidos, pedidosActivos, pedidosUrgentes } =
+        calcularMetricasReporte(pedidosFiltrados);
 
       doc.setFontSize(11);
       doc.setFont("", "bold");
@@ -595,6 +610,11 @@ export function AdminDashboard() {
 
   // Función para exportar clientes a PDF
   const handleExportarClientesPDF = async () => {
+    if (!puedeGenerarReporteClientes(clientesFiltrados)) {
+      alert("No se encontraron clientes para generar el reporte.");
+      return;
+    }
+
     try {
       const { default: jsPDF } = await import("jspdf");
       const { default: autoTable } = await import("jspdf-autotable");
@@ -626,11 +646,8 @@ export function AdminDashboard() {
       doc.text(`Generado: ${fechaGeneracion}`, 14, 34);
 
       // Estadísticas resumen
-      const totalClientes = clientesFiltrados.length;
-      const clientesConEmail = clientesFiltrados.filter((c) => c.email).length;
-      const clientesConPedidos = clientesFiltrados.filter((c) =>
-        pedidos.some((p) => p.clienteId === c.id),
-      ).length;
+      const { totalClientes, clientesConEmail, clientesConPedidos } =
+        calcularMetricasReporteClientes(clientesFiltrados, pedidos);
 
       doc.setFontSize(11);
       doc.setFont("", "bold");
@@ -1620,21 +1637,8 @@ export function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {empleados
-                      .filter(
-                        (e) =>
-                          !busquedaEmpleado ||
-                          e.nombre
-                            .toLowerCase()
-                            .includes(busquedaEmpleado.toLowerCase()) ||
-                          e.email
-                            .toLowerCase()
-                            .includes(busquedaEmpleado.toLowerCase()) ||
-                          e.id
-                            .toLowerCase()
-                            .includes(busquedaEmpleado.toLowerCase()),
-                      )
-                      .map((e, i) => (
+                    {filtrarEmpleados(empleados, busquedaEmpleado).map(
+                      (e, i) => (
                         <tr
                           key={e.id}
                           className={`border-b border-border last:border-0 hover:bg-accent/40 transition ${i % 2 === 0 ? "" : "bg-muted/20"}`}
@@ -1725,7 +1729,8 @@ export function AdminDashboard() {
                             </div>
                           </td>
                         </tr>
-                      ))}
+                      ),
+                    )}
                     {loadingEmpleados && (
                       <tr>
                         <td
@@ -1737,16 +1742,18 @@ export function AdminDashboard() {
                         </td>
                       </tr>
                     )}
-                    {!loadingEmpleados && empleados.length === 0 && (
-                      <tr>
-                        <td
-                          colSpan={8}
-                          className="px-4 py-10 text-center text-muted-foreground text-sm"
-                        >
-                          No hay empleados registrados. Agrega el primero.
-                        </td>
-                      </tr>
-                    )}
+                    {!loadingEmpleados &&
+                      filtrarEmpleados(empleados, busquedaEmpleado).length ===
+                        0 && (
+                        <tr>
+                          <td
+                            colSpan={8}
+                            className="px-4 py-10 text-center text-muted-foreground text-sm"
+                          >
+                            {obtenerMensajeEmpleadosVacio(empleados.length)}
+                          </td>
+                        </tr>
+                      )}
                   </tbody>
                 </table>
               </div>

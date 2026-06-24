@@ -12,7 +12,7 @@ import {
   Lock,
 } from "lucide-react";
 
-type Empleado = {
+export type Empleado = {
   id: string;
   nombre: string;
   email: string;
@@ -22,7 +22,7 @@ type Empleado = {
   estado: "Activo" | "Licencia" | "Inactivo";
 };
 
-type FormData = {
+export type FormData = {
   nombre: string;
   email: string;
   telefono: string;
@@ -31,11 +31,11 @@ type FormData = {
   confirmPassword: string;
 };
 
-type FormErrors = Partial<Record<keyof FormData, string>>;
+export type FormErrors = Partial<Record<keyof FormData, string>>;
 
 const rolesDisponibles = ["Atención al cliente", "Administrador", "Producción"];
 
-function validateForm(
+export function validateForm(
   data: FormData,
   empleadosExistentes: Empleado[] = [],
 ): FormErrors {

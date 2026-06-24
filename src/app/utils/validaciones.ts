@@ -167,3 +167,19 @@ export type ErroresValidacion = Record<string, string>;
 export function normalizarTexto(texto: string): string {
   return texto.trim().replace(/\s+/g, " ");
 }
+
+// RF48 — Alertas de Pedidos Críticos
+export const DIAS_UMBRAL_CRITICO = 3;
+
+/**
+ * Indica si un pedido es crítico (se entrega en <= DIAS_UMBRAL_CRITICO días
+ * o ya venció pero aún no está en estado Vencido/Entregado/Cancelado)
+ */
+export function esPedidoCritico(
+  fechaEntrega?: string,
+  estado?: string,
+): boolean {
+  const dias = diasHastaVencimiento(fechaEntrega, estado);
+  if (dias === null) return false;
+  return dias <= DIAS_UMBRAL_CRITICO;
+}
