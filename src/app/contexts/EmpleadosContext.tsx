@@ -176,6 +176,14 @@ export function EmpleadosProvider({ children }: { children: ReactNode }) {
     password: string,
   ): Promise<Empleado | null> => {
     try {
+      // Guardamos la sesión del admin ANTES de crear el nuevo usuario.
+      // supabase.auth.signUp() reemplaza la sesión activa del navegador
+      // con la del usuario recién creado — esto restaura la sesión del
+      // admin inmediatamente después para que no quede "logueado" como
+      // el empleado que acaba de registrar.
+      const { data: sesionActual } = await supabase.auth.getSession();
+      const sesionAdmin = sesionActual.session;
+
       // Paso 1: Crear usuario de autenticación en Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
@@ -192,6 +200,14 @@ export function EmpleadosProvider({ children }: { children: ReactNode }) {
       if (authError) throw authError;
       if (!authData.user)
         throw new Error("No se pudo crear el usuario de autenticación");
+
+      // Restaurar inmediatamente la sesión del admin
+      if (sesionAdmin) {
+        await supabase.auth.setSession({
+          access_token: sesionAdmin.access_token,
+          refresh_token: sesionAdmin.refresh_token,
+        });
+      }
 
       // Paso 2: Generar código único para el empleado
       const maxCodigo = empleados.reduce((max, emp) => {
