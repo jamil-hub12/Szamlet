@@ -11,7 +11,10 @@ import {
   isEmailJSConfigured,
 } from "../../config/emailjs.config";
 import { supabase } from "../../lib/supabase";
-import { contarNoLeidas } from "../utils/notificacionesFiltros";
+import {
+  contarNoLeidas,
+  tieneModificacionesRecientes,
+} from "../utils/notificacionesFiltros";
 
 type Notificacion = {
   id: string;
@@ -36,6 +39,7 @@ type NotificacionesContextType = {
   eliminarNotificacion: (id: string) => void;
   limpiarNotificaciones: () => void;
   noLeidas: number;
+  hayModificacionesRecientes: boolean;
   enviarEmailCambioEstado: (data: {
     clienteNombre: string;
     clienteEmail: string;
@@ -324,6 +328,7 @@ export function NotificacionesProvider({ children }: { children: ReactNode }) {
   };
 
   const noLeidas = contarNoLeidas(notificaciones);
+  const hayModificacionesRecientes = tieneModificacionesRecientes(notificaciones);
 
   return (
     <NotificacionesContext.Provider
@@ -335,6 +340,7 @@ export function NotificacionesProvider({ children }: { children: ReactNode }) {
         eliminarNotificacion,
         limpiarNotificaciones,
         noLeidas,
+        hayModificacionesRecientes,
         enviarEmailCambioEstado,
       }}
     >

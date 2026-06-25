@@ -1,4 +1,4 @@
-import { obtenerFechaPeruHoy } from "../../utils/fechas";
+import { obtenerFechaPeruHoy } from "./fechas";
 
 /**
  * Verifica si un pedido está vencido (fecha de entrega pasada)
@@ -98,10 +98,10 @@ export function esDNIValido(dni: string): boolean {
 }
 
 /**
- * Valida RUC peruano (11 dígitos)
+ * Valida RUC peruano (11 dígitos, debe iniciar con 10 o 20)
  */
 export function esRUCValido(ruc: string): boolean {
-  return /^\d{11}$/.test(ruc.replace(/[^\d]/g, ""));
+  return /^(10|20)\d{9}$/.test(ruc.replace(/[^\d]/g, ""));
 }
 
 /**
@@ -182,4 +182,20 @@ export function esPedidoCritico(
   const dias = diasHastaVencimiento(fechaEntrega, estado);
   if (dias === null) return false;
   return dias <= DIAS_UMBRAL_CRITICO;
+}
+
+/**
+ * Indica si un pedido está próximo a vencer: NO está vencido todavía,
+ * pero le quedan entre 1 y DIAS_UMBRAL_CRITICO días.
+ * Extraído de DetallePedidoModal.tsx y RegistrarPagoModal.tsx, donde esta
+ * misma condición estaba duplicada de forma idéntica.
+ */
+export function esPedidoProximoAVencer(
+  fechaEntrega?: string,
+  estado?: string,
+): boolean {
+  if (esPedidoVencido(fechaEntrega, estado)) return false;
+  const dias = diasHastaVencimiento(fechaEntrega, estado);
+  if (dias === null) return false;
+  return dias > 0 && dias <= DIAS_UMBRAL_CRITICO;
 }
