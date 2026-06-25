@@ -11,7 +11,7 @@ import { useAuditoria } from "./AuditoriaContext";
 import {
   obtenerFechaPeruHoy,
   obtenerFechaHoraPeruISO,
-} from "../../utils/fechas";
+} from "../utils/fechas";
 
 type Pago = {
   id: string;

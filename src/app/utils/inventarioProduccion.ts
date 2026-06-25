@@ -6,6 +6,7 @@ export type ColorStock = {
 };
 
 export type TallaStock = {
+  id?: string;
   talla: string;
   colores: ColorStock[];
 };
@@ -47,13 +48,16 @@ export function obtenerStockTotal(p: ProductoInventario): number {
 }
 
 /**
- * Filtra productos según el filtro de producción seleccionado
+ * Filtra productos según el filtro de producción seleccionado.
+ * Genérica: preserva el tipo real de entrada (ej. ProductoCatalogo en
+ * ProduccionDashboard.tsx), siempre que extienda la forma mínima de
+ * ProductoInventario.
  */
-export function filtrarProductosInventario(
-  productos: ProductoInventario[],
+export function filtrarProductosInventario<T extends ProductoInventario>(
+  productos: T[],
   filtro: "todos" | "incompletos" | "completos",
   busqueda = "",
-): ProductoInventario[] {
+): T[] {
   return productos.filter((p) => {
     const matchBusqueda =
       !busqueda ||

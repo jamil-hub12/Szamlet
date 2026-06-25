@@ -1,5 +1,5 @@
 import type { Pedido } from "../contexts/PedidosContext";
-import { formatearFechaISO } from "../../utils/fechas";
+import { formatearFechaISO } from "./fechas";
 
 export function filtrarPedidos(
   pedidos: Pedido[],

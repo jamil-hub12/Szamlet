@@ -25,7 +25,7 @@ import {
 import {
   obtenerFechaPeruHoy,
   obtenerFechaHoraPeruISO,
-} from "../../utils/fechas";
+} from "../utils/fechas";
 
 type PedidoDB = Database["public"]["Tables"]["pedidos"]["Row"];
 type PedidoInsert = Database["public"]["Tables"]["pedidos"]["Insert"];

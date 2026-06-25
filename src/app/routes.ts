@@ -1,10 +1,10 @@
 import { createBrowserRouter } from "react-router";
-import { LoginPage } from "./components/LoginPage";
-import { EmpleadoDashboard } from "./components/EmpleadoDashboard";
-import { AdminDashboard } from "./components/AdminDashboard";
-import { ProduccionDashboard } from "./components/ProduccionDashboard";
-import { ForgotPasswordPage } from "./path/to/ForgotPasswordPage";
-import { ResetPasswordPage } from "./path/to/ResetPasswordPage";
+import { LoginPage } from "./components/auth/LoginPage";
+import { EmpleadoDashboard } from "./components/dashboards/EmpleadoDashboard";
+import { AdminDashboard } from "./components/dashboards/AdminDashboard";
+import { ProduccionDashboard } from "./components/dashboards/ProduccionDashboard";
+import { ForgotPasswordPage } from "./components/auth/ForgotPasswordPage";
+import { ResetPasswordPage } from "./components/auth/ResetPasswordPage";
 
 export const router = createBrowserRouter([
   { path: "/", Component: LoginPage },
