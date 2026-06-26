@@ -22,10 +22,7 @@ import {
   actualizarStockPedidoCreado,
   type PedidoItemData,
 } from "../utils/stockManager";
-import {
-  obtenerFechaPeruHoy,
-  obtenerFechaHoraPeruISO,
-} from "../utils/fechas";
+import { obtenerFechaPeruHoy, obtenerFechaHoraPeruISO } from "../utils/fechas";
 
 type PedidoDB = Database["public"]["Tables"]["pedidos"]["Row"];
 type PedidoInsert = Database["public"]["Tables"]["pedidos"]["Insert"];
@@ -75,6 +72,8 @@ export type Pedido = {
   tipoPedido?: "venta_directa" | "fabricar";
   notificarEstados?: string[];
   items?: PedidoItem[];
+  /** Timestamp de última modificación en BD — usado para detección de conflicto (RF-33 CP05) */
+  updatedAt?: string;
 };
 
 type PedidosContextType = {
@@ -213,6 +212,7 @@ export function PedidosProvider({ children }: { children: ReactNode }) {
               "Entregado",
             ],
             items: itemsPedido.length > 0 ? itemsPedido : undefined,
+            updatedAt: pedido.updated_at,
           };
         },
       );

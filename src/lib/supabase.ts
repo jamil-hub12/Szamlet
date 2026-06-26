@@ -100,6 +100,29 @@ export type Database = {
           updated_at?: string;
         };
       };
+      pedidos_bloqueos: {
+        Row: {
+          pedido_codigo: string;
+          usuario_codigo: string;
+          usuario_nombre: string;
+          expira_en: string;
+          created_at: string;
+        };
+        Insert: {
+          pedido_codigo: string;
+          usuario_codigo: string;
+          usuario_nombre: string;
+          expira_en: string;
+          created_at?: string;
+        };
+        Update: {
+          pedido_codigo?: string;
+          usuario_codigo?: string;
+          usuario_nombre?: string;
+          expira_en?: string;
+          created_at?: string;
+        };
+      };
       pedidos: {
         Row: {
           id: string;
