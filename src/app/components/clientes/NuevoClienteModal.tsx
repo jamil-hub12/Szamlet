@@ -22,6 +22,7 @@ import {
   esDireccionValida,
   esRUCValido,
   normalizarTexto,
+  detectarClienteDuplicado,
 } from "../../utils/validaciones";
 
 type FormData = {
@@ -125,16 +126,8 @@ export function NuevoClienteModal({
   const [nuevoCliente, setNuevoCliente] = useState<Cliente | null>(null);
 
   // Detección de duplicados en tiempo real solo para DNI y RUC
-  const dniTrim = form.dni.trim();
-  const rucTrim = form.ruc.trim();
-  const dupDni =
-    dniTrim.length === 8
-      ? clientesExistentes.find((c) => c.dni === dniTrim)
-      : undefined;
-  const dupRuc =
-    rucTrim.length === 11
-      ? clientesExistentes.find((c) => c.ruc === rucTrim)
-      : undefined;
+  const { dniDuplicado: dupDni, rucDuplicado: dupRuc } =
+    detectarClienteDuplicado(clientesExistentes, form.dni, form.ruc);
 
   const handleChange = (field: keyof FormData, value: string) => {
     let finalValue = value;

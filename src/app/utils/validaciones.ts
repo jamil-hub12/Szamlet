@@ -168,6 +168,127 @@ export function normalizarTexto(texto: string): string {
   return texto.trim().replace(/\s+/g, " ");
 }
 
+// RF01 — Registro de Clientes
+
+type ClienteParaDuplicado = {
+  dni: string;
+  ruc?: string | null;
+};
+
+/**
+ * Busca si el DNI o RUC ingresados ya pertenecen a otro cliente registrado.
+ * Solo compara DNI cuando tiene 8 dígitos y RUC cuando tiene 11, igual que
+ * la detección en tiempo real del formulario de Nuevo Cliente.
+ */
+export function detectarClienteDuplicado<T extends ClienteParaDuplicado>(
+  clientesExistentes: T[],
+  dni: string,
+  ruc: string,
+): { dniDuplicado?: T; rucDuplicado?: T } {
+  const dniTrim = dni.trim();
+  const rucTrim = ruc.trim();
+
+  const dniDuplicado =
+    dniTrim.length === 8
+      ? clientesExistentes.find((c) => c.dni === dniTrim)
+      : undefined;
+
+  const rucDuplicado =
+    rucTrim.length === 11
+      ? clientesExistentes.find((c) => c.ruc === rucTrim)
+      : undefined;
+
+  return { dniDuplicado, rucDuplicado };
+}
+
+// RF05 — Edición de Clientes
+
+type ClienteParaEdicion = {
+  id: string;
+  email: string | null;
+};
+
+type FormEdicionCliente = {
+  nombre: string;
+  email: string;
+  celular: string;
+  direccion: string;
+};
+
+export type ErrorEdicionCliente =
+  | { campo: "nombre"; mensaje: "El nombre es obligatorio." }
+  | { campo: "nombre"; mensaje: "El nombre solo puede contener letras y espacios." }
+  | { campo: "celular"; mensaje: "El celular es obligatorio." }
+  | { campo: "celular"; mensaje: "Número inválido (9 dígitos, empieza en 9)." }
+  | { campo: "email"; mensaje: "El correo debe ser de @gmail.com, @outlook.com o @hotmail.com" }
+  | { campo: "email"; mensaje: "Este email ya está registrado para otro cliente" }
+  | { campo: "direccion"; mensaje: "La dirección contiene caracteres no válidos." };
+
+/**
+ * Valida los datos editables de un cliente (nombre, celular, email, dirección).
+ * Replica exactamente las reglas de EditarClienteModal: nombre y celular son
+ * obligatorios; email y dirección son opcionales pero deben tener formato
+ * válido si se completan; el email no puede pertenecer a otro cliente.
+ *
+ * Devuelve `null` si todo es válido, o el primer error encontrado (mismo
+ * orden de validación que el componente original). Los campos obligatorios
+ * vacíos también devuelven un error explícito (campo "nombre"/"celular"),
+ * en vez de `null`, para no confundirse con un formulario válido.
+ */
+export function validarEdicionCliente(
+  form: FormEdicionCliente,
+  clienteActualId: string,
+  clientesExistentes: ClienteParaEdicion[],
+): ErrorEdicionCliente | null {
+  if (!form.nombre.trim()) {
+    return { campo: "nombre", mensaje: "El nombre es obligatorio." };
+  }
+  if (!esNombreValido(form.nombre)) {
+    return {
+      campo: "nombre",
+      mensaje: "El nombre solo puede contener letras y espacios.",
+    };
+  }
+  if (!form.celular.trim()) {
+    return { campo: "celular", mensaje: "El celular es obligatorio." };
+  }
+  if (!esTelefonoValido(form.celular.replace(/\s/g, ""))) {
+    return {
+      campo: "celular",
+      mensaje: "Número inválido (9 dígitos, empieza en 9).",
+    };
+  }
+  if (form.email.trim() && !esEmailConProveedorPermitido(form.email)) {
+    return {
+      campo: "email",
+      mensaje: "El correo debe ser de @gmail.com, @outlook.com o @hotmail.com",
+    };
+  }
+  if (form.direccion.trim() && !esDireccionValida(form.direccion)) {
+    return {
+      campo: "direccion",
+      mensaje: "La dirección contiene caracteres no válidos.",
+    };
+  }
+
+  const emailTrim = form.email.trim().toLowerCase();
+  const emailDuplicado =
+    emailTrim.length > 0
+      ? clientesExistentes.find(
+          (c) => c.id !== clienteActualId && c.email?.toLowerCase() === emailTrim,
+        )
+      : undefined;
+
+  if (emailDuplicado) {
+    return {
+      campo: "email",
+      mensaje: "Este email ya está registrado para otro cliente",
+    };
+  }
+
+  return null;
+}
+
 // RF48 — Alertas de Pedidos Críticos
 export const DIAS_UMBRAL_CRITICO = 3;
 
