@@ -805,7 +805,10 @@ export function EmpleadoDashboard() {
             <p className="text-xs text-muted-foreground">{currentUser.rol}</p>
           </div>
           <button
-            onClick={() => navigate("/")}
+            onClick={async () => {
+              await supabase.auth.signOut();
+              navigate("/");
+            }}
             className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition w-full"
           >
             <LogOut className="w-4 h-4" /> Cerrar sesión

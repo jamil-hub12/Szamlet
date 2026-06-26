@@ -477,11 +477,30 @@ export function debeRevalidarSesionPorStorage(
 // RF30 — Filtro por Rango de Fechas
 
 /**
+ * Formato exacto "YYYY-MM-DD" con año de 4 dígitos, mes 01-12 y día
+ * 01-31. No valida días por mes (ej. 31 de febrero pasa este regex),
+ * porque <input type="date"> ya impide esos casos en uso normal; lo
+ * que esta regex sí bloquea es justamente el caso del bug reportado:
+ * un año con más (o menos) de 4 dígitos, como "20255-06-26".
+ */
+const FORMATO_FECHA_ISO = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
+
+/**
  * Verifica que un rango de fechas sea válido: si ambas fechas están
- * presentes, la fecha inicial no puede ser posterior a la fecha final.
- * Espera fechas en formato "YYYY-MM-DD" (el mismo que produce
- * formatearFechaISO y un <input type="date">), donde la comparación
- * lexicográfica de strings ya equivale a la comparación cronológica.
+ * presentes, deben tener el formato exacto "YYYY-MM-DD" (el mismo que
+ * produce formatearFechaISO y un <input type="date">) con año de 4
+ * dígitos, y la fecha inicial no puede ser posterior a la fecha final.
+ *
+ * El control nativo <input type="date"> permite, mientras se está
+ * editando el sub-campo de año (especialmente en Chrome/Edge), escribir
+ * más de 4 dígitos antes de que el usuario complete el resto de la
+ * fecha (ej. "20255-06-26"). Sin la validación de formato, la
+ * comparación lexicográfica de strings ("20255-06-26" <= "2026-06-26")
+ * da resultados sin sentido cronológico y el filtro se aplicaba con una
+ * fecha basura sin avisar al usuario. Por eso cualquier fecha presente
+ * que no respete el formato exacto se trata como rango inválido, igual
+ * que un "fecha inicial > fecha final": se ignora el filtro y se
+ * muestra el aviso correspondiente.
  *
  * Si falta alguna de las dos fechas, no hay rango que comparar todavía,
  * así que se considera válido (la validación de "campo obligatorio" es
@@ -492,5 +511,7 @@ export function esRangoDeFechasValido(
   fechaHasta: string,
 ): boolean {
   if (!fechaDesde || !fechaHasta) return true;
+  if (!FORMATO_FECHA_ISO.test(fechaDesde)) return false;
+  if (!FORMATO_FECHA_ISO.test(fechaHasta)) return false;
   return fechaDesde <= fechaHasta;
 }
