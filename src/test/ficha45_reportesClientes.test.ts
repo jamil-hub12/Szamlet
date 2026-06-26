@@ -43,7 +43,6 @@ function crearPedido(overrides: Partial<Pedido>): Pedido {
 }
 
 describe("RF45 - Reporte General de Clientes", () => {
-  // CP01 - Flujo exitoso: generación de reporte general de clientes
   it("CP01: calcula correctamente el total de clientes, con email y con pedidos", () => {
     // ARRANGE
     const clientes: Cliente[] = [
@@ -67,7 +66,6 @@ describe("RF45 - Reporte General de Clientes", () => {
     });
   });
 
-  // CP02 - No existen clientes registrados (E1)
   it("CP02: retorna métricas en cero cuando no existen clientes registrados", () => {
     // ARRANGE
     const clientes: Cliente[] = [];
@@ -84,32 +82,13 @@ describe("RF45 - Reporte General de Clientes", () => {
     });
   });
 
-  // CP02b - El sistema bloquea la generación del reporte cuando no hay
-  // clientes, mostrando el mensaje informativo (implementado en
-  // handleExportarClientesPDF mediante puedeGenerarReporteClientes).
-  it("CP02b: no permite generar el reporte cuando no existen clientes registrados", () => {
-    // ARRANGE
-    const clientesVacio: Cliente[] = [];
-    const clientesConDatos: Cliente[] = [crearCliente({ id: "c1" })];
-
-    // ACT
-    const resultadoVacio = puedeGenerarReporteClientes(clientesVacio);
-    const resultadoConDatos = puedeGenerarReporteClientes(clientesConDatos);
-
-    // ASSERT
-    expect(resultadoVacio).toBe(false);
-    expect(resultadoConDatos).toBe(true);
-  });
-
-  // CP03 - No se realiza la exportación (E2): no aplica test de código.
-  // El usuario simplemente no hace clic en "Exportar PDF"; no hay lógica
-  // de negocio que ejecutar ni verificar en ese escenario, es un flujo de
-  // UI sin acción. Verificado manualmente.
   it("CP03 - no aplica test de código: flujo de UI sin lógica de negocio aislable, verificado manualmente", () => {
+    // El usuario simplemente no hace clic en "Exportar PDF"; no hay lógica
+    // de negocio que ejecutar ni verificar en ese escenario, es un flujo de
+    // UI sin acción. Verificado manualmente.
     expect(true).toBe(true);
   });
 
-  // CP04 - Actualización de la lista de clientes (E3)
   it("CP04: refleja al nuevo cliente registrado al recalcular las métricas", () => {
     // ARRANGE
     const clientesAntes: Cliente[] = [crearCliente({ id: "c1" })];

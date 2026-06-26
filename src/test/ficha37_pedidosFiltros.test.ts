@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { filtrarPedidos, filtrarPedidosAdmin } from "../app/utils/pedidosFiltros";
+import {
+  filtrarPedidos,
+  filtrarPedidosAdmin,
+} from "../app/utils/pedidosFiltros";
 import type { Pedido } from "../app/contexts/PedidosContext";
 
 function crearPedido(overrides: Partial<Pedido>): Pedido {
@@ -37,9 +40,6 @@ describe("RF37 - Visualización de Pedidos Cancelados", () => {
     // ASSERT
     expect(resultado).toHaveLength(1);
     expect(resultado[0].motivoCancelacion).toBe("Cliente canceló por demora");
-    // Nota: el sistema no expone un campo "fecha de cancelación" separado,
-    // solo el motivo. La ficha menciona "fecha de cancelación" pero esto
-    // no existe como campo en el modelo de datos real.
   });
 
   it("CP01-Admin: el Administrador también puede visualizar pedidos cancelados", () => {

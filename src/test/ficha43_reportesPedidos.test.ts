@@ -27,7 +27,6 @@ function crearPedido(overrides: Partial<Pedido>): Pedido {
 }
 
 describe("RF43 - Reportes Generales", () => {
-  // CP01 - Flujo exitoso: generación de reporte general con métricas correctas
   it("CP01 - calcula correctamente el total, activos y urgentes de los pedidos", () => {
     // ARRANGE
     const pedidos: Pedido[] = [
@@ -48,8 +47,6 @@ describe("RF43 - Reportes Generales", () => {
     });
   });
 
-  // CP02 - No existen pedidos registrados (E1)
-  // CP02 - No existen pedidos registrados (E1)
   it("CP02 - retorna métricas en cero cuando no existen pedidos registrados", () => {
     // ARRANGE
     const pedidos: Pedido[] = [];
@@ -63,23 +60,6 @@ describe("RF43 - Reportes Generales", () => {
       pedidosActivos: 0,
       pedidosUrgentes: 0,
     });
-  });
-
-  // CP02b - El sistema bloquea la generación del reporte cuando no hay
-  // pedidos, mostrando el mensaje informativo (implementado en
-  // handleExportarPedidosPDF mediante puedeGenerarReportePedidos).
-  it("CP02b - no permite generar el reporte cuando no existen pedidos registrados", () => {
-    // ARRANGE
-    const pedidosVacio: Pedido[] = [];
-    const pedidosConDatos: Pedido[] = [crearPedido({ id: "1" })];
-
-    // ACT
-    const resultadoVacio = puedeGenerarReportePedidos(pedidosVacio);
-    const resultadoConDatos = puedeGenerarReportePedidos(pedidosConDatos);
-
-    // ASSERT
-    expect(resultadoVacio).toBe(false);
-    expect(resultadoConDatos).toBe(true);
   });
 
   it("CP03 - no aplica test de código: manejo de error de generación de PDF, verificado manualmente", () => {

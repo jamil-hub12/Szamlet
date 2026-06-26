@@ -74,11 +74,6 @@ describe("RF39 - Consulta de Catálogo de Productos", () => {
 
     // ASSERT
     expect(resultado).toHaveLength(0);
-    // Nota: el mensaje real del sistema es "No hay productos registrados
-    // aún. Agrega el primero." — la ficha lo describe como "mensaje
-    // informativo de catálogo vacío" en términos generales, el texto
-    // exacto difiere pero el comportamiento (mensaje distinto al de
-    // búsqueda sin resultados) es correcto.
     expect(mensaje).toBe(
       "No hay productos registrados aún. Agrega el primero.",
     );

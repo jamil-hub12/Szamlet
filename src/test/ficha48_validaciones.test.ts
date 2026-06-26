@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { esPedidoCritico, DIAS_UMBRAL_CRITICO } from "../app/utils/validaciones";
+import {
+  esPedidoCritico,
+  DIAS_UMBRAL_CRITICO,
+} from "../app/utils/validaciones";
 
 function fechaEnDias(delta: number): string {
   const d = new Date();
@@ -9,8 +12,7 @@ function fechaEnDias(delta: number): string {
 
 describe("RF48 - Alertas de Pedidos Críticos", () => {
   it("CP01 - esPedidoCritico retorna true para pedido que vence en <= DIAS_UMBRAL_CRITICO días", () => {
-    // ARRANGE — usamos DIAS_UMBRAL_CRITICO - 1 para evitar diferencias de zona horaria
-    // en el borde exacto entre la fecha del test (UTC) y obtenerFechaPeruHoy() (UTC-5)
+    // ARRANGE
     const fechaEntrega = fechaEnDias(DIAS_UMBRAL_CRITICO - 1);
     const estado = "En confección";
 

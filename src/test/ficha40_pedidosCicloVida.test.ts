@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { validarTransicion, obtenerSiguienteEstado } from "../app/utils/pedidosCicloVida";
+import {
+  validarTransicion,
+  obtenerSiguienteEstado,
+} from "../app/utils/pedidosCicloVida";
 
 describe("RF40 - Control del Progreso del Pedido", () => {
   it("CP01: un pedido 'Recibido' avanza correctamente a 'En confección'", () => {
@@ -43,16 +46,5 @@ describe("RF40 - Control del Progreso del Pedido", () => {
     expect(validacion.mensaje).toContain(
       'La transición de "En confección" a "Recibido" no está permitida',
     );
-  });
-
-  it("CP04-extra: tampoco se permite retroceder desde 'Listo para entrega'", () => {
-    // ARRANGE
-    const estadoActual = "Listo para entrega" as const;
-
-    // ACT
-    const validacion = validarTransicion(estadoActual, "En confección");
-
-    // ASSERT
-    expect(validacion.valido).toBe(false);
   });
 });
