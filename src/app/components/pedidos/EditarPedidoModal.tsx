@@ -19,7 +19,10 @@ import { puedeEditarPedido } from "../../utils/pedidosCicloVida";
 import { obtenerItemsPedido } from "../../utils/stockManager";
 import { useProductos } from "../../contexts/ProductosContext";
 import { obtenerFechaPeruHoy } from "../../utils/fechas";
-import { esValidaFechaMinimaHoy } from "../../utils/validaciones";
+import {
+  esValidaFechaMinimaHoy,
+  obtenerMensajeDeError,
+} from "../../utils/validaciones";
 import { prepararNotaParaGuardar } from "../../utils/notasPedido";
 import { useCurrentUser } from "../../hooks/useCurrentUser";
 import {
@@ -380,11 +383,7 @@ export function EditarPedidoModal({
       }, 1500);
     } catch (error) {
       console.error("Error al guardar pedido:", error);
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Error desconocido al guardar el pedido",
-      );
+      setErrorMessage(obtenerMensajeDeError(error));
       setStep("error");
     }
   };

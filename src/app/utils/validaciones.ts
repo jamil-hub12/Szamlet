@@ -515,3 +515,125 @@ export function esRangoDeFechasValido(
   if (!FORMATO_FECHA_ISO.test(fechaHasta)) return false;
   return fechaDesde <= fechaHasta;
 }
+
+/**
+ * Categorías de error que el sistema sabe reconocer (RF29 — Gestión de
+ * Errores). Se usan para decidir qué mensaje mostrarle al usuario sin
+ * exponer detalles técnicos internos (stack traces, mensajes crudos de
+ * Supabase/Postgres, etc.).
+ */
+export type TipoError =
+  | "validacion"
+  | "permiso"
+  | "conexion"
+  | "duplicado"
+  | "procesamiento";
+
+/**
+ * Palabras clave (en minúsculas) que indican que un error es de tipo
+ * conexión: red caída, timeout, fetch fallido, o el propio Supabase
+ * reportando que no pudo alcanzar el servidor.
+ */
+const PALABRAS_CLAVE_CONEXION = [
+  "failed to fetch",
+  "network",
+  "fetch",
+  "timeout",
+  "conexion",
+  "connection",
+  "offline",
+  "no internet",
+];
+
+/** Palabras clave que indican que el error es de permisos. */
+const PALABRAS_CLAVE_PERMISO = [
+  "permiso",
+  "permission",
+  "no autorizado",
+  "unauthorized",
+  "forbidden",
+  "rls",
+  "row-level security",
+  "policy",
+];
+
+/** Palabras clave que indican que el error es por duplicidad de datos. */
+const PALABRAS_CLAVE_DUPLICADO = [
+  "duplicad",
+  "duplicate",
+  "ya existe",
+  "already exists",
+  "unique constraint",
+  "violates unique",
+];
+
+/** Palabras clave que indican que el error es de validación de datos. */
+const PALABRAS_CLAVE_VALIDACION = [
+  "invalid",
+  "inválid",
+  "requerido",
+  "required",
+  "obligatorio",
+  "no puede estar vacío",
+  "formato",
+];
+
+/**
+ * Clasifica un error (de cualquier origen: excepción de JS, error de
+ * Supabase, string, etc.) en una de las categorías de TipoError, según
+ * palabras clave presentes en su mensaje. Si no coincide con ninguna
+ * categoría conocida, se clasifica como "procesamiento" (error interno
+ * genérico), que es la categoría más segura por defecto: nunca expone
+ * detalles técnicos.
+ */
+export function clasificarError(error: unknown): TipoError {
+  const mensaje = (
+    error instanceof Error
+      ? error.message
+      : typeof error === "string"
+        ? error
+        : ""
+  ).toLowerCase();
+
+  if (PALABRAS_CLAVE_CONEXION.some((palabra) => mensaje.includes(palabra))) {
+    return "conexion";
+  }
+  if (PALABRAS_CLAVE_PERMISO.some((palabra) => mensaje.includes(palabra))) {
+    return "permiso";
+  }
+  if (PALABRAS_CLAVE_DUPLICADO.some((palabra) => mensaje.includes(palabra))) {
+    return "duplicado";
+  }
+  if (
+    PALABRAS_CLAVE_VALIDACION.some((palabra) => mensaje.includes(palabra))
+  ) {
+    return "validacion";
+  }
+  return "procesamiento";
+}
+
+/**
+ * Mensajes amigables por categoría de error (CP06: el usuario nunca debe
+ * ver detalles técnicos como stack traces o mensajes crudos del backend).
+ */
+const MENSAJES_POR_TIPO: Record<TipoError, string> = {
+  validacion:
+    "Algunos datos ingresados no son válidos. Revísalos e intenta nuevamente.",
+  permiso: "No tienes permisos para realizar esta operación.",
+  conexion:
+    "Hubo un problema de conexión. Verifica tu internet e intenta nuevamente.",
+  duplicado:
+    "Ya existe un registro con estos datos. No se guardaron los cambios.",
+  procesamiento: "Ocurrió un error inesperado. Intenta nuevamente más tarde.",
+};
+
+/**
+ * Devuelve un mensaje seguro y amigable para mostrar al usuario a partir
+ * de un error de cualquier origen, sin exponer detalles técnicos (stack
+ * traces, nombres de columnas, mensajes crudos de la base de datos,
+ * etc.). Internamente usa clasificarError para elegir la categoría y
+ * devuelve siempre uno de los mensajes predefinidos en MENSAJES_POR_TIPO.
+ */
+export function obtenerMensajeDeError(error: unknown): string {
+  return MENSAJES_POR_TIPO[clasificarError(error)];
+}
