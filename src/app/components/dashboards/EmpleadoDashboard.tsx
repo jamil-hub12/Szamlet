@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
 import { useSearchParams } from "react-router";
 import { filtrarPedidos } from "../../utils/pedidosFiltros";
@@ -92,6 +92,8 @@ import {
   esDNIValido,
   esRUCValido,
   obtenerPedidosCriticosSinNotificar,
+  esMotivoCancelacionValido,
+  esRangoDeFechasValido,
 } from "../../utils/validaciones";
 
 // ─── Datos de pedidos ────────────────────────────────────────────────────────
@@ -178,6 +180,8 @@ export function EmpleadoDashboard() {
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("Todos");
   const [filtroPrioridad, setFiltroPrioridad] = useState("Todas");
+  const [fechaDesde, setFechaDesde] = useState("");
+  const [fechaHasta, setFechaHasta] = useState("");
   const [ordenFecha, setOrdenFecha] = useState<"desc" | "asc">("desc");
   const [tabPedidos, setTabPedidos] = useState<"normales" | "especiales">(
     "normales",
@@ -289,17 +293,38 @@ export function EmpleadoDashboard() {
   // Alertas automáticas para pedidos críticos (RF48): al cargar pedidos,
   // genera una notificación por cada pedido que vence en pocos días o ya
   // venció, evitando duplicar la alerta si ya se generó hoy.
+  //
+  // notificacionesEnVueloRef guarda, solo en memoria de esta sesión, los
+  // códigos de pedido que ya se mandaron a notificar "hoy". Es necesario
+  // además de obtenerPedidosCriticosSinNotificar porque agregarNotificacion
+  // no actualiza el estado `notificaciones` de inmediato (depende de la
+  // suscripción realtime de Supabase, que tarda en llegar). Sin este guard,
+  // si el efecto se re-ejecutaba antes de que llegara el realtime (por
+  // ejemplo al cambiar `pedidos` por otro motivo), volvía a creer que el
+  // pedido no estaba notificado y insertaba otra fila duplicada.
+  const notificacionesEnVueloRef = useRef<{ fecha: string; codigos: Set<string> }>({
+    fecha: "",
+    codigos: new Set(),
+  });
+
   useEffect(() => {
     if (loadingPedidos || pedidos.length === 0) return;
 
     const fechaHoy = obtenerFechaPeruHoy();
+
+    // Limpiar el guard de días anteriores: solo nos interesa "hoy".
+    if (notificacionesEnVueloRef.current.fecha !== fechaHoy) {
+      notificacionesEnVueloRef.current = { fecha: fechaHoy, codigos: new Set() };
+    }
+
     const pedidosCriticos = obtenerPedidosCriticosSinNotificar(
       pedidos,
       notificaciones,
       fechaHoy,
-    );
+    ).filter((p) => !notificacionesEnVueloRef.current.codigos.has(p.codigo));
 
     pedidosCriticos.forEach((pedido) => {
+      notificacionesEnVueloRef.current.codigos.add(pedido.codigo);
       agregarNotificacion({
         tipo: "advertencia",
         titulo: "Pedido crítico",
@@ -520,7 +545,8 @@ export function EmpleadoDashboard() {
   };
 
   const handleCancelarPedido = async () => {
-    if (!pedidoSeleccionado || !motivoCancelacion.trim()) return;
+    if (!pedidoSeleccionado || !esMotivoCancelacionValido(motivoCancelacion))
+      return;
 
     setErrorAlerta(null);
     const exito = await cancelarPedido(
@@ -637,6 +663,8 @@ export function EmpleadoDashboard() {
     busqueda,
     filtroEstado,
     filtroPrioridad: filtroPrioridad as "Todas" | "Urgente" | "Normal",
+    fechaDesde,
+    fechaHasta,
     ordenFecha,
   });
 
@@ -1157,7 +1185,9 @@ export function EmpleadoDashboard() {
                     <Filter className="w-4 h-4" />
                     <span>Filtros</span>
                     {(filtroEstado !== "Todos" ||
-                      filtroPrioridad !== "Todas") && (
+                      filtroPrioridad !== "Todas" ||
+                      fechaDesde ||
+                      fechaHasta) && (
                       <span className="w-2 h-2 rounded-full bg-primary" />
                     )}
                   </button>
@@ -1203,6 +1233,38 @@ export function EmpleadoDashboard() {
                         <option>Urgente</option>
                       </select>
                     </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1.5 block">
+                        Desde
+                      </label>
+                      <input
+                        type="date"
+                        value={fechaDesde}
+                        onChange={(e) => setFechaDesde(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg bg-input-background border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1.5 block">
+                        Hasta
+                      </label>
+                      <input
+                        type="date"
+                        value={fechaHasta}
+                        onChange={(e) => setFechaHasta(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg bg-input-background border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                      />
+                    </div>
+                    {!esRangoDeFechasValido(fechaDesde, fechaHasta) && (
+                      <div className="sm:col-span-2 lg:col-span-4 flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 border border-red-200">
+                        <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                        <p className="text-xs text-red-700">
+                          La fecha inicial no puede ser mayor que la fecha
+                          final. El filtro de fechas no se aplicará hasta
+                          corregir el rango.
+                        </p>
+                      </div>
+                    )}
                     <div className="sm:col-span-2 flex gap-2">
                       <button
                         onClick={() =>
@@ -1226,6 +1288,8 @@ export function EmpleadoDashboard() {
                         onClick={() => {
                           setFiltroEstado("Todos");
                           setFiltroPrioridad("Todas");
+                          setFechaDesde("");
+                          setFechaHasta("");
                         }}
                         className="px-3 py-2 rounded-lg border border-border bg-input-background text-muted-foreground text-sm hover:bg-accent transition"
                       >
@@ -2397,7 +2461,7 @@ export function EmpleadoDashboard() {
                   value={motivoCancelacion}
                   onChange={(e) => setMotivoCancelacion(e.target.value)}
                   className={`w-full px-3 py-2.5 rounded-lg bg-input-background border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 transition resize-none ${
-                    motivoCancelacion.trim()
+                    esMotivoCancelacionValido(motivoCancelacion)
                       ? "border-border focus:ring-foreground/20"
                       : "border-red-300 focus:ring-red-200"
                   }`}
@@ -2407,6 +2471,13 @@ export function EmpleadoDashboard() {
                     El motivo es obligatorio
                   </p>
                 )}
+                {motivoCancelacion.trim() &&
+                  !esMotivoCancelacionValido(motivoCancelacion) && (
+                    <p className="text-xs text-red-500">
+                      El motivo debe ser una explicación válida, no solo
+                      símbolos o caracteres sueltos.
+                    </p>
+                  )}
               </div>
 
               <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-200">
@@ -2430,7 +2501,7 @@ export function EmpleadoDashboard() {
               </button>
               <button
                 onClick={handleCancelarPedido}
-                disabled={!motivoCancelacion.trim()}
+                disabled={!esMotivoCancelacionValido(motivoCancelacion)}
                 className="px-5 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 <XCircle className="w-4 h-4" />

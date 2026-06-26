@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useState } from "react";
 import { Navigate } from "react-router";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { supabase } from "../../lib/supabase";
+import { debeRevalidarSesionPorStorage } from "../utils/validaciones";
 
 type RolPermitido = "Administrador" | "Atención al cliente" | "Producción";
 
@@ -14,11 +15,20 @@ type RolPermitido = "Administrador" | "Atención al cliente" | "Producción";
  * Antes de esto, las rutas /admin, /empleado y /produccion eran
  * accesibles escribiendo la URL directamente, sin haber iniciado sesión.
  *
- * También revalida la sesión cuando el navegador restaura la página desde
- * el back-forward cache (bfcache) — por ejemplo, al cerrar sesión y luego
- * presionar el botón "atrás". En ese caso React no se vuelve a montar, así
- * que sin esta revalidación se llegaba a ver brevemente el dashboard
- * cacheado de la sesión ya cerrada antes de cualquier otra verificación.
+ * También revalida la sesión en dos casos donde React no se vuelve a
+ * montar por sí solo:
+ *
+ * 1. Bfcache: el navegador restaura la página desde el back-forward cache
+ *    (botón "atrás" tras cerrar sesión) sin remontar React, así que sin
+ *    revalidar se llegaba a ver brevemente el dashboard cacheado.
+ *
+ * 2. Multi-pestaña: si la sesión se cierra desde OTRA pestaña, Supabase
+ *    borra su token de localStorage, lo que dispara el evento nativo
+ *    "storage" en esta pestaña. Aunque useCurrentUser ya escucha
+ *    onAuthStateChange (que en teoría también reacciona a esto), se
+ *    agrega esta verificación explícita como respaldo determinista: no
+ *    depende de la implementación interna de Supabase, solo de que el
+ *    token de sesión (clave "sb-...-auth-token") haya sido eliminado.
  */
 export function ProtectedRoute({
   children,
@@ -40,8 +50,21 @@ export function ProtectedRoute({
       setRevalidando(false);
     };
 
+    const revalidarPorCambioDeOtraPestana = async (event: StorageEvent) => {
+      if (!debeRevalidarSesionPorStorage(event.key, event.newValue)) return;
+
+      setRevalidando(true);
+      const { data } = await supabase.auth.getSession();
+      setSesionRevalidada(Boolean(data.session));
+      setRevalidando(false);
+    };
+
     window.addEventListener("pageshow", revalidarSesion);
-    return () => window.removeEventListener("pageshow", revalidarSesion);
+    window.addEventListener("storage", revalidarPorCambioDeOtraPestana);
+    return () => {
+      window.removeEventListener("pageshow", revalidarSesion);
+      window.removeEventListener("storage", revalidarPorCambioDeOtraPestana);
+    };
   }, []);
 
   if (usuario.loading || revalidando) {

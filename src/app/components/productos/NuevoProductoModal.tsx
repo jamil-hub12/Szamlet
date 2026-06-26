@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Trash2,
 } from "lucide-react";
+import { esVarianteProductoDuplicada } from "../../utils/validaciones";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -385,16 +386,12 @@ function VarianteCard({
     : [];
 
   // Verificar duplicado: mismo modelo+tela+diseño ya registrado
-  const esDuplicado =
-    !!modelo &&
-    !!variante.tela &&
-    !!variante.disenio &&
-    productosExistentes.some(
-      (p) =>
-        p.modelo === modelo &&
-        p.tela === variante.tela &&
-        p.disenio === variante.disenio,
-    );
+  const esDuplicado = esVarianteProductoDuplicada(
+    productosExistentes,
+    modelo,
+    variante.tela,
+    variante.disenio,
+  );
 
   const tallasPersonalizadas = variante.tallasSeleccionadas.filter(
     (t) => !TALLAS_BASE.includes(t),
@@ -753,11 +750,11 @@ export function NuevoProductoModal({
     if (!form.modelo) return false;
     for (const v of form.variantes) {
       if (!v.tela || !v.disenio) return false;
-      const dup = productosExistentes.some(
-        (p) =>
-          p.modelo === form.modelo &&
-          p.tela === v.tela &&
-          p.disenio === v.disenio,
+      const dup = esVarianteProductoDuplicada(
+        productosExistentes,
+        form.modelo,
+        v.tela,
+        v.disenio,
       );
       if (dup) return false;
       if (v.tallasSeleccionadas.length === 0) return false;
