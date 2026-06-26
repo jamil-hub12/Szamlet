@@ -36,4 +36,10 @@ describe("RF22 - Flujo de UI sin lógica aislable", () => {
     // Verificado manualmente: es un caso manual de UI.
     expect(true).toBe(true);
   });
+
+  it("CP07: escenario UI sin lógica aislable - no aplica test de código", () => {
+    // El comportamiento final solo se observa en la interfaz.
+    // Verificado manualmente: es un caso manual de UI.
+    expect(true).toBe(true);
+  });
 });

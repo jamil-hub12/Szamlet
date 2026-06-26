@@ -37,4 +37,16 @@ describe("RF23 - Cierre de Sesión", () => {
     // ASSERT
     expect(resultado).toBe(false);
   });
+
+  it("CP04 - debeRevalidarSesionPorStorage retorna true cuando se cierra sesión desde otra pestaña", () => {
+    // ARRANGE
+    const key = "sb-proyecto-auth-token";
+    const newValue = "";
+
+    // ACT
+    const resultado = debeRevalidarSesionPorStorage(key, newValue);
+
+    // ASSERT
+    expect(resultado).toBe(true);
+  });
 });

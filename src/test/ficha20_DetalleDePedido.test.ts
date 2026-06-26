@@ -31,10 +31,4 @@ describe("RF20 - Flujo de UI sin lógica aislable", () => {
     // Verificado manualmente: se controla desde la interfaz.
     expect(true).toBe(true);
   });
-
-  it("CP06: escenario UI sin lógica aislable - no aplica test de código", () => {
-    // No se encontró lógica de negocio separada para este escenario.
-    // Verificado manualmente: queda resuelto en pantalla.
-    expect(true).toBe(true);
-  });
 });
