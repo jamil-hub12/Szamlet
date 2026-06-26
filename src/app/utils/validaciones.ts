@@ -637,3 +637,130 @@ const MENSAJES_POR_TIPO: Record<TipoError, string> = {
 export function obtenerMensajeDeError(error: unknown): string {
   return MENSAJES_POR_TIPO[clasificarError(error)];
 }
+
+// ─── RF-27: Control de Pedidos Duplicados ─────────────────────────────────────
+
+/**
+ * Un ítem de pedido normalizado para comparación (sin IDs de BD).
+ */
+export type ItemComparacion = {
+  modelo: string;
+  tela: string;
+  disenio: string;
+  talla: string;
+  color: string;
+  cantidad: number;
+};
+
+/**
+ * Subconjunto mínimo de un pedido existente necesario para compararlo
+ * contra un pedido nuevo. El tipo Pedido de PedidosContext lo satisface
+ * estructuralmente, por lo que se puede pasar directamente sin mapear.
+ */
+export type PedidoComparable = {
+  id: string;
+  clienteId: string;
+  fechaEntrega?: string;
+  items?: Array<{
+    modelo: string;
+    tela: string;
+    disenio: string;
+    talla: string;
+    color: string;
+    cantidad: number;
+  }>;
+};
+
+/** Normaliza un string para comparación insensible a mayúsculas y espacios. */
+function norm(s: string): string {
+  return s.trim().toLowerCase();
+}
+
+/**
+ * CP04 — Verifica que el nuevo pedido tenga datos suficientes para ser
+ * comparado contra pedidos existentes (cliente, fecha de entrega y al
+ * menos un ítem con modelo/tela/diseño/talla/color/cantidad).
+ */
+export function tieneDatosSuficientesParaComparar(pedido: {
+  clienteId: string;
+  fechaEntrega: string;
+  items: ItemComparacion[];
+}): boolean {
+  if (!pedido.clienteId || !pedido.fechaEntrega) return false;
+  if (!pedido.items || pedido.items.length === 0) return false;
+  return pedido.items.every(
+    (it) =>
+      it.modelo && it.tela && it.disenio && it.talla && it.color && it.cantidad > 0,
+  );
+}
+
+/**
+ * Compara dos listas de ítems de forma exacta (mismo modelo/tela/diseño/
+ * talla/color/cantidad para cada ítem, independiente del orden).
+ */
+function itemsIdenticos(
+  a: ItemComparacion[],
+  b: Array<{ modelo: string; tela: string; disenio: string; talla: string; color: string; cantidad: number }>,
+): boolean {
+  if (a.length !== b.length) return false;
+
+  const serializar = (it: { modelo: string; tela: string; disenio: string; talla: string; color: string; cantidad: number }) =>
+    `${norm(it.modelo)}|${norm(it.tela)}|${norm(it.disenio)}|${norm(it.talla)}|${norm(it.color)}|${it.cantidad}`;
+
+  const setA = new Set(a.map(serializar));
+  return b.every((it) => setA.has(serializar(it)));
+}
+
+/**
+ * CP01 / CP02 — Detecta si ya existe un pedido EXACTAMENTE igual al nuevo:
+ * mismo cliente, misma fecha de entrega y exactamente los mismos ítems
+ * (modelo, tela, diseño, talla, color y cantidad).
+ *
+ * Devuelve el id del pedido duplicado si lo encuentra, o null si no hay duplicado.
+ */
+export function detectarPedidoDuplicadoExacto(
+  nuevoPedido: { clienteId: string; fechaEntrega: string; items: ItemComparacion[] },
+  pedidosExistentes: PedidoComparable[],
+): string | null {
+  for (const existente of pedidosExistentes) {
+    if (norm(existente.clienteId) !== norm(nuevoPedido.clienteId)) continue;
+    if (!existente.fechaEntrega) continue;
+    if (norm(existente.fechaEntrega) !== norm(nuevoPedido.fechaEntrega)) continue;
+    if (!existente.items || existente.items.length === 0) continue;
+    if (itemsIdenticos(nuevoPedido.items, existente.items)) {
+      return existente.id;
+    }
+  }
+  return null;
+}
+
+/**
+ * CP03 / CP05 — Detecta si existe un pedido PARCIALMENTE similar al nuevo:
+ * mismo cliente y al menos un ítem con el mismo modelo/tela/diseño
+ * (independientemente de talla, color, cantidad o fecha).
+ *
+ * Devuelve el id del pedido similar si lo encuentra, o null si no hay similitud.
+ */
+export function detectarPedidoSimilar(
+  nuevoPedido: { clienteId: string; items: ItemComparacion[] },
+  pedidosExistentes: PedidoComparable[],
+): string | null {
+  for (const existente of pedidosExistentes) {
+    if (norm(existente.clienteId) !== norm(nuevoPedido.clienteId)) continue;
+    if (!existente.items || existente.items.length === 0) continue;
+
+    // Hay similitud si algún ítem del nuevo pedido coincide en modelo+tela+diseño
+    // con algún ítem del pedido existente.
+    const hayCoincidencia = nuevoPedido.items.some((nuevo) =>
+      existente.items!.some(
+        (ex) =>
+          norm(ex.modelo) === norm(nuevo.modelo) &&
+          norm(ex.tela) === norm(nuevo.tela) &&
+          norm(ex.disenio) === norm(nuevo.disenio),
+      ),
+    );
+
+    if (hayCoincidencia) return existente.id;
+  }
+  return null;
+}
