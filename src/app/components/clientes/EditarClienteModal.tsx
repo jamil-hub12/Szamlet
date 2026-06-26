@@ -1,11 +1,6 @@
 import { useState } from "react";
 import { X, User, Mail, Phone, MapPin, AlertCircle } from "lucide-react";
-import {
-  esNombreValido,
-  esEmailConProveedorPermitido,
-  esDireccionValida,
-  esTelefonoValido,
-} from "../../utils/validaciones";
+import { validarEdicionCliente } from "../../utils/validaciones";
 
 type Cliente = {
   id: string;
@@ -48,7 +43,8 @@ export function EditarClienteModal({
   const [guardando, setGuardando] = useState(false);
   const [errorEmail, setErrorEmail] = useState<string>("");
 
-  // Verificar duplicado de email (excluyendo el cliente actual)
+  // Verificar duplicado de email (excluyendo el cliente actual) — solo para
+  // mostrar el banner en tiempo real; la validación real ocurre en validate().
   const emailTrim = form.email.trim().toLowerCase();
   const emailDuplicado =
     emailTrim.length > 0
@@ -61,31 +57,16 @@ export function EditarClienteModal({
       : undefined;
 
   const validate = () => {
-    if (!form.nombre.trim()) return false;
-    if (!esNombreValido(form.nombre)) {
-      setErrorEmail("El nombre solo puede contener letras y espacios.");
-      return false;
+    const error = validarEdicionCliente(form, cliente.id, clientesExistentes);
+    if (!error) return true;
+
+    // Nombre y celular vacíos se señalizan con el borde rojo del input
+    // (showErrors); el formato de ambos ya se filtra en el onChange, así
+    // que solo email y dirección necesitan el banner de errorEmail.
+    if (error.campo === "email" || error.campo === "direccion") {
+      setErrorEmail(error.mensaje);
     }
-    if (!form.celular.trim()) return false;
-    if (!esTelefonoValido(form.celular.replace(/\s/g, ""))) {
-      setErrorEmail("Número inválido (9 dígitos, empieza en 9).");
-      return false;
-    }
-    if (form.email.trim() && !esEmailConProveedorPermitido(form.email)) {
-      setErrorEmail(
-        "El correo debe ser de @gmail.com, @outlook.com o @hotmail.com",
-      );
-      return false;
-    }
-    if (form.direccion.trim() && !esDireccionValida(form.direccion)) {
-      setErrorEmail("La dirección contiene caracteres no válidos.");
-      return false;
-    }
-    if (emailDuplicado) {
-      setErrorEmail("Este email ya está registrado para otro cliente");
-      return false;
-    }
-    return true;
+    return false;
   };
 
   const handleGuardar = async () => {

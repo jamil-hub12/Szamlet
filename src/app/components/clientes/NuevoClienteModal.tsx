@@ -22,6 +22,7 @@ import {
   esDireccionValida,
   esRUCValido,
   normalizarTexto,
+  detectarClienteDuplicado,
 } from "../../utils/validaciones";
 
 type FormData = {
@@ -80,16 +81,18 @@ function validateForm(data: FormData): FormErrors {
     errors.dni = "El DNI debe tener exactamente 8 dígitos.";
   }
 
-  // Validar email con proveedores permitidos
-  if (data.email.trim()) {
-    if (!esEmailConProveedorPermitido(data.email)) {
-      errors.email =
-        "El correo debe ser de @gmail.com, @outlook.com o @hotmail.com";
-    }
+  // Validar email: obligatorio, con proveedores permitidos
+  if (!data.email.trim()) {
+    errors.email = "El correo es obligatorio.";
+  } else if (!esEmailConProveedorPermitido(data.email)) {
+    errors.email =
+      "El correo debe ser de @gmail.com, @outlook.com o @hotmail.com";
   }
 
-  // Validar dirección
-  if (data.direccion.trim() && !esDireccionValida(data.direccion)) {
+  // Validar dirección: obligatoria
+  if (!data.direccion.trim()) {
+    errors.direccion = "La dirección es obligatoria.";
+  } else if (!esDireccionValida(data.direccion)) {
     errors.direccion = "La dirección contiene caracteres no válidos.";
   }
 
@@ -125,16 +128,8 @@ export function NuevoClienteModal({
   const [nuevoCliente, setNuevoCliente] = useState<Cliente | null>(null);
 
   // Detección de duplicados en tiempo real solo para DNI y RUC
-  const dniTrim = form.dni.trim();
-  const rucTrim = form.ruc.trim();
-  const dupDni =
-    dniTrim.length === 8
-      ? clientesExistentes.find((c) => c.dni === dniTrim)
-      : undefined;
-  const dupRuc =
-    rucTrim.length === 11
-      ? clientesExistentes.find((c) => c.ruc === rucTrim)
-      : undefined;
+  const { dniDuplicado: dupDni, rucDuplicado: dupRuc } =
+    detectarClienteDuplicado(clientesExistentes, form.dni, form.ruc);
 
   const handleChange = (field: keyof FormData, value: string) => {
     let finalValue = value;
@@ -278,7 +273,7 @@ export function NuevoClienteModal({
                 "Correo electrónico",
                 "Ej. cliente@email.com",
                 <Mail className="w-4 h-4" />,
-                false,
+                true,
                 "email",
               )}
               {field(
@@ -286,7 +281,7 @@ export function NuevoClienteModal({
                 "Dirección",
                 "Ej. Av. Arequipa 1234",
                 <MapPin className="w-4 h-4" />,
-                false,
+                true,
               )}
 
               <div className="grid grid-cols-2 gap-4">

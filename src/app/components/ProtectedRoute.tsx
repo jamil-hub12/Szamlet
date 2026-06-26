@@ -1,6 +1,7 @@
-import { type ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Navigate } from "react-router";
 import { useCurrentUser } from "../hooks/useCurrentUser";
+import { supabase } from "../../lib/supabase";
 
 type RolPermitido = "Administrador" | "Atención al cliente" | "Producción";
 
@@ -12,6 +13,12 @@ type RolPermitido = "Administrador" | "Atención al cliente" | "Producción";
  *
  * Antes de esto, las rutas /admin, /empleado y /produccion eran
  * accesibles escribiendo la URL directamente, sin haber iniciado sesión.
+ *
+ * También revalida la sesión cuando el navegador restaura la página desde
+ * el back-forward cache (bfcache) — por ejemplo, al cerrar sesión y luego
+ * presionar el botón "atrás". En ese caso React no se vuelve a montar, así
+ * que sin esta revalidación se llegaba a ver brevemente el dashboard
+ * cacheado de la sesión ya cerrada antes de cualquier otra verificación.
  */
 export function ProtectedRoute({
   children,
@@ -21,8 +28,23 @@ export function ProtectedRoute({
   rolesPermitidos: RolPermitido[];
 }) {
   const usuario = useCurrentUser();
+  const [revalidando, setRevalidando] = useState(false);
+  const [sesionRevalidada, setSesionRevalidada] = useState(true);
 
-  if (usuario.loading) {
+  useEffect(() => {
+    const revalidarSesion = async (event: PageTransitionEvent) => {
+      if (!event.persisted) return;
+      setRevalidando(true);
+      const { data } = await supabase.auth.getSession();
+      setSesionRevalidada(Boolean(data.session));
+      setRevalidando(false);
+    };
+
+    window.addEventListener("pageshow", revalidarSesion);
+    return () => window.removeEventListener("pageshow", revalidarSesion);
+  }, []);
+
+  if (usuario.loading || revalidando) {
     return (
       <div className="h-screen flex items-center justify-center bg-background">
         <p className="text-sm text-muted-foreground">Cargando...</p>
@@ -30,7 +52,7 @@ export function ProtectedRoute({
     );
   }
 
-  const tieneSesion = Boolean(usuario.email);
+  const tieneSesion = Boolean(usuario.email) && sesionRevalidada;
   const rolValido = rolesPermitidos.includes(usuario.rol as RolPermitido);
 
   if (!tieneSesion || !rolValido) {

@@ -5,7 +5,6 @@ import {
 } from "../app/utils/notificacionesFiltros";
 
 describe("RF47 - Vista de Modificaciones Recientes", () => {
-  // CP01 — Flujo exitoso: hay notificaciones sin leer
   it("CP01 - tieneModificacionesRecientes retorna true cuando hay notificaciones sin leer", () => {
     // ARRANGE
     const notificaciones = [
@@ -20,7 +19,6 @@ describe("RF47 - Vista de Modificaciones Recientes", () => {
     expect(resultado).toBe(true);
   });
 
-  // CP02 — No existen modificaciones recientes (E1)
   it("CP02 - tieneModificacionesRecientes retorna false cuando todas están leídas o no hay notificaciones", () => {
     // ARRANGE — lista vacía
     const sinNotificaciones: { id: string; leida: boolean }[] = [];
@@ -40,7 +38,6 @@ describe("RF47 - Vista de Modificaciones Recientes", () => {
     expect(resultadoLeidas).toBe(false);
   });
 
-  // CP03 — No se consulta la notificación (E2): flujo de UI sin lógica de negocio aislable
   it("CP03 - (placeholder) no abrir la campana es flujo de UI sin lógica aislable", () => {
     // No aplica test de código: el indicador de campana permanece visible
     // mientras existan notificaciones sin leer, lo cual ya cubre CP01.
@@ -48,7 +45,6 @@ describe("RF47 - Vista de Modificaciones Recientes", () => {
     expect(true).toBe(true);
   });
 
-  // CP04 — Actualización en tiempo real: flujo de UI / Supabase Realtime sin lógica aislable
   it("CP04 - (placeholder) actualización en tiempo real es integración Supabase sin lógica aislable", () => {
     // No aplica test de código: la suscripción realtime de NotificacionesContext
     // actualiza el array de notificaciones vía Supabase Realtime.

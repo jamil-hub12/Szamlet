@@ -1,14 +1,16 @@
 import { useState } from "react";
 import { X, User, Mail, Phone, Briefcase, Loader2 } from "lucide-react";
 import type { Empleado } from "../../contexts/EmpleadosContext";
-import { esEmailConProveedorPermitido, esNombreValido } from "../../utils/validaciones";
+import { esEmailConProveedorPermitido, esNombreValido, puedeEditarPropioRol } from "../../utils/validaciones";
 
 export function EditarEmpleadoModal({
   empleado,
+  emailUsuarioActual,
   onClose,
   onGuardar,
 }: {
   empleado: Empleado;
+  emailUsuarioActual: string;
   onClose: () => void;
   onGuardar: (empleado: Empleado) => Promise<void>;
 }) {
@@ -26,6 +28,11 @@ export function EditarEmpleadoModal({
     "Administrador",
     "Producción",
   ];
+
+  const puedeEditarRol = puedeEditarPropioRol(
+    empleado.email,
+    emailUsuarioActual,
+  );
 
   const handleChange = (field: keyof typeof form, value: string) => {
     let finalValue = value;
@@ -88,7 +95,8 @@ export function EditarEmpleadoModal({
     if (!validate()) return;
     setGuardando(true);
     try {
-      await onGuardar({ ...empleado, ...form });
+      const rolFinal = puedeEditarRol ? form.rol : empleado.rol;
+      await onGuardar({ ...empleado, ...form, rol: rolFinal });
     } catch (error) {
       console.error("Error al guardar:", error);
     } finally {
@@ -185,13 +193,14 @@ export function EditarEmpleadoModal({
               <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <select
                 value={form.rol}
+                disabled={!puedeEditarRol}
                 onChange={(e) =>
                   setForm((f) => ({
                     ...f,
                     rol: e.target.value as typeof form.rol,
                   }))
                 }
-                className={`w-full pl-9 pr-4 py-2.5 rounded-lg bg-input-background border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20 transition ${
+                className={`w-full pl-9 pr-4 py-2.5 rounded-lg bg-input-background border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20 transition disabled:opacity-60 disabled:cursor-not-allowed ${
                   errors.rol ? "border-red-400" : "border-border"
                 }`}
               >
@@ -202,6 +211,11 @@ export function EditarEmpleadoModal({
                 ))}
               </select>
             </div>
+            {!puedeEditarRol && (
+              <p className="text-xs text-muted-foreground">
+                No puedes cambiar tu propio rol de Administrador.
+              </p>
+            )}
             {errors.rol && <p className="text-xs text-red-500">{errors.rol}</p>}
           </div>
         </div>

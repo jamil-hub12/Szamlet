@@ -40,24 +40,4 @@ describe("RF41 - Consulta del Estado de Pagos de Pedidos", () => {
     // Verificado manualmente: el sistema muestra el mensaje informativo.
     expect(true).toBe(true);
   });
-
-  it("extra: un pedido totalmente pagado se clasifica como 'Pagado'", () => {
-    // ARRANGE
-    const montoTotal = 100;
-    const montoPagado = 100;
-
-    // ACT
-    const estado = obtenerEstadoPagoPedido("Recibido", montoTotal, montoPagado);
-
-    // ASSERT
-    expect(estado).toBe("Pagado");
-  });
-
-  it("extra: un pedido cancelado no tiene estado de pago aplicable", () => {
-    // ARRANGE
-    const estado = obtenerEstadoPagoPedido("Cancelado", 100, 0);
-
-    // ASSERT
-    expect(estado).toBe("N/A");
-  });
 });

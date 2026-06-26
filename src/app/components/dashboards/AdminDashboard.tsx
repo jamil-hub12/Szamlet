@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router";
 import { useSearchParams } from "react-router";
 import { filtrarPedidosAdmin } from "../../utils/pedidosFiltros";
+import { filtrarClientes } from "../../utils/clientesFiltros";
 import {
   calcularMetricasReporte,
   puedeGenerarReportePedidos,
@@ -928,29 +929,11 @@ export function AdminDashboard() {
     .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
 
   // Filtrado de clientes
-  const clientesFiltrados = clientes
-    .filter((c) => {
-      const matchBusqueda =
-        c.nombre.toLowerCase().includes(busquedaCliente.toLowerCase()) ||
-        (c.email &&
-          c.email.toLowerCase().includes(busquedaCliente.toLowerCase())) ||
-        c.celular.includes(busquedaCliente) ||
-        (c.ruc && c.ruc.includes(busquedaCliente));
-
-      let matchEstado = true;
-      if (filtroEstadoCliente === "ConPedidos") {
-        matchEstado = pedidos.some((p) => p.clienteId === c.id);
-      } else if (filtroEstadoCliente === "SinPedidos") {
-        matchEstado = !pedidos.some((p) => p.clienteId === c.id);
-      } else if (filtroEstadoCliente === "ConEmail") {
-        matchEstado = !!c.email;
-      } else if (filtroEstadoCliente === "SinEmail") {
-        matchEstado = !c.email;
-      }
-
-      return matchBusqueda && matchEstado;
-    })
-    .sort((a, b) => a.nombre.localeCompare(b.nombre));
+  const clientesFiltrados = filtrarClientes(clientes, {
+    busqueda: busquedaCliente,
+    filtroEstado: filtroEstadoCliente as "Todos" | "ConPedidos" | "SinPedidos" | "ConEmail" | "SinEmail",
+    pedidos,
+  });
 
   // Filtrado de auditoría
   const auditoriaFiltrada = auditoriaRegistros.filter((registro) => {
@@ -3835,6 +3818,7 @@ export function AdminDashboard() {
       {empleadoEditando && (
         <EditarEmpleadoModal
           empleado={empleadoEditando}
+          emailUsuarioActual={currentUser.email}
           onClose={() => setEmpleadoEditando(null)}
           onGuardar={async (actualizado) => {
             const exito = await actualizarEmpleado(actualizado.id, {
