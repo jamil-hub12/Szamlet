@@ -15,6 +15,7 @@ import {
   contarNoLeidas,
   tieneModificacionesRecientes,
 } from "../utils/notificacionesFiltros";
+import type { NotificacionLog } from "../utils/notificacionesLog";
 
 type Notificacion = {
   id: string;
@@ -55,6 +56,9 @@ type NotificacionesContextType = {
     estadoNuevo: string;
     noticeMensaje?: string;
   }) => Promise<boolean>;
+  obtenerHistorialNotificacionesPedido: (
+    pedidoCodigo: string,
+  ) => Promise<{ data: NotificacionLog[] | null; error: string | null }>;
 };
 
 const NotificacionesContext = createContext<
@@ -327,8 +331,68 @@ export function NotificacionesProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  /**
+   * Consulta dedicada para RF-21 (Log de Notificaciones).
+   * No depende del listado en memoria (limitado a 100 globales): consulta
+   * directamente las notificaciones del pedido seleccionado, para poder
+   * mostrar el historial completo y manejar el caso de error de carga (CP04).
+   */
+  const obtenerHistorialNotificacionesPedido = async (
+    pedidoCodigo: string,
+  ): Promise<{ data: NotificacionLog[] | null; error: string | null }> => {
+    try {
+      const { data, error } = await supabase
+        .from("notificaciones")
+        .select("*")
+        .eq("pedido_codigo", pedidoCodigo)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        // Tabla/columnas aún no migradas: no es un error real del flujo,
+        // se trata como historial vacío para no romper la pantalla.
+        if (error.code === "PGRST205" || error.code === "42703") {
+          return { data: [], error: null };
+        }
+        return {
+          data: null,
+          error:
+            "No se pudo cargar el historial de notificaciones. Intenta nuevamente.",
+        };
+      }
+
+      const historial: NotificacionLog[] = (data ?? []).map((n: any) => ({
+        id: n.id,
+        pedidoCodigo: n.pedido_codigo,
+        fecha: n.created_at,
+        medio:
+          n.medio ??
+          (n.email_enviado !== null && n.email_enviado !== undefined
+            ? "Email"
+            : null),
+        destinatario: n.destinatario ?? null,
+        contenido: n.mensaje ?? null,
+        estadoEntrega:
+          n.estado_entrega ??
+          (n.email_enviado === true
+            ? "exitoso"
+            : n.email_enviado === false
+              ? "fallido"
+              : null),
+      }));
+
+      return { data: historial, error: null };
+    } catch {
+      return {
+        data: null,
+        error:
+          "No se pudo cargar el historial de notificaciones. Intenta nuevamente.",
+      };
+    }
+  };
+
   const noLeidas = contarNoLeidas(notificaciones);
-  const hayModificacionesRecientes = tieneModificacionesRecientes(notificaciones);
+  const hayModificacionesRecientes =
+    tieneModificacionesRecientes(notificaciones);
 
   return (
     <NotificacionesContext.Provider
@@ -342,6 +406,7 @@ export function NotificacionesProvider({ children }: { children: ReactNode }) {
         noLeidas,
         hayModificacionesRecientes,
         enviarEmailCambioEstado,
+        obtenerHistorialNotificacionesPedido,
       }}
     >
       {children}

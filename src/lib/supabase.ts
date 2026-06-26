@@ -123,6 +123,53 @@ export type Database = {
           created_at?: string;
         };
       };
+      notificaciones: {
+        Row: {
+          id: string;
+          tipo: "exito" | "error" | "info" | "advertencia";
+          titulo: string;
+          mensaje: string;
+          pedido_codigo: string | null;
+          estado_anterior: string | null;
+          estado_nuevo: string | null;
+          email_enviado: boolean | null;
+          medio: string | null;
+          destinatario: string | null;
+          estado_entrega: string | null;
+          leida: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          tipo: "exito" | "error" | "info" | "advertencia";
+          titulo: string;
+          mensaje: string;
+          pedido_codigo?: string | null;
+          estado_anterior?: string | null;
+          estado_nuevo?: string | null;
+          email_enviado?: boolean | null;
+          medio?: string | null;
+          destinatario?: string | null;
+          estado_entrega?: string | null;
+          leida?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          tipo?: "exito" | "error" | "info" | "advertencia";
+          titulo?: string;
+          mensaje?: string;
+          pedido_codigo?: string | null;
+          estado_anterior?: string | null;
+          estado_nuevo?: string | null;
+          email_enviado?: boolean | null;
+          medio?: string | null;
+          destinatario?: string | null;
+          estado_entrega?: string | null;
+          leida?: boolean;
+          created_at?: string;
+        };
+      };
       pedidos: {
         Row: {
           id: string;
