@@ -18,22 +18,4 @@ describe("RF28 - Flujo de UI sin lógica aislable", () => {
     // Verificado manualmente: no hay helper puro.
     expect(true).toBe(true);
   });
-
-  it("CP04: escenario UI sin lógica aislable - no aplica test de código", () => {
-    // El comportamiento se resuelve en el componente.
-    // Verificado manualmente: no se aisló lógica de negocio.
-    expect(true).toBe(true);
-  });
-
-  it("CP05: escenario UI sin lógica aislable - no aplica test de código", () => {
-    // No existe una abstracción utilitaria para este escenario.
-    // Verificado manualmente: el flujo es visual.
-    expect(true).toBe(true);
-  });
-
-  it("CP06: escenario UI sin lógica aislable - no aplica test de código", () => {
-    // Queda como caso manual en la interfaz.
-    // Verificado manualmente: no hay unit test limpio.
-    expect(true).toBe(true);
-  });
 });
