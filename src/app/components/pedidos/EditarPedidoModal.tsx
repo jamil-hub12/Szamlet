@@ -124,12 +124,15 @@ export function EditarPedidoModal({
         setLockEstado("libre");
 
         // Heartbeat: renovar el lock cada 2 minutos
-        heartbeatRef.current = setInterval(() => {
-          renovarBloqueo(
-            pedido.codigo,
-            currentUser.codigo || currentUser.email,
-          );
-        }, 2 * 60 * 1000);
+        heartbeatRef.current = setInterval(
+          () => {
+            renovarBloqueo(
+              pedido.codigo,
+              currentUser.codigo || currentUser.email,
+            );
+          },
+          2 * 60 * 1000,
+        );
       } else {
         setLockEstado(resultado.bloqueadoPor);
       }
@@ -177,25 +180,35 @@ export function EditarPedidoModal({
       cancelado = true;
       // Liberar el lock al cerrar
       if (lockEstado === "libre" || lockEstado === "verificando") {
-        liberarBloqueo(
-          pedido.codigo,
-          currentUser.codigo || currentUser.email,
-        );
+        liberarBloqueo(pedido.codigo, currentUser.codigo || currentUser.email);
       }
       if (heartbeatRef.current) clearInterval(heartbeatRef.current);
       if (realtimeChannelRef.current) {
-        try { realtimeChannelRef.current.unsubscribe(); } catch { /* noop */ }
+        try {
+          realtimeChannelRef.current.unsubscribe();
+        } catch {
+          /* noop */
+        }
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [validacionEdicion.puede, currentUser.loading, currentUser.codigo, currentUser.email]);
+  }, [
+    validacionEdicion.puede,
+    currentUser.loading,
+    currentUser.codigo,
+    currentUser.email,
+  ]);
 
   // Al cerrar: también liberar explícitamente
   const handleClose = () => {
     liberarBloqueo(pedido.codigo, currentUser.codigo || currentUser.email);
     if (heartbeatRef.current) clearInterval(heartbeatRef.current);
     if (realtimeChannelRef.current) {
-      try { realtimeChannelRef.current.unsubscribe(); } catch { /* noop */ }
+      try {
+        realtimeChannelRef.current.unsubscribe();
+      } catch {
+        /* noop */
+      }
     }
     onClose();
   };
@@ -302,7 +315,7 @@ export function EditarPedidoModal({
       ) {
         setErrorMessage(
           "El pedido fue modificado por otra sesión mientras lo editabas. " +
-          "Cierra este modal, revisa los cambios actuales y vuelve a intentarlo.",
+            "Cierra este modal, revisa los cambios actuales y vuelve a intentarlo.",
         );
         setStep("error");
         return;
@@ -907,7 +920,6 @@ export function EditarPedidoModal({
     </div>
   );
 }
-
 
 // Regex para bloquear caracteres especiales (solo letras, números, espacios, guión y punto)
 const SOLO_ALFANUMERICO = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9\s\-\.]*$/;
