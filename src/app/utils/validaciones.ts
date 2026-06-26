@@ -362,3 +362,25 @@ export function esPedidoProximoAVencer(
   if (dias === null) return false;
   return dias > 0 && dias <= DIAS_UMBRAL_CRITICO;
 }
+
+// RF — Gestión de roles de Empleados
+
+/**
+ * Determina si el campo "rol" debe estar habilitado al editar un empleado.
+ *
+ * Regla de negocio: la cuenta de Administrador es única en el sistema, así
+ * que un administrador no puede cambiar su propio rol (se quedaría sin
+ * ningún admin que pueda revertirlo). Editar el rol de OTRO empleado sigue
+ * permitido sin restricciones.
+ *
+ * Comparación por email, porque es el identificador con el que
+ * useCurrentUser empareja la sesión de Supabase Auth con la fila de
+ * "empleados" (no expone el UUID/id del registro).
+ */
+export function puedeEditarPropioRol(
+  emailEmpleadoEditado: string,
+  emailUsuarioActual: string,
+): boolean {
+  if (!emailUsuarioActual) return true;
+  return emailEmpleadoEditado.toLowerCase() !== emailUsuarioActual.toLowerCase();
+}

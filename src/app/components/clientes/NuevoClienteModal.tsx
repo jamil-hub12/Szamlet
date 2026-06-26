@@ -81,16 +81,18 @@ function validateForm(data: FormData): FormErrors {
     errors.dni = "El DNI debe tener exactamente 8 dígitos.";
   }
 
-  // Validar email con proveedores permitidos
-  if (data.email.trim()) {
-    if (!esEmailConProveedorPermitido(data.email)) {
-      errors.email =
-        "El correo debe ser de @gmail.com, @outlook.com o @hotmail.com";
-    }
+  // Validar email: obligatorio, con proveedores permitidos
+  if (!data.email.trim()) {
+    errors.email = "El correo es obligatorio.";
+  } else if (!esEmailConProveedorPermitido(data.email)) {
+    errors.email =
+      "El correo debe ser de @gmail.com, @outlook.com o @hotmail.com";
   }
 
-  // Validar dirección
-  if (data.direccion.trim() && !esDireccionValida(data.direccion)) {
+  // Validar dirección: obligatoria
+  if (!data.direccion.trim()) {
+    errors.direccion = "La dirección es obligatoria.";
+  } else if (!esDireccionValida(data.direccion)) {
     errors.direccion = "La dirección contiene caracteres no válidos.";
   }
 
@@ -271,7 +273,7 @@ export function NuevoClienteModal({
                 "Correo electrónico",
                 "Ej. cliente@email.com",
                 <Mail className="w-4 h-4" />,
-                false,
+                true,
                 "email",
               )}
               {field(
@@ -279,7 +281,7 @@ export function NuevoClienteModal({
                 "Dirección",
                 "Ej. Av. Arequipa 1234",
                 <MapPin className="w-4 h-4" />,
-                false,
+                true,
               )}
 
               <div className="grid grid-cols-2 gap-4">

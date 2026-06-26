@@ -3818,6 +3818,7 @@ export function AdminDashboard() {
       {empleadoEditando && (
         <EditarEmpleadoModal
           empleado={empleadoEditando}
+          emailUsuarioActual={currentUser.email}
           onClose={() => setEmpleadoEditando(null)}
           onGuardar={async (actualizado) => {
             const exito = await actualizarEmpleado(actualizado.id, {
