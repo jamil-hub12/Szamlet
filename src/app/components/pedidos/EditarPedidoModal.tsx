@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   X,
   AlertCircle,
@@ -11,6 +11,7 @@ import {
   Trash2,
   ShoppingBag,
   FileText,
+  Lock,
 } from "lucide-react";
 import type { Pedido } from "../../contexts/PedidosContext";
 import { usePedidos } from "../../contexts/PedidosContext";
@@ -18,8 +19,20 @@ import { puedeEditarPedido } from "../../utils/pedidosCicloVida";
 import { obtenerItemsPedido } from "../../utils/stockManager";
 import { useProductos } from "../../contexts/ProductosContext";
 import { obtenerFechaPeruHoy } from "../../utils/fechas";
-import { esValidaFechaMinimaHoy } from "../../utils/validaciones";
+import {
+  esValidaFechaMinimaHoy,
+  obtenerMensajeDeError,
+} from "../../utils/validaciones";
 import { prepararNotaParaGuardar } from "../../utils/notasPedido";
+import { useCurrentUser } from "../../hooks/useCurrentUser";
+import {
+  tomarBloqueo,
+  liberarBloqueo,
+  renovarBloqueo,
+  obtenerUpdatedAtPedido,
+  hayConflictoDeVersion,
+  type BloqueoInfo,
+} from "../../utils/concurrencia";
 
 type PedidoItem = {
   id?: string;
@@ -55,6 +68,8 @@ export function EditarPedidoModal({
   const validacionEdicion = puedeEditarPedido(pedido.estado);
   const { productos } = useProductos();
   const { actualizarPedidoConItems, actualizarPedido } = usePedidos();
+  const currentUser = useCurrentUser();
+
   const [form, setForm] = useState<EditarPedidoForm>({
     articulo: pedido.articulo,
     urgente: pedido.urgente,
@@ -75,6 +90,132 @@ export function EditarPedidoModal({
   const [mostrarAgregarItem, setMostrarAgregarItem] = useState(false);
   const [mostrarAgregarItemLibre, setMostrarAgregarItemLibre] = useState(false);
   const esEspecial = pedido.tieneEspeciales === true;
+
+  // ── RF-33: Control de Concurrencia ──────────────────────────────────────────
+  /** Estado del bloqueo: null = verificando, "libre" = tenemos el lock,
+   *  bloqueadoPor = otro usuario tiene el lock (modo solo lectura). */
+  const [lockEstado, setLockEstado] = useState<
+    "verificando" | "libre" | BloqueoInfo
+  >("verificando");
+
+  /** updatedAt del pedido en el momento en que abrimos el modal — para CP05 */
+  const updatedAtAlAbrirRef = useRef<string | null>(pedido.updatedAt ?? null);
+
+  /** Canal Realtime para recibir cambios en la tabla pedidos_bloqueos */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const realtimeChannelRef = useRef<any>(null);
+
+  /** Timer del heartbeat para renovar el lock cada 2 minutos */
+  const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Al abrir el modal: intentar tomar el lock
+  useEffect(() => {
+    if (!validacionEdicion.puede || currentUser.loading) return;
+
+    let cancelado = false;
+
+    async function intentarLock() {
+      const resultado = await tomarBloqueo(
+        pedido.codigo,
+        currentUser.codigo || currentUser.email,
+        currentUser.nombre || currentUser.email,
+      );
+
+      if (cancelado) return;
+
+      if (resultado.tomado) {
+        setLockEstado("libre");
+
+        // Heartbeat: renovar el lock cada 2 minutos
+        heartbeatRef.current = setInterval(
+          () => {
+            renovarBloqueo(
+              pedido.codigo,
+              currentUser.codigo || currentUser.email,
+            );
+          },
+          2 * 60 * 1000,
+        );
+      } else {
+        setLockEstado(resultado.bloqueadoPor);
+      }
+    }
+
+    intentarLock();
+
+    // Suscribir Realtime a pedidos_bloqueos para detectar cambios en tiempo real
+    try {
+      const { supabase } = require("../../lib/supabase");
+      const channel = supabase
+        .channel(`pedidos_bloqueos:${pedido.codigo}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "pedidos_bloqueos",
+            filter: `pedido_codigo=eq.${pedido.codigo}`,
+          },
+          async () => {
+            if (cancelado) return;
+            // Re-evaluar estado del lock al recibir cualquier cambio
+            const resultado = await tomarBloqueo(
+              pedido.codigo,
+              currentUser.codigo || currentUser.email,
+              currentUser.nombre || currentUser.email,
+            );
+            if (!cancelado) {
+              if (resultado.tomado) {
+                setLockEstado("libre");
+              } else {
+                setLockEstado(resultado.bloqueadoPor);
+              }
+            }
+          },
+        )
+        .subscribe();
+      realtimeChannelRef.current = channel;
+    } catch {
+      // Realtime no disponible — funciona igual, sin actualización en tiempo real
+    }
+
+    return () => {
+      cancelado = true;
+      // Liberar el lock al cerrar
+      if (lockEstado === "libre" || lockEstado === "verificando") {
+        liberarBloqueo(pedido.codigo, currentUser.codigo || currentUser.email);
+      }
+      if (heartbeatRef.current) clearInterval(heartbeatRef.current);
+      if (realtimeChannelRef.current) {
+        try {
+          realtimeChannelRef.current.unsubscribe();
+        } catch {
+          /* noop */
+        }
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    validacionEdicion.puede,
+    currentUser.loading,
+    currentUser.codigo,
+    currentUser.email,
+  ]);
+
+  // Al cerrar: también liberar explícitamente
+  const handleClose = () => {
+    liberarBloqueo(pedido.codigo, currentUser.codigo || currentUser.email);
+    if (heartbeatRef.current) clearInterval(heartbeatRef.current);
+    if (realtimeChannelRef.current) {
+      try {
+        realtimeChannelRef.current.unsubscribe();
+      } catch {
+        /* noop */
+      }
+    }
+    onClose();
+  };
+  // ── Fin RF-33 ────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     let isMounted = true;
@@ -168,6 +309,22 @@ export function EditarPedidoModal({
     setErrorMessage(null);
 
     try {
+      // ── RF-33 CP05: verificar conflicto de versión antes de guardar ──
+      const updatedAtActual = await obtenerUpdatedAtPedido(pedido.codigo);
+      if (
+        updatedAtActual !== null &&
+        updatedAtAlAbrirRef.current !== null &&
+        hayConflictoDeVersion(updatedAtAlAbrirRef.current, updatedAtActual)
+      ) {
+        setErrorMessage(
+          "El pedido fue modificado por otra sesión mientras lo editabas. " +
+            "Cierra este modal, revisa los cambios actuales y vuelve a intentarlo.",
+        );
+        setStep("error");
+        return;
+      }
+      // ── Fin verificación RF-33 CP05 ───────────────────────────────────
+
       const itemsInsert = form.items.map((item) => {
         const descuento = item.descuentoPorcentaje ?? 0;
         const precioBase = item.precioUnitario ?? 0;
@@ -193,7 +350,6 @@ export function EditarPedidoModal({
           ? [...new Set(form.items.map((item) => item.modelo))].join(", ")
           : form.articulo;
 
-      // Si es admin y puso un monto total, lo incluimos en los datos básicos
       const montoNumerico = parseFloat(montoTotalAdmin);
       const datosBasicos: Parameters<typeof actualizarPedidoConItems>[1] = {
         articulo: articuloDerivado.trim(),
@@ -217,17 +373,17 @@ export function EditarPedidoModal({
         return;
       }
 
+      // Liberar el lock al guardar exitosamente
+      liberarBloqueo(pedido.codigo, currentUser.codigo || currentUser.email);
+      if (heartbeatRef.current) clearInterval(heartbeatRef.current);
+
       setStep("exito");
       setTimeout(() => {
         onClose();
       }, 1500);
     } catch (error) {
       console.error("Error al guardar pedido:", error);
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Error desconocido al guardar el pedido",
-      );
+      setErrorMessage(obtenerMensajeDeError(error));
       setStep("error");
     }
   };
@@ -297,11 +453,82 @@ export function EditarPedidoModal({
     );
   }
 
+  // ── RF-33 CP02 (E1): pedido bloqueado por otra sesión — modo solo lectura ──
+  if (typeof lockEstado === "object") {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div
+          className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+          onClick={onClose}
+        />
+        <div className="relative z-10 bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[85vh]">
+          <div className="flex items-center justify-between px-6 py-5 border-b border-border">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                <Lock className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <h3 className="text-foreground">Pedido en edición</h3>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Solo consulta disponible
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg hover:bg-accent transition"
+            >
+              <X className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </div>
+
+          <div className="px-6 py-8 space-y-4">
+            <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-amber-50 border border-amber-200">
+              <Lock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm text-amber-800 font-medium">
+                  El pedido está siendo editado por otra persona
+                </p>
+                <p className="text-xs text-amber-700 mt-1">
+                  <strong>{lockEstado.usuarioNombre}</strong> tiene abierto este
+                  pedido para edición. Puedes consultarlo pero no modificarlo
+                  hasta que esa sesión termine.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2 px-4 py-3 rounded-lg bg-muted/40 border border-border">
+              <p className="text-xs text-muted-foreground font-mono">
+                {pedido.codigo}
+              </p>
+              <p className="text-sm text-foreground">
+                {pedido.cliente} · {pedido.articulo}
+              </p>
+              <span className="inline-block text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded">
+                {pedido.estado}
+              </span>
+            </div>
+          </div>
+
+          <div className="px-6 py-4 border-t border-border">
+            <button
+              onClick={onClose}
+              className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-sm hover:bg-primary/90 transition"
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  // ── Fin RF-33 CP02 ───────────────────────────────────────────────────────────
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={step === "form" ? onClose : undefined}
+        onClick={step === "form" ? handleClose : undefined}
       />
 
       <div className="relative z-10 bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[85vh]">
@@ -317,11 +544,17 @@ export function EditarPedidoModal({
                   <span className="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded">
                     {pedido.estado}
                   </span>
+                  {/* Indicador visual de lock activo */}
+                  {lockEstado === "libre" && (
+                    <span className="flex items-center gap-1 text-xs text-emerald-600">
+                      <Lock className="w-3 h-3" /> Edición bloqueada para ti
+                    </span>
+                  )}
                 </div>
                 <h3 className="text-foreground">Editar pedido</h3>
               </div>
               <button
-                onClick={onClose}
+                onClick={handleClose}
                 className="p-1.5 rounded-lg hover:bg-accent transition"
               >
                 <X className="w-4 h-4 text-muted-foreground" />
@@ -601,14 +834,15 @@ export function EditarPedidoModal({
 
             <div className="px-6 py-4 border-t border-border flex gap-3 shrink-0">
               <button
-                onClick={onClose}
+                onClick={handleClose}
                 className="flex-1 py-2.5 rounded-lg border border-border text-foreground text-sm hover:bg-accent transition"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleGuardar}
-                className="flex-2 px-6 py-2.5 rounded-lg bg-foreground text-background text-sm hover:bg-foreground/90 transition flex items-center gap-2"
+                disabled={lockEstado === "verificando"}
+                className="flex-2 px-6 py-2.5 rounded-lg bg-foreground text-background text-sm hover:bg-foreground/90 transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Package className="w-4 h-4" />
                 Guardar cambios

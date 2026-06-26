@@ -352,7 +352,10 @@ export function ProduccionDashboard() {
             </div>
           </div>
           <button
-            onClick={() => navigate("/")}
+            onClick={async () => {
+              await supabase.auth.signOut();
+              navigate("/");
+            }}
             className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-foreground hover:bg-accent transition text-sm"
           >
             <LogOut className="w-4 h-4" />

@@ -15,6 +15,11 @@ import { formatearSoles } from "../../utils/formatoMoneda";
 import {
   esValidaFechaMinimaHoy,
   obtenerMensajeErrorFecha,
+  detectarPedidoDuplicadoExacto,
+  detectarPedidoSimilar,
+  tieneDatosSuficientesParaComparar,
+  type ItemComparacion,
+  type PedidoComparable,
 } from "../../utils/validaciones";
 import { obtenerFechaPeruHoy } from "../../utils/fechas";
 
@@ -1029,14 +1034,24 @@ export function NuevoPedidoModal({
   onClose: () => void;
   clientes: ClienteRef[];
   onGuardar: (p: NuevoPedidoOutput) => void;
-  pedidosExistentes: { id: string }[];
+  pedidosExistentes: PedidoComparable[];
   productos?: ProductoCatalogo[];
   esAdmin?: boolean;
 }) {
-  type Step = "form" | "confirmacion" | "guardando" | "exito" | "error";
+  type Step =
+    | "form"
+    | "duplicado_exacto"
+    | "duplicado_parcial"
+    | "confirmacion"
+    | "guardando"
+    | "exito"
+    | "error";
   const [step, setStep] = useState<Step>("form");
   const [showErrors, setShowErrors] = useState(false);
   const [codigoPedido, setCodigo] = useState("");
+  const [pedidoDuplicadoId, setPedidoDuplicadoId] = useState<string | null>(
+    null,
+  );
 
   const [clienteBusq, setClienteBusq] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -1122,9 +1137,69 @@ export function NuevoPedidoModal({
     return true;
   };
 
+  /** Extrae los ítems del formulario actual en formato comparable (RF-27). */
+  const extraerItemsComparacion = (): ItemComparacion[] => {
+    const items: ItemComparacion[] = [];
+    for (const p of form.productos) {
+      for (const talla of p.tallasSeleccionadas) {
+        for (const cc of p.detallesTallas[talla] ?? []) {
+          if (cc.cantidad > 0) {
+            items.push({
+              modelo: p.modelo,
+              tela: p.tela,
+              disenio: p.disenio,
+              talla,
+              color: cc.color,
+              cantidad: cc.cantidad,
+            });
+          }
+        }
+      }
+    }
+    return items;
+  };
+
   const handleGuardar = () => {
     setShowErrors(true);
     if (!validate()) return;
+
+    // RF-27: Verificar datos suficientes para comparar (CP04)
+    const itemsActuales = extraerItemsComparacion();
+    const datosNuevoPedido = {
+      clienteId: form.clienteId,
+      fechaEntrega: form.fechaEntrega,
+      items: itemsActuales,
+    };
+
+    if (!tieneDatosSuficientesParaComparar(datosNuevoPedido)) {
+      // No hay suficientes datos para comparar → bloquear (CP04)
+      // validate() ya cubre este caso, pero la función hace explícito el RF-27
+      return;
+    }
+
+    // RF-27 CP02: Detectar duplicado exacto
+    const idDuplicadoExacto = detectarPedidoDuplicadoExacto(
+      datosNuevoPedido,
+      pedidosExistentes,
+    );
+    if (idDuplicadoExacto) {
+      setPedidoDuplicadoId(idDuplicadoExacto);
+      setStep("duplicado_exacto");
+      return;
+    }
+
+    // RF-27 CP03: Detectar similitud parcial
+    const idDuplicadoParcial = detectarPedidoSimilar(
+      { clienteId: form.clienteId, items: itemsActuales },
+      pedidosExistentes,
+    );
+    if (idDuplicadoParcial) {
+      setPedidoDuplicadoId(idDuplicadoParcial);
+      setStep("duplicado_parcial");
+      return;
+    }
+
+    // Sin duplicados → flujo normal
     setStep("confirmacion");
   };
 
@@ -1586,6 +1661,132 @@ export function NuevoPedidoModal({
                   </button>
                 </div>
               </div>
+            </div>
+          </>
+        )}
+
+        {/* DUPLICADO EXACTO — CP02 */}
+        {step === "duplicado_exacto" && (
+          <>
+            <div className="flex items-center justify-between px-6 py-5 border-b border-border shrink-0">
+              <div>
+                <h3 className="text-foreground">Pedido duplicado detectado</h3>
+                <p className="text-muted-foreground text-sm mt-0.5">
+                  No se puede registrar el pedido
+                </p>
+              </div>
+              <button
+                onClick={onClose}
+                className="p-1.5 rounded-lg hover:bg-accent transition"
+              >
+                <X className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+              <div className="flex items-start gap-3 px-4 py-4 rounded-xl bg-red-50 border border-red-200">
+                <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm text-red-800 font-medium">
+                    Ya existe un pedido idéntico registrado
+                  </p>
+                  <p className="text-xs text-red-700 mt-1">
+                    El sistema detectó un pedido con el mismo cliente,
+                    productos, cantidades y fecha de entrega. No se puede
+                    guardar un pedido duplicado.
+                  </p>
+                  {pedidoDuplicadoId && (
+                    <p className="text-xs text-red-600 mt-2 font-mono">
+                      Pedido existente: <strong>{pedidoDuplicadoId}</strong>
+                    </p>
+                  )}
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Si necesitás registrar un pedido diferente, volvé al formulario
+                y modificá los datos (fecha, productos o cantidades).
+              </p>
+            </div>
+            <div className="px-6 py-4 border-t border-border bg-card shrink-0 flex gap-3 justify-end">
+              <button
+                onClick={onClose}
+                className="px-4 py-2.5 rounded-lg border border-border text-foreground text-sm hover:bg-accent transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  setPedidoDuplicadoId(null);
+                  setStep("form");
+                }}
+                className="px-5 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm hover:bg-primary/90 transition"
+              >
+                Modificar pedido
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* SIMILITUD PARCIAL — CP03 / CP05 */}
+        {step === "duplicado_parcial" && (
+          <>
+            <div className="flex items-center justify-between px-6 py-5 border-b border-border shrink-0">
+              <div>
+                <h3 className="text-foreground">Posible pedido duplicado</h3>
+                <p className="text-muted-foreground text-sm mt-0.5">
+                  Revisá la información antes de continuar
+                </p>
+              </div>
+              <button
+                onClick={onClose}
+                className="p-1.5 rounded-lg hover:bg-accent transition"
+              >
+                <X className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+              <div className="flex items-start gap-3 px-4 py-4 rounded-xl bg-amber-50 border border-amber-200">
+                <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm text-amber-800 font-medium">
+                    Se encontró un pedido similar para este cliente
+                  </p>
+                  <p className="text-xs text-amber-700 mt-1">
+                    El cliente ya tiene un pedido registrado con productos
+                    similares. Puede tratarse de un pedido duplicado o de una
+                    solicitud independiente con variaciones en fecha o
+                    cantidades.
+                  </p>
+                  {pedidoDuplicadoId && (
+                    <p className="text-xs text-amber-600 mt-2 font-mono">
+                      Pedido similar: <strong>{pedidoDuplicadoId}</strong>
+                    </p>
+                  )}
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                ¿Confirmás que este pedido es una solicitud diferente y debe
+                registrarse de forma independiente?
+              </p>
+            </div>
+            <div className="px-6 py-4 border-t border-border bg-card shrink-0 flex gap-3 justify-end">
+              <button
+                onClick={() => {
+                  setPedidoDuplicadoId(null);
+                  setStep("form");
+                }}
+                className="px-4 py-2.5 rounded-lg border border-border text-foreground text-sm hover:bg-accent transition"
+              >
+                Volver a revisar
+              </button>
+              <button
+                onClick={() => {
+                  setPedidoDuplicadoId(null);
+                  setStep("confirmacion");
+                }}
+                className="px-5 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm hover:bg-primary/90 transition"
+              >
+                Confirmar pedido diferente
+              </button>
             </div>
           </>
         )}

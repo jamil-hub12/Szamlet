@@ -26,6 +26,7 @@ import {
 } from "../../utils/validaciones";
 import { tieneNotasParaMostrar } from "../../utils/notasPedido";
 import { calcularSaldoPendiente } from "../../utils/estadoPagoPedido";
+import { SeccionNotificacionesPedido } from "./SeccionNotificacionesPedido";
 
 type Cliente = {
   id: string;
@@ -349,6 +350,8 @@ export function DetallePedidoModal({
               </div>
             </div>
           )}
+
+          <SeccionNotificacionesPedido pedidoCodigo={pedido.codigo} />
 
           {/* Items del pedido (si existen) */}
           {pedido.items && pedido.items.length > 0 && (

@@ -100,6 +100,76 @@ export type Database = {
           updated_at?: string;
         };
       };
+      pedidos_bloqueos: {
+        Row: {
+          pedido_codigo: string;
+          usuario_codigo: string;
+          usuario_nombre: string;
+          expira_en: string;
+          created_at: string;
+        };
+        Insert: {
+          pedido_codigo: string;
+          usuario_codigo: string;
+          usuario_nombre: string;
+          expira_en: string;
+          created_at?: string;
+        };
+        Update: {
+          pedido_codigo?: string;
+          usuario_codigo?: string;
+          usuario_nombre?: string;
+          expira_en?: string;
+          created_at?: string;
+        };
+      };
+      notificaciones: {
+        Row: {
+          id: string;
+          tipo: "exito" | "error" | "info" | "advertencia";
+          titulo: string;
+          mensaje: string;
+          pedido_codigo: string | null;
+          estado_anterior: string | null;
+          estado_nuevo: string | null;
+          email_enviado: boolean | null;
+          medio: string | null;
+          destinatario: string | null;
+          estado_entrega: string | null;
+          leida: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          tipo: "exito" | "error" | "info" | "advertencia";
+          titulo: string;
+          mensaje: string;
+          pedido_codigo?: string | null;
+          estado_anterior?: string | null;
+          estado_nuevo?: string | null;
+          email_enviado?: boolean | null;
+          medio?: string | null;
+          destinatario?: string | null;
+          estado_entrega?: string | null;
+          leida?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          tipo?: "exito" | "error" | "info" | "advertencia";
+          titulo?: string;
+          mensaje?: string;
+          pedido_codigo?: string | null;
+          estado_anterior?: string | null;
+          estado_nuevo?: string | null;
+          email_enviado?: boolean | null;
+          medio?: string | null;
+          destinatario?: string | null;
+          estado_entrega?: string | null;
+          leida?: boolean;
+          created_at?: string;
+        };
+      };
       pedidos: {
         Row: {
           id: string;

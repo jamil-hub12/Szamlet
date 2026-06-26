@@ -477,11 +477,30 @@ export function debeRevalidarSesionPorStorage(
 // RF30 — Filtro por Rango de Fechas
 
 /**
+ * Formato exacto "YYYY-MM-DD" con año de 4 dígitos, mes 01-12 y día
+ * 01-31. No valida días por mes (ej. 31 de febrero pasa este regex),
+ * porque <input type="date"> ya impide esos casos en uso normal; lo
+ * que esta regex sí bloquea es justamente el caso del bug reportado:
+ * un año con más (o menos) de 4 dígitos, como "20255-06-26".
+ */
+const FORMATO_FECHA_ISO = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
+
+/**
  * Verifica que un rango de fechas sea válido: si ambas fechas están
- * presentes, la fecha inicial no puede ser posterior a la fecha final.
- * Espera fechas en formato "YYYY-MM-DD" (el mismo que produce
- * formatearFechaISO y un <input type="date">), donde la comparación
- * lexicográfica de strings ya equivale a la comparación cronológica.
+ * presentes, deben tener el formato exacto "YYYY-MM-DD" (el mismo que
+ * produce formatearFechaISO y un <input type="date">) con año de 4
+ * dígitos, y la fecha inicial no puede ser posterior a la fecha final.
+ *
+ * El control nativo <input type="date"> permite, mientras se está
+ * editando el sub-campo de año (especialmente en Chrome/Edge), escribir
+ * más de 4 dígitos antes de que el usuario complete el resto de la
+ * fecha (ej. "20255-06-26"). Sin la validación de formato, la
+ * comparación lexicográfica de strings ("20255-06-26" <= "2026-06-26")
+ * da resultados sin sentido cronológico y el filtro se aplicaba con una
+ * fecha basura sin avisar al usuario. Por eso cualquier fecha presente
+ * que no respete el formato exacto se trata como rango inválido, igual
+ * que un "fecha inicial > fecha final": se ignora el filtro y se
+ * muestra el aviso correspondiente.
  *
  * Si falta alguna de las dos fechas, no hay rango que comparar todavía,
  * así que se considera válido (la validación de "campo obligatorio" es
@@ -492,5 +511,256 @@ export function esRangoDeFechasValido(
   fechaHasta: string,
 ): boolean {
   if (!fechaDesde || !fechaHasta) return true;
+  if (!FORMATO_FECHA_ISO.test(fechaDesde)) return false;
+  if (!FORMATO_FECHA_ISO.test(fechaHasta)) return false;
   return fechaDesde <= fechaHasta;
+}
+
+/**
+ * Categorías de error que el sistema sabe reconocer (RF29 — Gestión de
+ * Errores). Se usan para decidir qué mensaje mostrarle al usuario sin
+ * exponer detalles técnicos internos (stack traces, mensajes crudos de
+ * Supabase/Postgres, etc.).
+ */
+export type TipoError =
+  | "validacion"
+  | "permiso"
+  | "conexion"
+  | "duplicado"
+  | "procesamiento";
+
+/**
+ * Palabras clave (en minúsculas) que indican que un error es de tipo
+ * conexión: red caída, timeout, fetch fallido, o el propio Supabase
+ * reportando que no pudo alcanzar el servidor.
+ */
+const PALABRAS_CLAVE_CONEXION = [
+  "failed to fetch",
+  "network",
+  "fetch",
+  "timeout",
+  "conexion",
+  "connection",
+  "offline",
+  "no internet",
+];
+
+/** Palabras clave que indican que el error es de permisos. */
+const PALABRAS_CLAVE_PERMISO = [
+  "permiso",
+  "permission",
+  "no autorizado",
+  "unauthorized",
+  "forbidden",
+  "rls",
+  "row-level security",
+  "policy",
+];
+
+/** Palabras clave que indican que el error es por duplicidad de datos. */
+const PALABRAS_CLAVE_DUPLICADO = [
+  "duplicad",
+  "duplicate",
+  "ya existe",
+  "already exists",
+  "unique constraint",
+  "violates unique",
+];
+
+/** Palabras clave que indican que el error es de validación de datos. */
+const PALABRAS_CLAVE_VALIDACION = [
+  "invalid",
+  "inválid",
+  "requerido",
+  "required",
+  "obligatorio",
+  "no puede estar vacío",
+  "formato",
+];
+
+/**
+ * Clasifica un error (de cualquier origen: excepción de JS, error de
+ * Supabase, string, etc.) en una de las categorías de TipoError, según
+ * palabras clave presentes en su mensaje. Si no coincide con ninguna
+ * categoría conocida, se clasifica como "procesamiento" (error interno
+ * genérico), que es la categoría más segura por defecto: nunca expone
+ * detalles técnicos.
+ */
+export function clasificarError(error: unknown): TipoError {
+  const mensaje = (
+    error instanceof Error
+      ? error.message
+      : typeof error === "string"
+        ? error
+        : ""
+  ).toLowerCase();
+
+  if (PALABRAS_CLAVE_CONEXION.some((palabra) => mensaje.includes(palabra))) {
+    return "conexion";
+  }
+  if (PALABRAS_CLAVE_PERMISO.some((palabra) => mensaje.includes(palabra))) {
+    return "permiso";
+  }
+  if (PALABRAS_CLAVE_DUPLICADO.some((palabra) => mensaje.includes(palabra))) {
+    return "duplicado";
+  }
+  if (
+    PALABRAS_CLAVE_VALIDACION.some((palabra) => mensaje.includes(palabra))
+  ) {
+    return "validacion";
+  }
+  return "procesamiento";
+}
+
+/**
+ * Mensajes amigables por categoría de error (CP06: el usuario nunca debe
+ * ver detalles técnicos como stack traces o mensajes crudos del backend).
+ */
+const MENSAJES_POR_TIPO: Record<TipoError, string> = {
+  validacion:
+    "Algunos datos ingresados no son válidos. Revísalos e intenta nuevamente.",
+  permiso: "No tienes permisos para realizar esta operación.",
+  conexion:
+    "Hubo un problema de conexión. Verifica tu internet e intenta nuevamente.",
+  duplicado:
+    "Ya existe un registro con estos datos. No se guardaron los cambios.",
+  procesamiento: "Ocurrió un error inesperado. Intenta nuevamente más tarde.",
+};
+
+/**
+ * Devuelve un mensaje seguro y amigable para mostrar al usuario a partir
+ * de un error de cualquier origen, sin exponer detalles técnicos (stack
+ * traces, nombres de columnas, mensajes crudos de la base de datos,
+ * etc.). Internamente usa clasificarError para elegir la categoría y
+ * devuelve siempre uno de los mensajes predefinidos en MENSAJES_POR_TIPO.
+ */
+export function obtenerMensajeDeError(error: unknown): string {
+  return MENSAJES_POR_TIPO[clasificarError(error)];
+}
+
+// ─── RF-27: Control de Pedidos Duplicados ─────────────────────────────────────
+
+/**
+ * Un ítem de pedido normalizado para comparación (sin IDs de BD).
+ */
+export type ItemComparacion = {
+  modelo: string;
+  tela: string;
+  disenio: string;
+  talla: string;
+  color: string;
+  cantidad: number;
+};
+
+/**
+ * Subconjunto mínimo de un pedido existente necesario para compararlo
+ * contra un pedido nuevo. El tipo Pedido de PedidosContext lo satisface
+ * estructuralmente, por lo que se puede pasar directamente sin mapear.
+ */
+export type PedidoComparable = {
+  id: string;
+  clienteId: string;
+  fechaEntrega?: string;
+  items?: Array<{
+    modelo: string;
+    tela: string;
+    disenio: string;
+    talla: string;
+    color: string;
+    cantidad: number;
+  }>;
+};
+
+/** Normaliza un string para comparación insensible a mayúsculas y espacios. */
+function norm(s: string): string {
+  return s.trim().toLowerCase();
+}
+
+/**
+ * CP04 — Verifica que el nuevo pedido tenga datos suficientes para ser
+ * comparado contra pedidos existentes (cliente, fecha de entrega y al
+ * menos un ítem con modelo/tela/diseño/talla/color/cantidad).
+ */
+export function tieneDatosSuficientesParaComparar(pedido: {
+  clienteId: string;
+  fechaEntrega: string;
+  items: ItemComparacion[];
+}): boolean {
+  if (!pedido.clienteId || !pedido.fechaEntrega) return false;
+  if (!pedido.items || pedido.items.length === 0) return false;
+  return pedido.items.every(
+    (it) =>
+      it.modelo && it.tela && it.disenio && it.talla && it.color && it.cantidad > 0,
+  );
+}
+
+/**
+ * Compara dos listas de ítems de forma exacta (mismo modelo/tela/diseño/
+ * talla/color/cantidad para cada ítem, independiente del orden).
+ */
+function itemsIdenticos(
+  a: ItemComparacion[],
+  b: Array<{ modelo: string; tela: string; disenio: string; talla: string; color: string; cantidad: number }>,
+): boolean {
+  if (a.length !== b.length) return false;
+
+  const serializar = (it: { modelo: string; tela: string; disenio: string; talla: string; color: string; cantidad: number }) =>
+    `${norm(it.modelo)}|${norm(it.tela)}|${norm(it.disenio)}|${norm(it.talla)}|${norm(it.color)}|${it.cantidad}`;
+
+  const setA = new Set(a.map(serializar));
+  return b.every((it) => setA.has(serializar(it)));
+}
+
+/**
+ * CP01 / CP02 — Detecta si ya existe un pedido EXACTAMENTE igual al nuevo:
+ * mismo cliente, misma fecha de entrega y exactamente los mismos ítems
+ * (modelo, tela, diseño, talla, color y cantidad).
+ *
+ * Devuelve el id del pedido duplicado si lo encuentra, o null si no hay duplicado.
+ */
+export function detectarPedidoDuplicadoExacto(
+  nuevoPedido: { clienteId: string; fechaEntrega: string; items: ItemComparacion[] },
+  pedidosExistentes: PedidoComparable[],
+): string | null {
+  for (const existente of pedidosExistentes) {
+    if (norm(existente.clienteId) !== norm(nuevoPedido.clienteId)) continue;
+    if (!existente.fechaEntrega) continue;
+    if (norm(existente.fechaEntrega) !== norm(nuevoPedido.fechaEntrega)) continue;
+    if (!existente.items || existente.items.length === 0) continue;
+    if (itemsIdenticos(nuevoPedido.items, existente.items)) {
+      return existente.id;
+    }
+  }
+  return null;
+}
+
+/**
+ * CP03 / CP05 — Detecta si existe un pedido PARCIALMENTE similar al nuevo:
+ * mismo cliente y al menos un ítem con el mismo modelo/tela/diseño
+ * (independientemente de talla, color, cantidad o fecha).
+ *
+ * Devuelve el id del pedido similar si lo encuentra, o null si no hay similitud.
+ */
+export function detectarPedidoSimilar(
+  nuevoPedido: { clienteId: string; items: ItemComparacion[] },
+  pedidosExistentes: PedidoComparable[],
+): string | null {
+  for (const existente of pedidosExistentes) {
+    if (norm(existente.clienteId) !== norm(nuevoPedido.clienteId)) continue;
+    if (!existente.items || existente.items.length === 0) continue;
+
+    // Hay similitud si algún ítem del nuevo pedido coincide en modelo+tela+diseño
+    // con algún ítem del pedido existente.
+    const hayCoincidencia = nuevoPedido.items.some((nuevo) =>
+      existente.items!.some(
+        (ex) =>
+          norm(ex.modelo) === norm(nuevo.modelo) &&
+          norm(ex.tela) === norm(nuevo.tela) &&
+          norm(ex.disenio) === norm(nuevo.disenio),
+      ),
+    );
+
+    if (hayCoincidencia) return existente.id;
+  }
+  return null;
 }
