@@ -384,3 +384,113 @@ export function puedeEditarPropioRol(
   if (!emailUsuarioActual) return true;
   return emailEmpleadoEditado.toLowerCase() !== emailUsuarioActual.toLowerCase();
 }
+
+// RF — Registro de Productos (catálogo)
+
+type ProductoParaDuplicado = {
+  modelo: string;
+  tela: string;
+  disenio: string;
+};
+
+/**
+ * Verifica si la combinación modelo + tela + diseño ya existe en el
+ * catálogo. La comparación es insensible a mayúsculas/minúsculas y a
+ * espacios al inicio/final, igual que la deduplicación de telas/diseños
+ * en el selector y la verificación de colores duplicados — para que un
+ * usuario no pueda registrar "Algodón" cuando ya existe "algodón " en
+ * el catálogo.
+ *
+ * Extraído de NuevoProductoModal.tsx, donde esta misma comparación estaba
+ * duplicada en dos lugares (la tarjeta de variante y el validate() del
+ * modal principal) usando "===" exacto, sin normalizar.
+ */
+export function esVarianteProductoDuplicada<T extends ProductoParaDuplicado>(
+  productosExistentes: T[],
+  modelo: string,
+  tela: string,
+  disenio: string,
+): boolean {
+  if (!modelo.trim() || !tela.trim() || !disenio.trim()) return false;
+
+  const modeloNorm = modelo.trim().toLowerCase();
+  const telaNorm = tela.trim().toLowerCase();
+  const disenioNorm = disenio.trim().toLowerCase();
+
+  return productosExistentes.some(
+    (p) =>
+      p.modelo.trim().toLowerCase() === modeloNorm &&
+      p.tela.trim().toLowerCase() === telaNorm &&
+      p.disenio.trim().toLowerCase() === disenioNorm,
+  );
+}
+
+// RF17 — Registro de Motivo de Cancelación
+
+/**
+ * Verifica que el motivo de cancelación de un pedido sea una explicación
+ * válida: no vacío, no compuesto solo por espacios, y no compuesto
+ * únicamente por caracteres que no forman una explicación real (signos de
+ * puntuación, símbolos sueltos como "???", "...", "!!!", etc.).
+ *
+ * Exige al menos una letra o número en el texto. Esto permite motivos con
+ * puntuación normal ("Cliente cambió de opinión.") pero rechaza entradas
+ * que no comunican ninguna razón real.
+ */
+export function esMotivoCancelacionValido(motivo: string): boolean {
+  const motivoTrim = motivo.trim();
+  if (!motivoTrim) return false;
+  return /[a-zA-Z0-9áéíóúÁÉÍÓÚüÜñÑ]/.test(motivoTrim);
+}
+
+// RF23 — Cierre de Sesión
+
+/**
+ * Determina si un cambio en localStorage, detectado mediante el evento
+ * nativo "storage" del navegador, corresponde a un cierre de sesión de
+ * Supabase ocurrido en OTRA pestaña, y por lo tanto amerita revalidar la
+ * sesión en la pestaña actual.
+ *
+ * Supabase guarda su token de sesión bajo una clave con el patrón
+ * "sb-{projectId}-auth-token". El evento "storage" se dispara en las demás
+ * pestañas (no en la que originó el cambio) cuando esa clave se modifica o
+ * elimina. Un logout ocurre cuando:
+ *   - se borró localStorage por completo (key === null), o
+ *   - la clave de sesión de Supabase quedó sin valor (newValue vacío/null).
+ *
+ * Extraído de ProtectedRoute.tsx para poder testearlo de forma aislada,
+ * sin necesidad de simular un StorageEvent real del navegador.
+ */
+export function debeRevalidarSesionPorStorage(
+  key: string | null,
+  newValue: string | null,
+): boolean {
+  if (key === null) return true; // localStorage.clear()
+
+  const esClaveDeSesionSupabase =
+    key.startsWith("sb-") && key.endsWith("-auth-token");
+  if (!esClaveDeSesionSupabase) return false;
+
+  return !newValue; // la clave de sesión quedó vacía o fue eliminada
+}
+
+// RF30 — Filtro por Rango de Fechas
+
+/**
+ * Verifica que un rango de fechas sea válido: si ambas fechas están
+ * presentes, la fecha inicial no puede ser posterior a la fecha final.
+ * Espera fechas en formato "YYYY-MM-DD" (el mismo que produce
+ * formatearFechaISO y un <input type="date">), donde la comparación
+ * lexicográfica de strings ya equivale a la comparación cronológica.
+ *
+ * Si falta alguna de las dos fechas, no hay rango que comparar todavía,
+ * así que se considera válido (la validación de "campo obligatorio" es
+ * responsabilidad de otra capa, no de esta función).
+ */
+export function esRangoDeFechasValido(
+  fechaDesde: string,
+  fechaHasta: string,
+): boolean {
+  if (!fechaDesde || !fechaHasta) return true;
+  return fechaDesde <= fechaHasta;
+}

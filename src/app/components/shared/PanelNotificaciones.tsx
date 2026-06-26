@@ -170,23 +170,27 @@ export function PanelNotificaciones() {
                                   {notif.estadoAnterior} → {notif.estadoNuevo}
                                 </p>
                               )}
-                              {notif.emailEnviado !== undefined && (
-                                <p
-                                  className={`flex items-center gap-1 mt-1 ${
-                                    notif.emailEnviado
-                                      ? "text-emerald-700"
-                                      : "text-red-700"
-                                  }`}
-                                >
-                                  {notif.emailEnviado ? (
-                                    <Check className="w-3 h-3" />
-                                  ) : (
-                                    <X className="w-3 h-3" />
-                                  )}
-                                  Email{" "}
-                                  {notif.emailEnviado ? "enviado" : "no enviado"}
-                                </p>
-                              )}
+                              {notif.estadoAnterior &&
+                                notif.estadoNuevo &&
+                                notif.emailEnviado !== undefined && (
+                                  <p
+                                    className={`flex items-center gap-1 mt-1 ${
+                                      notif.emailEnviado
+                                        ? "text-emerald-700"
+                                        : "text-red-700"
+                                    }`}
+                                  >
+                                    {notif.emailEnviado ? (
+                                      <Check className="w-3 h-3" />
+                                    ) : (
+                                      <X className="w-3 h-3" />
+                                    )}
+                                    Email{" "}
+                                    {notif.emailEnviado
+                                      ? "enviado"
+                                      : "no enviado"}
+                                  </p>
+                                )}
                             </div>
                           )}
 

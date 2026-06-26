@@ -87,6 +87,7 @@ import {
   diasHastaVencimiento,
   esNombreValido,
   esEmailConProveedorPermitido,
+  esRangoDeFechasValido,
 } from "../../utils/validaciones";
 import { HistorialClienteModal } from "../clientes/HistorialClienteModal";
 import { EditarPedidoModal } from "../pedidos/EditarPedidoModal";
@@ -1813,6 +1814,19 @@ export function AdminDashboard() {
                         className="w-full px-3 py-2 rounded-lg bg-input-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20"
                       />
                     </div>
+                    {!esRangoDeFechasValido(
+                      fechaDesdePedidos,
+                      fechaHastaPedidos,
+                    ) && (
+                      <div className="sm:col-span-2 lg:col-span-4 flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 border border-red-200">
+                        <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                        <p className="text-xs text-red-700">
+                          La fecha inicial no puede ser mayor que la fecha
+                          final. El filtro de fechas no se aplicará hasta
+                          corregir el rango.
+                        </p>
+                      </div>
+                    )}
                     <div className="sm:col-span-2 lg:col-span-4 flex gap-2">
                       <button
                         onClick={() =>
