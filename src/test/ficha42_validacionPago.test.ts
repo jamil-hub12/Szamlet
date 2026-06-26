@@ -77,4 +77,15 @@ describe("RF42 - Registro de Pagos de Pedidos", () => {
     expect(resultado.valido).toBe(false);
     expect(resultado.mensaje).toContain("vencido");
   });
+
+  it("extra: un monto con más de 2 decimales es rechazado", () => {
+    const resultado = validarPago("80.999", 150, 0);
+    expect(resultado.valido).toBe(false);
+    expect(resultado.mensaje).toBe("El monto no puede tener más de 2 decimales");
+  });
+
+  it("extra: un monto con exactamente 2 decimales es aceptado", () => {
+    const resultado = validarPago("80.50", 150, 0);
+    expect(resultado.valido).toBe(true);
+  });
 });

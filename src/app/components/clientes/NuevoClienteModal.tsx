@@ -21,6 +21,7 @@ import {
   esEmailConProveedorPermitido,
   esDireccionValida,
   esRUCValido,
+  normalizarTexto,
 } from "../../utils/validaciones";
 
 type FormData = {
@@ -180,7 +181,7 @@ export function NuevoClienteModal({
       const nuevo: Cliente = {
         id: generateClienteId(clientesExistentes),
         codigo: generateClienteId(clientesExistentes),
-        nombre: form.nombre.trim(),
+        nombre: normalizarTexto(form.nombre),
         email: form.email.trim() || null,
         celular: form.celular.trim(),
         direccion: form.direccion.trim() || null,

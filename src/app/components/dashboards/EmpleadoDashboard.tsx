@@ -87,12 +87,11 @@ import {
   diasHastaVencimiento,
   esNombreValido,
   esEmailConProveedorPermitido,
-  esEmailValido,
   esDireccionValida,
   soloNumeros,
-  esTelefonoValido,
   esDNIValido,
   esRUCValido,
+  obtenerPedidosCriticosSinNotificar,
 } from "../../utils/validaciones";
 
 // ─── Datos de pedidos ────────────────────────────────────────────────────────
@@ -134,28 +133,8 @@ const estadoConfig: Record<
 
 // ─── Productos iniciales ─────────────────────────────────────────────────────
 
-// ─── Modal de edición de cliente ─────────────────────────────────────────────
-
-type EditFormData = {
-  nombre: string;
-  email: string;
-  celular: string;
-  direccion: string;
-};
-type EditFormErrors = Partial<Record<keyof EditFormData, string>>;
-
-function validateEditForm(data: EditFormData): EditFormErrors {
-  const errors: EditFormErrors = {};
-  if (!data.nombre.trim()) errors.nombre = "El nombre es obligatorio.";
-  if (!data.email.trim()) errors.email = "El correo es obligatorio.";
-  else if (!esEmailValido(data.email))
-    errors.email = "Ingresa un correo válido.";
-  if (!data.celular.trim()) errors.celular = "El celular es obligatorio.";
-  else if (!esTelefonoValido(data.celular.replace(/\s/g, "")))
-    errors.celular = "Número inválido (9 dígitos, empieza en 9).";
-  if (!data.direccion.trim()) errors.direccion = "La dirección es obligatoria.";
-  return errors;
-}
+// (validación de edición de cliente vive en EditarClienteModal.tsx;
+// este bloque tenía una validación duplicada que nunca se usaba)
 
 export function EmpleadoDashboard() {
   const navigate = useNavigate();
@@ -182,7 +161,8 @@ export function EmpleadoDashboard() {
     actualizarProducto,
     refetch: refetchProductos,
   } = useProductos();
-  const { agregarNotificacion, enviarEmailCambioEstado } = useNotificaciones();
+  const { notificaciones, agregarNotificacion, enviarEmailCambioEstado } =
+    useNotificaciones();
   const { obtenerInfoPagoPedido } = usePagos();
   const [searchParams, setSearchParams] = useSearchParams();
   const seccion = (searchParams.get("seccion") ?? "pedidos") as
@@ -305,6 +285,29 @@ export function EmpleadoDashboard() {
       else if (puedeVer("catalogo")) setSeccion("catalogo");
     }
   }, [currentUser.permisos, currentUser.rol]);
+
+  // Alertas automáticas para pedidos críticos (RF48): al cargar pedidos,
+  // genera una notificación por cada pedido que vence en pocos días o ya
+  // venció, evitando duplicar la alerta si ya se generó hoy.
+  useEffect(() => {
+    if (loadingPedidos || pedidos.length === 0) return;
+
+    const fechaHoy = obtenerFechaPeruHoy();
+    const pedidosCriticos = obtenerPedidosCriticosSinNotificar(
+      pedidos,
+      notificaciones,
+      fechaHoy,
+    );
+
+    pedidosCriticos.forEach((pedido) => {
+      agregarNotificacion({
+        tipo: "advertencia",
+        titulo: "Pedido crítico",
+        mensaje: `El pedido ${pedido.codigo} vence pronto o ya venció. Revísalo cuanto antes.`,
+        pedidoCodigo: pedido.codigo,
+      });
+    });
+  }, [loadingPedidos, pedidos, notificaciones, agregarNotificacion]);
 
   const handleNuevoPedidoGuardado = async (output: NuevoPedidoOutput) => {
     setErrorAlerta(null);

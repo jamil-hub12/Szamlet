@@ -22,7 +22,7 @@ type CurrentUser = {
   codigo: string;
   nombre: string;
   email: string;
-  rol: "Atención al cliente" | "Administrador";
+  rol: "Atención al cliente" | "Administrador" | "Producción";
   permisos: Permiso[];
   loading: boolean;
 };
@@ -97,8 +97,10 @@ export function useCurrentUser(): CurrentUser {
           nombre: empleado.nombre || "",
           email: empleado.email || "",
           rol:
-            (empleado.rol as "Atención al cliente" | "Administrador") ||
-            "Atención al cliente",
+            (empleado.rol as
+              | "Atención al cliente"
+              | "Administrador"
+              | "Producción") || "Atención al cliente",
           permisos: permisos,
           loading: false,
         });
@@ -172,7 +174,8 @@ export function useCurrentUser(): CurrentUser {
                     rol:
                       (empleado.rol as
                         | "Atención al cliente"
-                        | "Administrador") || "Atención al cliente",
+                        | "Administrador"
+                        | "Producción") || "Atención al cliente",
                     permisos: permisos,
                     loading: false,
                   });

@@ -15,6 +15,8 @@ import {
   esEmailConProveedorPermitido,
   esTelefonoValido,
   soloNumeros,
+  normalizarTexto,
+  esNombreValido,
 } from "../../utils/validaciones";
 
 export type Empleado = {
@@ -49,7 +51,7 @@ export function validateForm(
   // Nombre: solo letras, espacios, tildes y ñ
   if (!data.nombre.trim()) {
     errors.nombre = "El nombre es obligatorio.";
-  } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s]+$/.test(data.nombre)) {
+  } else if (!esNombreValido(data.nombre)) {
     errors.nombre = "El nombre solo puede contener letras y espacios.";
   }
 
@@ -165,7 +167,7 @@ export function NuevoEmpleadoModal({
     try {
       const nuevo: Empleado = {
         id: generateEmpleadoId(empleadosExistentes),
-        nombre: form.nombre.trim(),
+        nombre: normalizarTexto(form.nombre),
         email: form.email.trim(),
         telefono: form.telefono.trim(),
         rol: form.rol as "Atención al cliente" | "Administrador" | "Producción",

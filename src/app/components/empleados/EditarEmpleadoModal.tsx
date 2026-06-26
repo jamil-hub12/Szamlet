@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { X, User, Mail, Phone, Briefcase, Loader2 } from "lucide-react";
 import type { Empleado } from "../../contexts/EmpleadosContext";
-import { esEmailConProveedorPermitido } from "../../utils/validaciones";
+import { esEmailConProveedorPermitido, esNombreValido } from "../../utils/validaciones";
 
 export function EditarEmpleadoModal({
   empleado,
@@ -59,7 +59,7 @@ export function EditarEmpleadoModal({
 
     if (!form.nombre.trim()) {
       errs.nombre = "El nombre es obligatorio.";
-    } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s]+$/.test(form.nombre)) {
+    } else if (!esNombreValido(form.nombre)) {
       errs.nombre = "El nombre solo puede contener letras y espacios.";
     }
 

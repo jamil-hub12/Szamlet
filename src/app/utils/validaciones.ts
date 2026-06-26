@@ -108,7 +108,7 @@ export function esRUCValido(ruc: string): boolean {
  * Valida nombre: solo letras y espacios
  */
 export function esNombreValido(nombre: string): boolean {
-  return /^[a-zA-ZáéíóúñÁÉÍÓÚÑ\s]+$/.test(nombre.trim());
+  return /^[a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s]+$/.test(nombre.trim());
 }
 
 /**
@@ -182,6 +182,48 @@ export function esPedidoCritico(
   const dias = diasHastaVencimiento(fechaEntrega, estado);
   if (dias === null) return false;
   return dias <= DIAS_UMBRAL_CRITICO;
+}
+
+type PedidoParaAlertaCritica = {
+  codigo: string;
+  fechaEntrega?: string;
+  estado?: string;
+};
+
+type NotificacionExistente = {
+  pedidoCodigo?: string;
+  titulo: string;
+  timestamp: string;
+};
+
+/**
+ * Determina qué pedidos críticos todavía no han recibido una alerta
+ * automática hoy (zona horaria de Perú), para no duplicar notificaciones
+ * cada vez que se carga el dashboard.
+ *
+ * @param fechaHoy fecha actual en formato YYYY-MM-DD (usar
+ * obtenerFechaPeruHoy() al llamarla desde un componente)
+ */
+export function obtenerPedidosCriticosSinNotificar(
+  pedidos: PedidoParaAlertaCritica[],
+  notificacionesExistentes: NotificacionExistente[],
+  fechaHoy: string,
+): PedidoParaAlertaCritica[] {
+  const yaNotificadosHoy = new Set(
+    notificacionesExistentes
+      .filter(
+        (n) =>
+          n.titulo === "Pedido crítico" &&
+          n.timestamp.slice(0, 10) === fechaHoy,
+      )
+      .map((n) => n.pedidoCodigo),
+  );
+
+  return pedidos.filter(
+    (p) =>
+      esPedidoCritico(p.fechaEntrega, p.estado) &&
+      !yaNotificadosHoy.has(p.codigo),
+  );
 }
 
 /**
