@@ -69,4 +69,27 @@ describe("RF29 - Gestión de Errores", () => {
     expect(categoria).toBe("validacion");
     expect(mensaje).toContain("válidos");
   });
+
+  it("CP06 - obtenerMensajeDeError devuelve un mensaje general para fallas internas", () => {
+    // ARRANGE
+    const errorInterno = new Error("Unexpected internal processing failure");
+
+    // ACT
+    const mensaje = obtenerMensajeDeError(errorInterno);
+
+    // ASSERT
+    expect(mensaje).toContain("error inesperado");
+  });
+
+  it("CP07 - obtenerMensajeDeError permite reintentar tras un error temporal", () => {
+    // ARRANGE
+    const errorTemporal = new Error("Network timeout");
+
+    // ACT
+    const mensaje = obtenerMensajeDeError(errorTemporal);
+
+    // ASSERT
+    expect(mensaje).toContain("conexión");
+    expect(mensaje).toContain("intenta nuevamente");
+  });
 });

@@ -31,10 +31,4 @@ describe("RF32 - Flujo de UI sin lógica aislable", () => {
     // Verificado manualmente: el flujo es manual.
     expect(true).toBe(true);
   });
-
-  it("CP06: escenario UI sin lógica aislable - no aplica test de código", () => {
-    // El comportamiento final solo se puede confirmar en pantalla.
-    // Verificado manualmente: es un caso de UI.
-    expect(true).toBe(true);
-  });
 });

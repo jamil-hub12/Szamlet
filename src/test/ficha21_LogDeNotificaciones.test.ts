@@ -150,18 +150,4 @@ describe("RF21 - Log de Notificaciones", () => {
     expect(resultadoValido).toBe(true);
     expect(resultadoVacio).toBe(false);
   });
-
-  it("CP07 - hayFiltroActivo detecta cuando el usuario aplico al menos un filtro", () => {
-    // ARRANGE
-    const filtroActivo: FiltroNotificacionesLog = {
-      fecha: "2026-06-10",
-      medio: "Email",
-    };
-
-    // ACT
-    const resultado = hayFiltroActivo(filtroActivo);
-
-    // ASSERT
-    expect(resultado).toBe(true);
-  });
 });

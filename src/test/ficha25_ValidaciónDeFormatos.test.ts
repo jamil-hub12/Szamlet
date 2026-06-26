@@ -37,4 +37,9 @@ describe("RF25 - Flujo de UI sin lógica aislable", () => {
     // Verificado manualmente: el caso es manual.
     expect(true).toBe(true);
   });
+  it("CP07: escenario UI sin lógica aislable - no aplica test de código", () => {
+    // Sigue siendo un flujo de pantalla sin helper puro.
+    // Verificado manualmente: el caso es manual.
+    expect(true).toBe(true);
+  });
 });

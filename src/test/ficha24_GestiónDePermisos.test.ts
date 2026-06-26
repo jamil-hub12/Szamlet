@@ -31,10 +31,4 @@ describe("RF24 - Flujo de UI sin lógica aislable", () => {
     // Verificado manualmente: no existe helper puro para probar.
     expect(true).toBe(true);
   });
-
-  it("CP06: escenario UI sin lógica aislable - no aplica test de código", () => {
-    // No hay una capa de negocio separada para este escenario.
-    // Verificado manualmente: el comportamiento es visual.
-    expect(true).toBe(true);
-  });
 });
