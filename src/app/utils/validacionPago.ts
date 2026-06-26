@@ -1,3 +1,5 @@
+import { esMontoValido } from "./validaciones";
+
 /**
  * Valida los datos de un pago antes de registrarlo.
  * Extraído de RegistrarPagoModal.tsx (handleGuardar).
@@ -16,6 +18,13 @@ export function validarPago(
     return {
       valido: false,
       mensaje: "El monto del pago debe ser mayor a 0",
+    };
+  }
+
+  if (!esMontoValido(montoIngresado)) {
+    return {
+      valido: false,
+      mensaje: "El monto no puede tener más de 2 decimales",
     };
   }
 
