@@ -27,6 +27,7 @@ function crearPedido(overrides: Partial<Pedido>): Pedido {
 }
 
 describe("RF43 - Reportes Generales", () => {
+  // CP01 generación de reporte general
   it("CP01 - calcula correctamente el total, activos y urgentes de los pedidos", () => {
     // ARRANGE
     const pedidos: Pedido[] = [
@@ -47,6 +48,7 @@ describe("RF43 - Reportes Generales", () => {
     });
   });
 
+  // CP02 No existen pedidos registrados
   it("CP02 - retorna métricas en cero cuando no existen pedidos registrados", () => {
     // ARRANGE
     const pedidos: Pedido[] = [];
@@ -62,6 +64,7 @@ describe("RF43 - Reportes Generales", () => {
     });
   });
 
+  // CP03 Error de generación de reporte
   it("CP03 - no aplica test de código: manejo de error de generación de PDF, verificado manualmente", () => {
     expect(true).toBe(true);
   });

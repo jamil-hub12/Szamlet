@@ -22,6 +22,7 @@ import {
 } from "../app/utils/validaciones";
 
 describe("RF04 — Validación de Datos", () => {
+  // CP01 Validación correcta
   it("CP01 — Flujo exitoso: Validación correcta", () => {
     // ARRANGE
     const email = "cliente@gmail.com";
@@ -45,6 +46,7 @@ describe("RF04 — Validación de Datos", () => {
     expect(montoOk).toBe(true);
   });
 
+  // CP02 Campos obligatorios vacíos
   it("CP02 — Campos obligatorios vacíos (E1): el sistema bloquea el registro", () => {
     // ARRANGE
     const emailVacio = "";
@@ -62,6 +64,7 @@ describe("RF04 — Validación de Datos", () => {
     expect(dniOk).toBe(false);
   });
 
+  // CP03 Formato inválido de datos
   it("CP03 — Formato inválido de datos (E2): correo, teléfono o DNI con formato incorrecto", () => {
     // ARRANGE
     const emailMalFormado = "cliente@@gmail.com";
@@ -79,6 +82,7 @@ describe("RF04 — Validación de Datos", () => {
     expect(dniOk).toBe(false);
   });
 
+  // CP04 Datos inconsistentes
   it("CP04 — Datos inconsistentes (E3): texto en campos numéricos o valores negativos", () => {
     // ARRANGE
     const textoEnCampoNumerico = "abc123";

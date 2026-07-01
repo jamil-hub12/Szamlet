@@ -9,6 +9,7 @@ import {
 } from "../app/utils/concurrencia";
 
 describe("RF33 - Control de Concurrencia", () => {
+  // CP01 controlar edición concurrente
   it("CP01 - bloqueoEstaVigente retorna true cuando la expiración aún no llegó", () => {
     // ARRANGE
     const ahora = new Date("2026-06-26T10:00:00.000Z");
@@ -21,6 +22,7 @@ describe("RF33 - Control de Concurrencia", () => {
     expect(resultado).toBe(true);
   });
 
+  // CP02 Pedido ya bloqueado para edición
   it("CP02 - bloqueoEstaVigente retorna false cuando el bloqueo ya expiró", () => {
     // ARRANGE
     const ahora = new Date("2026-06-26T10:05:00.000Z");
@@ -33,6 +35,7 @@ describe("RF33 - Control de Concurrencia", () => {
     expect(resultado).toBe(false);
   });
 
+  // CP03 Bloqueo liberado por cierre de sesión
   it("CP03 - calcularExpiracion suma la duración de lock configurada", () => {
     // ARRANGE
     const ahora = new Date("2026-06-26T10:00:00.000Z");
@@ -45,6 +48,7 @@ describe("RF33 - Control de Concurrencia", () => {
     expect(diferenciaMs).toBe(LOCK_DURACION_MINUTOS * 60 * 1000);
   });
 
+  // CP04 Conflicto de cambios simultáneos
   it("CP04 - esMiBloqueo y hayConflictoDeVersion detectan dueño del lock y cambios concurrentes", () => {
     // ARRANGE
     const bloqueo: BloqueoInfo = {

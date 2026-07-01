@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { validarPago } from "../app/utils/validacionPago";
 
 describe("RF42 - Registro de Pagos de Pedidos", () => {
+  // CP01 Registro exitoso de pago
   it("CP01: un pago con monto válido dentro del saldo pendiente es aceptado", () => {
     // ARRANGE
     const montoIngresado = "80";
@@ -15,6 +16,7 @@ describe("RF42 - Registro de Pagos de Pedidos", () => {
     expect(resultado.valido).toBe(true);
   });
 
+  // CP02 Pago total del pedido
   it("CP02: un pago igual al total pendiente es aceptado (pago total)", () => {
     // ARRANGE
     const montoIngresado = "150";
@@ -28,6 +30,7 @@ describe("RF42 - Registro de Pagos de Pedidos", () => {
     expect(resultado.valido).toBe(true);
   });
 
+  // CP03 Monto invalido
   it("CP03: un monto mayor al saldo pendiente es rechazado (E1)", () => {
     // ARRANGE
     const montoIngresado = "200";
@@ -45,6 +48,7 @@ describe("RF42 - Registro de Pagos de Pedidos", () => {
     expect(resultado.montoRestante).toBe(150);
   });
 
+  // CP04 Monto negativo inválido
   it("CP04: un monto negativo es rechazado (E2)", () => {
     // ARRANGE
     const montoIngresado = "-50";
@@ -59,6 +63,7 @@ describe("RF42 - Registro de Pagos de Pedidos", () => {
     expect(resultado.mensaje).toBe("El monto del pago debe ser mayor a 0");
   });
 
+  // CP05 Cancelación del registro
   it("CP05: cancelación del registro (E3) - no aplica test de código", () => {
     // El Personal de Atención cierra el formulario sin guardar cambios:
     // es flujo de UI (cierre de modal sin invocar registrarPago), sin

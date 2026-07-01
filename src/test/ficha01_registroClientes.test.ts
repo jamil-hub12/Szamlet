@@ -18,6 +18,7 @@ import {
 } from "../app/utils/validaciones";
 
 describe("RF01 — Registro de Clientes", () => {
+  // CP01 Registro válido
   it("CP01 — Flujo exitoso: Registro válido", () => {
     // ARRANGE
     const nombre = "Juan Pérez";
@@ -44,6 +45,7 @@ describe("RF01 — Registro de Clientes", () => {
     expect(direccionOk).toBe(true);
   });
 
+  // CP02 Campos obligatorios incompletos
   it("CP02 — Campos obligatorios incompletos (E1): campos vacíos son rechazados", () => {
     // ARRANGE
     const nombreVacio = "";
@@ -61,6 +63,7 @@ describe("RF01 — Registro de Clientes", () => {
     expect(dniOk).toBe(false);
   });
 
+  // CP03 Cliente ya registrado
   it("CP03 — Cliente ya registrado (E2): el sistema detecta DNI o RUC duplicado", () => {
     // ARRANGE
     const clientesExistentes = [
@@ -94,6 +97,7 @@ describe("RF01 — Registro de Clientes", () => {
     expect(resultadoSinDuplicado.rucDuplicado).toBeUndefined();
   });
 
+  // CP04 Correo electrónico inválido
   it("CP04 — Correo electrónico inválido (E3): email con formato incorrecto es rechazado", () => {
     // ARRANGE
     const sinArroba = "juangmail.com";

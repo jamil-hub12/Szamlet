@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { esRangoDeFechasValido } from "../app/utils/validaciones";
 
 describe("RF30 - Filtro por Rango de Fechas", () => {
+  // CP01 filtrar pedidos por rango de fechas
   it("CP01 - esRangoDeFechasValido retorna true cuando el rango es correcto", () => {
     // ARRANGE
     const fechaDesde = "2026-06-01";
@@ -14,6 +15,7 @@ describe("RF30 - Filtro por Rango de Fechas", () => {
     expect(resultado).toBe(true);
   });
 
+  // CP02 Fecha inicial vacía
   it("CP02 - esRangoDeFechasValido retorna false cuando el formato es inválido", () => {
     // ARRANGE
     const fechaDesde = "20255-06-01";
@@ -26,6 +28,7 @@ describe("RF30 - Filtro por Rango de Fechas", () => {
     expect(resultado).toBe(false);
   });
 
+  // CP03 Formato de fecha inválido
   it("CP03 - esRangoDeFechasValido retorna false cuando la fecha inicial es posterior a la final", () => {
     // ARRANGE
     const fechaDesde = "2026-07-01";
@@ -38,6 +41,7 @@ describe("RF30 - Filtro por Rango de Fechas", () => {
     expect(resultado).toBe(false);
   });
 
+  // CP04 Fecha inicial mayor que fecha final
   it("CP04 - esRangoDeFechasValido retorna true si falta una de las fechas", () => {
     // ARRANGE
     const fechaDesde = "2026-06-01";

@@ -11,6 +11,7 @@ import {
 } from "../app/utils/notificacionesLog";
 
 describe("RF21 - Log de Notificaciones", () => {
+  // CP01 consultar log de notificaciones
   it("CP01 - filtrarNotificacionesPorPedido retorna solo las notificaciones del pedido seleccionado", () => {
     // ARRANGE
     const historial = [
@@ -42,6 +43,7 @@ describe("RF21 - Log de Notificaciones", () => {
     expect(resultado[0].pedidoCodigo).toBe("PED-001");
   });
 
+  // CP02 Pedido sin notificaciones registradas
   it("CP02 - noHayNotificacionesRegistradas retorna true cuando el pedido no tiene notificaciones", () => {
     // ARRANGE
     const historial: Array<{
@@ -61,6 +63,7 @@ describe("RF21 - Log de Notificaciones", () => {
     expect(resultado).toBe(true);
   });
 
+  // CP03 Notificación con estado desconocido
   it("CP03 - clasificarEstadoEntrega normaliza valores desconocidos a no_confirmado", () => {
     // ARRANGE
     const estadoInvalido = "enviado_manual";
@@ -72,6 +75,7 @@ describe("RF21 - Log de Notificaciones", () => {
     expect(resultado).toBe("no_confirmado");
   });
 
+  // CP04 Error al cargar el historial
   it("CP04 - ordenarNotificacionesPorFecha muestra primero la notificacion mas reciente", () => {
     // ARRANGE
     const historial = [
@@ -102,6 +106,7 @@ describe("RF21 - Log de Notificaciones", () => {
     expect(resultado[0].id).toBe("n2");
   });
 
+  // CP05 Filtro de notificaciones sin resultados
   it("CP05 - aplicarFiltroNotificaciones respeta fecha, medio y estado", () => {
     // ARRANGE
     const historial = [
@@ -137,6 +142,7 @@ describe("RF21 - Log de Notificaciones", () => {
     expect(resultado[0].id).toBe("n1");
   });
 
+  // CP06 Contenido de notificación no disponible
   it("CP06 - tieneContenidoDisponible distingue contenido visible de contenido ausente", () => {
     // ARRANGE
     const contenidoValido = "Pedido listo para envio";

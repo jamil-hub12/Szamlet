@@ -12,6 +12,7 @@ import {
 
 describe("RF07 — Gestión de Estados", () => {
 
+  // CP01 Cambio de estado progresivo
   it("CP01 — Flujo exitoso: cambio de estado progresivo permitido", () => {
     // ARRANGE
     const estadoActual1 = "Recibido"            as const;
@@ -32,6 +33,7 @@ describe("RF07 — Gestión de Estados", () => {
     expect(resultado3.valido).toBe(true);
   });
 
+  // CP02 Intento de retroceso de estado
   it("CP02 — Intento de retroceso de estado: transición hacia atrás bloqueada", () => {
     // ARRANGE
     const estadoActual = "En confección" as const;
@@ -44,6 +46,7 @@ describe("RF07 — Gestión de Estados", () => {
     expect(resultado.valido).toBe(false);
   });
 
+  // CP03 Pedido en estado "Entregado"
   it("CP03 — Pedido en estado Entregado: no permite ningún cambio de estado", () => {
     // ARRANGE
     const estadoFinal    = "Entregado"       as const;

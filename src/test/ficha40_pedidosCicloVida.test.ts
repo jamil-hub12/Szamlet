@@ -5,6 +5,7 @@ import {
 } from "../app/utils/pedidosCicloVida";
 
 describe("RF40 - Control del Progreso del Pedido", () => {
+  // CP01 avance de “Recibido” a “En Confección”
   it("CP01: un pedido 'Recibido' avanza correctamente a 'En confección'", () => {
     // ARRANGE
     const estadoActual = "Recibido" as const;
@@ -18,6 +19,7 @@ describe("RF40 - Control del Progreso del Pedido", () => {
     expect(validacion.valido).toBe(true);
   });
 
+  // CP02 No se confirma el cambio de etapa
   it("CP02: no se confirma el cambio de etapa (E1) - no aplica test de código", () => {
     // El Personal de Atención accede a la opción de avance pero no
     // confirma: es flujo de UI (no se invoca actualizarPedido si no hay
@@ -26,6 +28,7 @@ describe("RF40 - Control del Progreso del Pedido", () => {
     expect(true).toBe(true);
   });
 
+  // CP03 Cancelación del cambio de etapa
   it("CP03: cancelación del cambio de etapa (E2) - no aplica test de código", () => {
     // Mismo caso que CP02: cancelar antes de confirmar es flujo de UI,
     // no hay función de negocio que aislar.
@@ -33,6 +36,7 @@ describe("RF40 - Control del Progreso del Pedido", () => {
     expect(true).toBe(true);
   });
 
+  // CP04 Intento de retroceso de etapa
   it("CP04: el sistema bloquea el intento de retroceso de etapa (E3)", () => {
     // ARRANGE
     const estadoActual = "En confección" as const;

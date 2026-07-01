@@ -43,6 +43,7 @@ function crearPedido(overrides: Partial<Pedido>): Pedido {
 }
 
 describe("RF45 - Reporte General de Clientes", () => {
+  // CP01 generación de reporte general de clientes
   it("CP01: calcula correctamente el total de clientes, con email y con pedidos", () => {
     // ARRANGE
     const clientes: Cliente[] = [
@@ -66,6 +67,7 @@ describe("RF45 - Reporte General de Clientes", () => {
     });
   });
 
+  // CP02 No existen clientes registrados
   it("CP02: retorna métricas en cero cuando no existen clientes registrados", () => {
     // ARRANGE
     const clientes: Cliente[] = [];
@@ -82,6 +84,7 @@ describe("RF45 - Reporte General de Clientes", () => {
     });
   });
 
+  // CP03 No se realiza la exportación
   it("CP03 - no aplica test de código: flujo de UI sin lógica de negocio aislable, verificado manualmente", () => {
     // El usuario simplemente no hace clic en "Exportar PDF"; no hay lógica
     // de negocio que ejecutar ni verificar en ese escenario, es un flujo de
@@ -89,6 +92,7 @@ describe("RF45 - Reporte General de Clientes", () => {
     expect(true).toBe(true);
   });
 
+  // CP04 Actualización de la lista de clientes
   it("CP04: refleja al nuevo cliente registrado al recalcular las métricas", () => {
     // ARRANGE
     const clientesAntes: Cliente[] = [crearCliente({ id: "c1" })];

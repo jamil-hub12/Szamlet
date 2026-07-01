@@ -9,6 +9,7 @@ import { describe, it, expect } from "vitest";
 import { validarEdicionCliente } from "../app/utils/validaciones";
 
 describe("RF05 — Edición de Clientes", () => {
+  // CP01 Edición válida
   it("CP01 — Flujo exitoso: Edición válida", () => {
     // ARRANGE
     const form = {
@@ -34,6 +35,7 @@ describe("RF05 — Edición de Clientes", () => {
     expect(error).toBeNull();
   });
 
+  // CP02 Campos obligatorios vacíos
   it("CP02 — Campos obligatorios vacíos (E1): el sistema bloquea la actualización", () => {
     // ARRANGE
     const formSinNombre = {

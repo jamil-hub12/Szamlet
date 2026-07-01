@@ -11,6 +11,7 @@ function fechaEnDias(delta: number): string {
 }
 
 describe("RF48 - Alertas de Pedidos Críticos", () => {
+  // CP01 visualización de alertas críticas
   it("CP01 - esPedidoCritico retorna true para pedido que vence en <= DIAS_UMBRAL_CRITICO días", () => {
     // ARRANGE
     const fechaEntrega = fechaEnDias(DIAS_UMBRAL_CRITICO - 1);
@@ -23,6 +24,7 @@ describe("RF48 - Alertas de Pedidos Críticos", () => {
     expect(resultado).toBe(true);
   });
 
+  // CP02 No existen pedidos críticos
   it("CP02 - esPedidoCritico retorna false para pedido con fecha de entrega lejana", () => {
     // ARRANGE
     const fechaEntrega = fechaEnDias(30);
@@ -35,12 +37,14 @@ describe("RF48 - Alertas de Pedidos Críticos", () => {
     expect(resultado).toBe(false);
   });
 
+  // CP03 No se consulta la notificación
   it("CP03 - (placeholder) no abrir la campana es comportamiento de UI sin lógica de negocio aislable", () => {
     // No aplica test de código: el indicador de campana permanece visible
     // mientras esPedidoCritico() retorne true en algún pedido. Es UI puro.
     expect(true).toBe(true);
   });
 
+  // CP04 Actualización de alertas
   it("CP04 - esPedidoCritico retorna true cuando el pedido está a 1 día de vencer", () => {
     // ARRANGE
     const fechaEntrega = fechaEnDias(1);

@@ -24,6 +24,7 @@ function clienteMock(
 
 describe("RF16 — Consulta de Clientes", () => {
 
+  // CP01 Consulta de clientes
   it("CP01 — Flujo exitoso: búsqueda por nombre retorna clientes coincidentes", () => {
     // ARRANGE
     const clientes: Cliente[] = [
@@ -41,6 +42,7 @@ describe("RF16 — Consulta de Clientes", () => {
     expect(resultado[0].nombre).toBe("Ana García");
   });
 
+  // CP02 Sin coincidencias en la búsqueda
   it("CP02 — Sin coincidencias en búsqueda: retorna lista vacía", () => {
     // ARRANGE
     const clientes: Cliente[] = [

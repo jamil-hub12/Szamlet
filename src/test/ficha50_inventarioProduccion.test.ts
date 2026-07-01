@@ -54,6 +54,7 @@ const productoIncompleto: ProductoInventario = {
 };
 
 describe("RF50 - Gestión de Inventario y Estado de Producción", () => {
+  // CP01 Visualización de inventario
   it("CP01 - obtenerStockTotal retorna la suma correcta de stock para un producto", () => {
     // ARRANGE & ACT
     const total = obtenerStockTotal(productoCompleto);
@@ -62,6 +63,7 @@ describe("RF50 - Gestión de Inventario y Estado de Producción", () => {
     expect(total).toBe(11); // 5+3+2+1
   });
 
+  // CP02 Filtro por estado
   it("CP02 - filtrarProductosInventario filtra correctamente por 'incompletos', 'completos' y 'todos'", () => {
     // ARRANGE
     const productos = [productoCompleto, productoIncompleto];
@@ -79,6 +81,7 @@ describe("RF50 - Gestión de Inventario y Estado de Producción", () => {
     expect(todos).toHaveLength(2);
   });
 
+  // CP03 Stock completo
   it("CP03 - tieneStockFaltante retorna false para producto con stock completo", () => {
     // ARRANGE & ACT
     const resultado = tieneStockFaltante(productoCompleto);
@@ -87,6 +90,7 @@ describe("RF50 - Gestión de Inventario y Estado de Producción", () => {
     expect(resultado).toBe(false);
   });
 
+  // CP04 Stock incompleto
   it("CP04 - tieneStockFaltante retorna true y contarColoresSinStock cuenta correctamente", () => {
     // ARRANGE & ACT
     const resultado = tieneStockFaltante(productoIncompleto);
@@ -96,6 +100,7 @@ describe("RF50 - Gestión de Inventario y Estado de Producción", () => {
     expect(contarColoresSinStock(productoIncompleto)).toBe(2);
   });
 
+  // CP05 Error al actualizar stock
   it("CP05 - (placeholder) error al guardar stock es manejo de errores de Supabase sin lógica aislable", () => {
     // No aplica test de código: el error al actualizar stock es capturado
     // por el handler de Supabase en ProduccionDashboard (try/catch con toast).

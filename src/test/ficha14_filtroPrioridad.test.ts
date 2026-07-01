@@ -18,6 +18,7 @@ function pedidoMock(id: string, urgente: boolean): Pedido {
 
 describe("RF14 — Filtro de Prioridad", () => {
 
+  // CP01 Filtrado con datos
   it("CP01 — Flujo exitoso: filtro 'Urgente' retorna solo pedidos urgentes", () => {
     // ARRANGE
     const pedidos: Pedido[] = [
@@ -35,6 +36,7 @@ describe("RF14 — Filtro de Prioridad", () => {
     expect(resultado.every((p) => p.urgente)).toBe(true);
   });
 
+  // CP02 Filtro sin resultados
   it("CP02 — Sin pedidos con esa prioridad: filtro retorna lista vacía", () => {
     // ARRANGE
     const soloNormales: Pedido[] = [

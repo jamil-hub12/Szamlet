@@ -28,6 +28,7 @@ function crearPedido(overrides: Partial<Pedido>): Pedido {
 }
 
 describe("RF44 - Reportes por Estado", () => {
+  // CP01 generación de reporte por estado
   it("CP01: filtra y muestra únicamente los pedidos con estado 'En confección'", () => {
     // ARRANGE
     const pedidos: Pedido[] = [
@@ -55,6 +56,7 @@ describe("RF44 - Reportes por Estado", () => {
     expect(resultado.every((p) => p.estado === "En confección")).toBe(true);
   });
 
+  // CP02 No existen pedidos para el estado seleccionado
   it("CP02: no devuelve pedidos cuando no existen registros con el estado seleccionado", () => {
     // ARRANGE
     const pedidos: Pedido[] = [
@@ -71,6 +73,7 @@ describe("RF44 - Reportes por Estado", () => {
     expect(resultado).toHaveLength(0);
   });
 
+  // CP03 No se aplica ningún filtro
   it("CP03: mantiene la lista general de pedidos cuando no se aplica filtro de estado", () => {
     // ARRANGE
     const pedidos: Pedido[] = [
@@ -90,6 +93,7 @@ describe("RF44 - Reportes por Estado", () => {
     expect(resultado).toHaveLength(3);
   });
 
+  // CP04 Cambio de filtro de estado
   it("CP04: actualiza la lista al cambiar de un filtro de estado a otro", () => {
     // ARRANGE
     const pedidos: Pedido[] = [

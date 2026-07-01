@@ -9,6 +9,7 @@ import { esCantidadValida } from "../app/utils/validaciones";
 
 describe("RF03 — Registro de Productos", () => {
 
+  // CP01 Registro de producto
   it("CP01 — Flujo exitoso: stock inicial mayor a cero es aceptado", () => {
     // ARRANGE
     const stockValido = 10;
@@ -20,6 +21,7 @@ describe("RF03 — Registro de Productos", () => {
     expect(resultado).toBe(true);
   });
 
+  // CP02 Producto duplicado
   it("CP02 — Producto duplicado: verificación de duplicidad ocurre en Supabase (placeholder)", () => {
     // ARRANGE
     // La unicidad de combinación modelo+tela+diseño se valida contra la BD;
@@ -32,6 +34,7 @@ describe("RF03 — Registro de Productos", () => {
     expect(sinLogicaAislable).toBe(true);
   });
 
+  // CP03 Stock inicial inválido
   it("CP03 — Stock inicial inválido: stock igual a cero o negativo es rechazado", () => {
     // ARRANGE
     const stockCero     = 0;
@@ -49,6 +52,7 @@ describe("RF03 — Registro de Productos", () => {
     expect(resultadoDecimal).toBe(false);
   });
 
+  // CP04 Campos obligatorios incompletos
   it("CP04 — Campos obligatorios incompletos: cubierto en ficha01 (placeholder)", () => {
     // ARRANGE
     // La validación de campos vacíos usa las mismas funciones de validaciones.ts
