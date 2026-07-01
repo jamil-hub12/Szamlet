@@ -6,6 +6,7 @@ import {
 } from "../app/utils/pedidosCicloVida";
 
 describe("RF49 - Trazabilidad de Pedidos", () => {
+  // CP01 visualización de trazabilidad completa
   it("CP01 - obtenerEtapasCompletadas retorna todas las etapas hasta la actual", () => {
     // ARRANGE
     const estadoActual = "Listo para entrega";
@@ -18,6 +19,7 @@ describe("RF49 - Trazabilidad de Pedidos", () => {
     expect(etapas.length).toBe(3);
   });
 
+  // CP02 Pedido sin historial registrado
   it("CP02 - obtenerEtapasCompletadas para pedido recién creado devuelve solo la etapa inicial", () => {
     // ARRANGE
     const estadoActual = "Recibido";
@@ -30,6 +32,7 @@ describe("RF49 - Trazabilidad de Pedidos", () => {
     expect(etapas.length).toBe(1);
   });
 
+  // CP03 Pedido sin cambios de estado
   it("CP03 - estaEnFlujoNormal distingue estados del flujo principal de Cancelado/Vencido", () => {
     // ARRANGE & ACT & ASSERT
     expect(estaEnFlujoNormal("Recibido")).toBe(true);
@@ -38,6 +41,7 @@ describe("RF49 - Trazabilidad de Pedidos", () => {
     expect(estaEnFlujoNormal("Vencido")).toBe(false);
   });
 
+  // CP04 Cancelación de la consulta
   it("CP04 - (placeholder) volver al detalle sin seleccionar etapa es flujo de UI sin lógica aislable", () => {
     // No aplica test de código: navegar de regreso al detalle del pedido sin
     // seleccionar una etapa es comportamiento de UI puro verificado manualmente.

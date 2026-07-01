@@ -25,6 +25,7 @@ function pedidoMock(id: string, cliente: string): Pedido {
 
 describe("RF10 — Búsqueda por Cliente / Código de Pedido", () => {
 
+  // CP01 Búsqueda válida
   it("CP01 — Flujo exitoso: búsqueda por nombre retorna los pedidos coincidentes", () => {
     // ARRANGE
     const pedidos: Pedido[] = [
@@ -44,6 +45,7 @@ describe("RF10 — Búsqueda por Cliente / Código de Pedido", () => {
     );
   });
 
+  // CP02 Sin coincidencias
   it("CP02 — Sin coincidencias: búsqueda sin resultados retorna lista vacía", () => {
     // ARRANGE
     const pedidos: Pedido[] = [

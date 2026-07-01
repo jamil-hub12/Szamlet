@@ -9,6 +9,7 @@ import { describe, it, expect } from "vitest";
 
 describe("RF08 — Notificación al Cliente", () => {
 
+  // CP01 Envío de notificación
   it("CP01 — Flujo exitoso: envío de notificación depende de EmailJS (placeholder)", () => {
     // ARRANGE
     // El envío ocurre en NotificacionesContext.tsx vía @emailjs/browser.
@@ -21,6 +22,7 @@ describe("RF08 — Notificación al Cliente", () => {
     expect(sinLogicaAislable).toBe(true);
   });
 
+  // CP02 Error en envío de notificación
   it("CP02 — Error en envío de notificación: manejo de error depende del servicio externo (placeholder)", () => {
     // ARRANGE
     // El registro del intento fallido ocurre dentro del contexto de notificaciones,
@@ -33,6 +35,7 @@ describe("RF08 — Notificación al Cliente", () => {
     expect(sinLogicaAislable).toBe(true);
   });
 
+  // CP03 Sin cambio de estado efectivo
   it("CP03 — Sin cambio de estado efectivo: no se genera notificación (placeholder)", () => {
     // ARRANGE
     // Esta condición se evalúa dentro del listener de Supabase en

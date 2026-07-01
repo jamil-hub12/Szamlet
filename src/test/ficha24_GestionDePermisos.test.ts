@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 
 describe("RF24 - Flujo de UI sin lógica aislable", () => {
+  // CP01 actualizar permisos
   it("CP01: la funcionalidad no expone helper puro en el workspace - no aplica test de código", () => {
     // La funcionalidad está embebida en la UI y no tiene un helper puro
     // que se pueda aislar sin cambiar la arquitectura del módulo.
@@ -8,24 +9,28 @@ describe("RF24 - Flujo de UI sin lógica aislable", () => {
     expect(true).toBe(true);
   });
 
+  // CP02 Rol o empleado no seleccionado
   it("CP02: escenario UI sin lógica aislable - no aplica test de código", () => {
     // No hay lógica de negocio separada para este CP.
     // Verificado manualmente: depende de la pantalla completa.
     expect(true).toBe(true);
   });
 
+  // CP03 Intento de retirar permisos críticos al único administrador
   it("CP03: escenario UI sin lógica aislable - no aplica test de código", () => {
     // El caso vive dentro del componente, no en una función pura.
     // Verificado manualmente: se resuelve desde la interfaz.
     expect(true).toBe(true);
   });
 
+  // CP04 Cambios sin guardar
   it("CP04: escenario UI sin lógica aislable - no aplica test de código", () => {
     // Este comportamiento no se puede aislar como unidad.
     // Verificado manualmente: el flujo se controla visualmente.
     expect(true).toBe(true);
   });
 
+  // CP05 Permisos aplicados durante una sesión activa
   it("CP05: escenario UI sin lógica aislable - no aplica test de código", () => {
     // El flujo es completamente dependiente de UI.
     // Verificado manualmente: no existe helper puro para probar.

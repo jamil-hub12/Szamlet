@@ -29,6 +29,7 @@ function crearPedidoComparable(
 }
 
 describe("RF27 - Control de Pedidos Duplicados", () => {
+  // CP01 registrar pedido sin duplicidad
   it("CP01 - detectarPedidoDuplicadoExacto retorna el id cuando el pedido es idéntico", () => {
     // ARRANGE
     const nuevoPedido = {
@@ -57,6 +58,7 @@ describe("RF27 - Control de Pedidos Duplicados", () => {
     expect(resultado).toBe("PED-999");
   });
 
+  // CP02 Pedido idéntico detectado
   it("CP02 - detectarPedidoDuplicadoExacto retorna null cuando cambian cliente o fecha", () => {
     // ARRANGE
     const nuevoPedido = {
@@ -85,6 +87,7 @@ describe("RF27 - Control de Pedidos Duplicados", () => {
     expect(resultado).toBeNull();
   });
 
+  // CP03 Coincidencia parcial de pedido
   it("CP03 - detectarPedidoSimilar retorna el id cuando hay coincidencia parcial por modelo/tela/diseño", () => {
     // ARRANGE
     const nuevoPedido = {
@@ -109,6 +112,7 @@ describe("RF27 - Control de Pedidos Duplicados", () => {
     expect(resultado).toBe("PED-555");
   });
 
+  // CP04 Datos insuficientes para comparar pedidos
   it("CP04 - tieneDatosSuficientesParaComparar valida que existan cliente, fecha e ítems completos", () => {
     // ARRANGE
     const pedidoValido = {
@@ -140,18 +144,21 @@ describe("RF27 - Control de Pedidos Duplicados", () => {
     expect(resultadoInvalido).toBe(false);
   });
 
+  // CP05 Confirmación de pedido diferente
   it("CP05 - confirmación de pedido diferente - no aplica test de código", () => {
     // El usuario confirma que el pedido no es duplicado y continúa el registro.
     // Verificado manualmente: el flujo permite guardar el pedido diferente.
     expect(true).toBe(true);
   });
 
+  // CP06 Error al consultar pedidos existentes
   it("CP06 - error al consultar pedidos existentes - no aplica test de código", () => {
     // El error ocurre al consultar pedidos existentes y depende de la capa async.
     // Verificado manualmente: el sistema muestra el mensaje de error y no guarda.
     expect(true).toBe(true);
   });
 
+  // CP07 Cancelación por duplicidad
   it("CP07 - cancelación por duplicidad - no aplica test de código", () => {
     // El usuario cancela el registro después de revisar la alerta de duplicidad.
     // Verificado manualmente: el pedido existente se mantiene sin cambios.

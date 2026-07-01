@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { debeRevalidarSesionPorStorage } from "../app/utils/validaciones";
 
 describe("RF23 - Cierre de Sesión", () => {
+  // CP01 cerrar sesión
   it("CP01 - debeRevalidarSesionPorStorage retorna true cuando localStorage se limpia por completo", () => {
     // ARRANGE
     const key = null;
@@ -14,6 +15,7 @@ describe("RF23 - Cierre de Sesión", () => {
     expect(resultado).toBe(true);
   });
 
+  // CP02 Sesión ya expirada
   it("CP02 - debeRevalidarSesionPorStorage retorna true cuando se elimina la clave de sesión de Supabase", () => {
     // ARRANGE
     const key = "sb-proyecto-auth-token";
@@ -26,6 +28,7 @@ describe("RF23 - Cierre de Sesión", () => {
     expect(resultado).toBe(true);
   });
 
+  // CP03 Intento de retorno a pantalla interna
   it("CP03 - debeRevalidarSesionPorStorage retorna false para claves ajenas a Supabase", () => {
     // ARRANGE
     const key = "otra-clave";
@@ -38,6 +41,7 @@ describe("RF23 - Cierre de Sesión", () => {
     expect(resultado).toBe(false);
   });
 
+  // CP04 Cierre desde múltiples pestañas
   it("CP04 - debeRevalidarSesionPorStorage retorna true cuando se cierra sesión desde otra pestaña", () => {
     // ARRANGE
     const key = "sb-proyecto-auth-token";

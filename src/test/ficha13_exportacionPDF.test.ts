@@ -30,6 +30,7 @@ function clienteMock(id: string): Cliente {
 
 describe("RF13 — Exportación PDF", () => {
 
+  // CP01 Exportación correcta
   it("CP01 — Flujo exitoso: hay registros disponibles para exportar", () => {
     // ARRANGE
     const pedidos: Pedido[]   = [pedidoMock("PED-001")];
@@ -44,6 +45,7 @@ describe("RF13 — Exportación PDF", () => {
     expect(puedeClientes).toBe(true);
   });
 
+  // CP02 Exportación sin datos disponibles
   it("CP02 — Exportación sin datos: lista vacía impide generar el PDF", () => {
     // ARRANGE
     const pedidosVacios: Pedido[]   = [];

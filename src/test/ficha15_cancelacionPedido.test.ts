@@ -15,6 +15,7 @@ function esMotivoCancelacionValido(motivo: string): boolean {
 
 describe("RF15 — Cancelación de Pedidos", () => {
 
+  // CP01 Cancelación de pedido
   it("CP01 — Flujo exitoso: pedido no entregado puede cancelarse con motivo válido", () => {
     // ARRANGE
     const estado = "Recibido" as const;
@@ -29,6 +30,7 @@ describe("RF15 — Cancelación de Pedidos", () => {
     expect(motivoEsValido).toBe(true);
   });
 
+  // CP02 Pedido entregado
   it("CP02 — Pedido entregado: cancelación bloqueada", () => {
     // ARRANGE
     const estado = "Entregado" as const;
@@ -41,6 +43,7 @@ describe("RF15 — Cancelación de Pedidos", () => {
     expect(resultado.mensaje).toContain("entregado");
   });
 
+  // CP03 Motivo vacío
   it("CP03 — Motivo vacío: cancelación bloqueada hasta completar el campo", () => {
     // ARRANGE
     const motivoVacio    = "";

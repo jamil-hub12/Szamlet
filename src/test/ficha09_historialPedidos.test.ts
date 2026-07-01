@@ -24,6 +24,7 @@ function pedidoMock(id: string, clienteId: string): Pedido {
 
 describe("RF09 — Historial de Pedidos", () => {
 
+  // CP01 Consulta con pedidos
   it("CP01 — Flujo exitoso: retorna todos los pedidos del cliente seleccionado", () => {
     // ARRANGE
     const clienteId = "cli-01";
@@ -41,6 +42,7 @@ describe("RF09 — Historial de Pedidos", () => {
     expect(historial.every((p) => p.clienteId === clienteId)).toBe(true);
   });
 
+  // CP02 Cliente sin pedidos registrados
   it("CP02 — Cliente sin pedidos registrados: retorna lista vacía con mensaje informativo", () => {
     // ARRANGE
     const clienteSinPedidos = "cli-99";

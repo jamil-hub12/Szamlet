@@ -8,6 +8,7 @@ import { describe, it, expect } from "vitest";
 
 describe("RF12 — Generación de ID Único", () => {
 
+  // CP01 Generación de ID
   it("CP01 — Flujo exitoso: ID único generado automáticamente por PedidosContext (placeholder)", () => {
     // ARRANGE
     // La generación del código (ej. PED-0042) ocurre en PedidosContext.tsx
@@ -20,6 +21,7 @@ describe("RF12 — Generación de ID Único", () => {
     expect(sinLogicaAislable).toBe(true);
   });
 
+  // CP02 Duplicidad de ID
   it("CP02 — Duplicidad de ID: resuelta por constraints de Supabase (placeholder)", () => {
     // ARRANGE
     // La unicidad de la clave primaria está garantizada por la BD;

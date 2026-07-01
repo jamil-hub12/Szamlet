@@ -19,6 +19,7 @@ function crearPedido(overrides: Partial<Pedido>): Pedido {
 }
 
 describe("RF34 - Consulta por Motivo de Cancelación", () => {
+  // CP01 consulta de motivo de cancelación
   it("CP01: muestra el pedido cancelado con su motivo cuando existen pedidos cancelados", () => {
     // ARRANGE
     const pedidos: Pedido[] = [
@@ -42,6 +43,7 @@ describe("RF34 - Consulta por Motivo de Cancelación", () => {
     );
   });
 
+  // CP02 No existen pedidos cancelados
   it("CP02: no devuelve pedidos cuando no existen pedidos cancelados (E1)", () => {
     // ARRANGE
     const pedidos: Pedido[] = [
@@ -60,6 +62,7 @@ describe("RF34 - Consulta por Motivo de Cancelación", () => {
     expect(resultado).toHaveLength(0);
   });
 
+  // CP03 No se selecciona ningún pedido
   it("CP03: sin seleccionar un pedido no hay motivo de cancelación que mostrar (E2)", () => {
     // ARRANGE
     const pedidos: Pedido[] = [

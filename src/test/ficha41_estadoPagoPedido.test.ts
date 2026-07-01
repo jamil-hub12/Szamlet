@@ -5,6 +5,7 @@ import {
 } from "../app/utils/estadoPagoPedido";
 
 describe("RF41 - Consulta del Estado de Pagos de Pedidos", () => {
+  // CP01 Visualización de estado de pagos
   it("CP01: muestra correctamente total, pagado y pendiente de un pedido con pago parcial", () => {
     // ARRANGE
     const montoTotal = 150;
@@ -19,6 +20,7 @@ describe("RF41 - Consulta del Estado de Pagos de Pedidos", () => {
     expect(estado).toBe("Parcial");
   });
 
+  // CP02 Pedido sin pagos registrados
   it("CP02: un pedido sin pagos registrados se muestra como 'pendiente' con el total del pedido (E1)", () => {
     // ARRANGE
     const montoTotal = 200;
@@ -33,6 +35,7 @@ describe("RF41 - Consulta del Estado de Pagos de Pedidos", () => {
     expect(estado).toBe("Pendiente");
   });
 
+  // CP03 Sin pedidos registrados
   it("CP03: sin pedidos registrados no hay nada que calcular (E2) - no aplica test de código", () => {
     // Mostrar un mensaje informativo cuando la lista de pedidos está
     // vacía es responsabilidad de la vista (igual que el "catálogo

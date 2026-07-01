@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { prepararNotaParaGuardar } from "../app/utils/notasPedido";
 
 describe("RF36 - Edición de Notas Internas del Pedido", () => {
+  // CP01 edición de nota interna
   it("CP01: una nota existente editada con nuevo contenido se actualiza correctamente", () => {
     // ARRANGE
     const notaExistente = "Cliente pidió tela azul";
@@ -17,6 +18,7 @@ describe("RF36 - Edición de Notas Internas del Pedido", () => {
     expect(resultado).not.toBe(notaExistente);
   });
 
+  // CP02 No se realizan cambios
   it("CP02: si no se modifica el contenido de la nota, se mantiene la información existente (E1)", () => {
     // ARRANGE
     const notaExistente = "Cliente pidió tela azul";
@@ -29,6 +31,7 @@ describe("RF36 - Edición de Notas Internas del Pedido", () => {
     expect(resultado).toBe(notaExistente);
   });
 
+  // CP03 Cancelación de la edición
   it("CP03: cancelación de la edición (E2) - no aplica test de código", () => {
     // Flujo de UI puro (cierre de modal sin invocar actualizarPedido).
     // Verificado manualmente: al cancelar, la nota original permanece intacta.

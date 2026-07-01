@@ -22,6 +22,7 @@ function crearPedido(overrides: Partial<Pedido>): Pedido {
 }
 
 describe("RF37 - Visualización de Pedidos Cancelados", () => {
+  // CP01 visualización de pedidos cancelados
   it("CP01: muestra la lista de pedidos cancelados con su motivo (Personal de Atención)", () => {
     // ARRANGE
     const pedidos: Pedido[] = [
@@ -42,6 +43,7 @@ describe("RF37 - Visualización de Pedidos Cancelados", () => {
     expect(resultado[0].motivoCancelacion).toBe("Cliente canceló por demora");
   });
 
+  // CP01-Admin visualización de pedidos cancelados
   it("CP01-Admin: el Administrador también puede visualizar pedidos cancelados", () => {
     // ARRANGE
     const pedidos: Pedido[] = [
@@ -59,6 +61,7 @@ describe("RF37 - Visualización de Pedidos Cancelados", () => {
     expect(resultado[0].estado).toBe("Cancelado");
   });
 
+  // CP02 No existen pedidos cancelados
   it("CP02: muestra mensaje informativo cuando no existen pedidos cancelados (E1)", () => {
     // ARRANGE
     const pedidos: Pedido[] = [
@@ -72,6 +75,7 @@ describe("RF37 - Visualización de Pedidos Cancelados", () => {
     expect(resultado).toHaveLength(0);
   });
 
+  // CP03 No se aplica el filtro de cancelados
   it("CP03: sin aplicar filtro de cancelados, se muestra la lista general (E2)", () => {
     // ARRANGE
     const pedidos: Pedido[] = [
@@ -91,6 +95,7 @@ describe("RF37 - Visualización de Pedidos Cancelados", () => {
     expect(resultado).toHaveLength(3);
   });
 
+  // CP04 Actualización del listado de pedidos cancelados
   it("CP04: la lista se actualiza al registrarse un nuevo pedido cancelado (E3)", () => {
     // ARRANGE
     const pedidosAntes: Pedido[] = [

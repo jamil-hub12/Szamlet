@@ -20,6 +20,7 @@ function crearPedido(overrides: Partial<Pedido>): Pedido {
 }
 
 describe("RF38 - Reactivación de Pedidos", () => {
+  // CP01 reactivación de pedido
   it("CP01: un pedido cancelado con estado anterior guardado puede reactivarse a ese estado", () => {
     // ARRANGE
     const estado = "Cancelado" as const;
@@ -33,6 +34,7 @@ describe("RF38 - Reactivación de Pedidos", () => {
     expect(resultado.estadoDestino).toBe("En confección");
   });
 
+  // CP02 Cancelación de la reactivación
   it("CP02: cancelación de la reactivación (E1) - no aplica test de código", () => {
     // El Personal de Atención selecciona "Reactivar" pero cancela la
     // confirmación: es flujo de UI (cierre de diálogo de confirmación
@@ -41,6 +43,7 @@ describe("RF38 - Reactivación de Pedidos", () => {
     expect(true).toBe(true);
   });
 
+  // CP03 Pedido ya reactivado
   it("CP03: un pedido que ya no está cancelado no puede reactivarse (E2)", () => {
     // ARRANGE
     const estado = "En confección" as const;
@@ -55,6 +58,7 @@ describe("RF38 - Reactivación de Pedidos", () => {
     );
   });
 
+  // CP04 Actualización de la lista de pedidos cancelados
   it("CP04: al reactivar un pedido, deja de aparecer en la lista de cancelados (E3)", () => {
     // ARRANGE
     const pedidos: Pedido[] = [

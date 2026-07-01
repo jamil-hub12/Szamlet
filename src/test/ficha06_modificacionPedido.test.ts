@@ -9,6 +9,7 @@ import { puedeEditarPedido } from "../app/utils/pedidosCicloVida";
 
 describe("RF06 — Modificación de Detalles del Pedido", () => {
 
+  // CP01 Modificación válida
   it("CP01 — Flujo exitoso: pedido en estado activo puede editarse", () => {
     // ARRANGE
     const estadoRecibido         = "Recibido"         as const;
@@ -26,6 +27,7 @@ describe("RF06 — Modificación de Detalles del Pedido", () => {
     expect(resultadoListoEntrega.puede).toBe(true);
   });
 
+  // CP02 Pedido en estado "Entregado"
   it("CP02 — Pedido en estado Entregado: edición bloqueada", () => {
     // ARRANGE
     const estadoEntregado = "Entregado" as const;
@@ -38,6 +40,7 @@ describe("RF06 — Modificación de Detalles del Pedido", () => {
     expect(resultado.mensaje).toContain("Entregado");
   });
 
+  // CP03 Datos inválidos o incompletos
   it("CP03 — Datos inválidos o incompletos: recálculo de montos ocurre en el componente (placeholder)", () => {
     // ARRANGE
     // La validación de ítems y el recálculo de montos suceden dentro de
